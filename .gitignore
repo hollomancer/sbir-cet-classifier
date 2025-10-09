@@ -1,3 +1,7 @@
+# Environment variables
+.env
+.env.local
+
 # Award data CSV files - should never be checked in
 award_data*.csv
 
