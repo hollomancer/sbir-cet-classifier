@@ -28,21 +28,40 @@ MANIFEST
 
 # Virtual environments
 venv/
+.venv/
 ENV/
 env/
 
-# IDE
+# IDE - VSCode
 .vscode/
+# IDE - JetBrains
 .idea/
+# IDE - Vim
 *.swp
 *.swo
 *~
+
+# AI Assistant Tools
+.claude/
+.codex/
+.gemini/
+.amazonq/
+.github/prompts/
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
+
+# Data directories (generated/processed data)
+data/raw/
+data/processed/*.parquet
+artifacts/*.jsonl
+artifacts/*.json
+
+# Specification/Planning tools
+.specify/
 
 # Misc
 .DS_Store
