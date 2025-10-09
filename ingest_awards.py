@@ -116,10 +116,125 @@ def load_taxonomy(taxonomy_path: Path) -> pd.DataFrame:
 
 
 def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.DataFrame:
-    """Classify awards against CET areas using multi-label weighted classification with context rules."""
+    """Classify awards against CET areas using multi-label weighted classification with context rules and agency/branch priors."""
     print(f"🤖 Classifying {len(awards_df):,} awards against CET taxonomy...")
-    print(f"   Using v4 classifier with lower multi-label threshold (20) and None category...")
+    print(f"   Using v5 classifier with Agency/Branch priors, lower None score, and multi-label threshold (20)...")
     print(f"   (This will take approximately {len(awards_df) / 750:.0f} seconds...)")
+
+    # Agency-based CET priors: boost CET scores based on funding agency
+    AGENCY_CET_PRIORS = {
+        "Department of Defense": {
+            "hypersonics": 15,
+            "autonomous_systems": 15,
+            "directed_energy": 15,
+            "advanced_materials": 10,
+            "cybersecurity": 10,
+            "semiconductors": 10,
+            "advanced_communications": 10,
+        },
+        "Department of Health and Human Services": {
+            "biotechnology": 20,
+            "medical_devices": 20,
+            "artificial_intelligence": 5,  # Medical AI is common
+        },
+        "National Aeronautics and Space Administration": {
+            "space_technology": 25,
+            "advanced_materials": 15,
+            "autonomous_systems": 10,
+            "renewable_energy": 10,  # Space solar
+        },
+        "Department of Energy": {
+            "renewable_energy": 20,
+            "energy_storage": 20,
+            "quantum_computing": 15,
+            "advanced_materials": 10,
+            "semiconductors": 10,
+        },
+        "National Science Foundation": {
+            # NSF funds all areas - give small boost to all non-none CETs
+            "_all_cets": 5,
+        },
+        "Department of Agriculture": {
+            "biotechnology": 15,
+            "environmental_tech": 15,
+        },
+        "Environmental Protection Agency": {
+            "environmental_tech": 25,
+            "renewable_energy": 15,
+        },
+        "Department of Commerce": {
+            "semiconductors": 15,
+            "advanced_communications": 15,
+            "quantum_computing": 10,
+        },
+    }
+
+    # Branch-based CET priors: more specific than agency
+    BRANCH_CET_PRIORS = {
+        "National Institutes of Health": {
+            "medical_devices": 25,
+            "biotechnology": 25,
+            "artificial_intelligence": 10,  # Medical AI
+        },
+        "Air Force": {
+            "hypersonics": 20,
+            "space_technology": 15,
+            "autonomous_systems": 15,
+            "directed_energy": 10,
+            "advanced_materials": 10,
+        },
+        "Navy": {
+            "autonomous_systems": 15,
+            "advanced_materials": 15,
+            "directed_energy": 10,
+            "cybersecurity": 10,
+        },
+        "Army": {
+            "autonomous_systems": 15,
+            "cybersecurity": 15,
+            "advanced_materials": 10,
+            "medical_devices": 5,  # Combat medicine
+        },
+        "Missile Defense Agency": {
+            "hypersonics": 25,
+            "directed_energy": 20,
+            "space_technology": 15,
+        },
+        "Defense Advanced Research Projects Agency": {
+            "quantum_computing": 15,
+            "artificial_intelligence": 15,
+            "biotechnology": 15,
+            "autonomous_systems": 15,
+            "hypersonics": 15,
+            "directed_energy": 15,
+        },
+        "Defense Health Agency": {
+            "medical_devices": 25,
+            "biotechnology": 20,
+        },
+    }
+
+    def apply_agency_prior(cet_scores: dict, agency: str) -> dict:
+        """Apply agency-based CET priors."""
+        if agency in AGENCY_CET_PRIORS:
+            priors = AGENCY_CET_PRIORS[agency]
+            for cet_id, boost in priors.items():
+                if cet_id == "_all_cets":
+                    # Boost all CETs except none
+                    for cet in cet_scores:
+                        if cet != "none":
+                            cet_scores[cet] = cet_scores.get(cet, 0) + boost
+                else:
+                    cet_scores[cet_id] = cet_scores.get(cet_id, 0) + boost
+        return cet_scores
+
+    def apply_branch_prior(cet_scores: dict, branch: str) -> dict:
+        """Apply branch-based CET priors."""
+        if pd.notna(branch) and branch in BRANCH_CET_PRIORS:
+            priors = BRANCH_CET_PRIORS[branch]
+            for cet_id, boost in priors.items():
+                cet_scores[cet_id] = cet_scores.get(cet_id, 0) + boost
+        return cet_scores
 
     # Enhanced keyword matching with weighted importance and negative keywords
     # Format: {cet_id: {"core": [...], "related": [...], "negative": [...]}}
@@ -232,6 +347,8 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
     for idx, row in awards_df.iterrows():
         abstract = str(row.get("abstract", "")).lower()
         title = str(row.get("title", "")).lower()
+        agency = str(row.get("agency", ""))
+        branch = str(row.get("sub_agency", ""))
 
         # Weight title matches higher than abstract
         title_text = title * 2  # Title matches count double
@@ -277,9 +394,15 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
                         cet_scores[cet_id] = boost_points
                     context_rules_applied += 1
 
-        # If no matches, assign to None category (uncategorized)
+        # Apply agency prior (NEW in v5)
+        cet_scores = apply_agency_prior(cet_scores, agency)
+
+        # Apply branch prior (NEW in v5)
+        cet_scores = apply_branch_prior(cet_scores, branch)
+
+        # If no matches, assign to None category (uncategorized) with lower score
         if not cet_scores:
-            cet_scores = {"none": 30}
+            cet_scores = {"none": 20}  # CHANGED: Was 30, now 20 (will normalize to 33 instead of 42)
 
         # Normalize scores to 0-100 range based on max possible score
         max_possible = 15 * 4 + 10  # 4 core keywords * 15 + title bonus
@@ -317,7 +440,7 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
             "cet_weights": cet_weights,  # NEW: Normalized weights
             "all_cet_scores": dict(sorted_cets[:5]),  # NEW: Top 5 raw scores
             "evidence_statements": [],
-            "generation_method": "automated_v4_none_category",
+            "generation_method": "automated_v5_with_context",
             "assessed_at": ingested_at,
             "reviewer_notes": None,
         }
