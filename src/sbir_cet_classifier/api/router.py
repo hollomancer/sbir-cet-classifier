@@ -7,10 +7,16 @@ from typing import List, Optional, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from sbir_cet_classifier.features.summary import SummaryFilters, SummaryService, empty_service
+from sbir_cet_classifier.features.awards import AwardsService
+from sbir_cet_classifier.api.routes import awards as awards_routes
+from sbir_cet_classifier.api.routes import exports as exports_routes
 
 router = APIRouter()
+router.include_router(awards_routes.router)
+router.include_router(exports_routes.router)
 
 _summary_service: SummaryService | None = empty_service()
+_awards_service: AwardsService | None = None
 
 
 def configure_summary_service(service: SummaryService) -> None:
@@ -22,8 +28,21 @@ def configure_summary_service(service: SummaryService) -> None:
 
 def get_summary_service() -> SummaryService:
     if _summary_service is None:
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Summary service not configured")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Summary service not configured")
     return _summary_service
+
+
+def configure_awards_service(service: AwardsService) -> None:
+    """Configure the global awards service used by API routes."""
+    global _awards_service
+    _awards_service = service
+    awards_routes.configure_awards_service(service)
+
+
+def get_awards_service() -> AwardsService:
+    if _awards_service is None:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Awards service not configured")
+    return _awards_service
 
 
 def _tuple(values: Optional[List[str]]) -> Tuple[str, ...]:
@@ -56,36 +75,13 @@ def get_summary(
     return service.summarize(filters).as_dict()
 
 
-@router.get("/applicability/awards")
-def list_awards() -> dict[str, str]:
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Awards listing not yet implemented")
-
-
-@router.get("/applicability/awards/{award_id}")
-def get_award(award_id: str) -> dict[str, str]:
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Award detail not yet implemented")
-
-
-@router.get("/applicability/cet/{cet_id}")
-def get_cet_area(cet_id: str) -> dict[str, str]:
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "CET detail not yet implemented")
 
 
 @router.get("/applicability/review-queue")
 def get_review_queue() -> dict[str, str]:
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Review queue not yet implemented")
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Review queue not yet implemented")
 
 
 @router.post("/refresh")
 def trigger_refresh() -> dict[str, str]:
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Refresh trigger not yet implemented")
-
-
-@router.post("/exports")
-def create_export() -> dict[str, str]:
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Export not yet implemented")
-
-
-@router.get("/exports")
-def get_export_status() -> dict[str, str]:
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Export status not yet implemented")
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Refresh trigger not yet implemented")

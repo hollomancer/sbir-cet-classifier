@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
 from sbir_cet_classifier.api.router import router as api_router
+from sbir_cet_classifier.api.routes import awards as awards_routes
 from sbir_cet_classifier.cli.app import app as cli_app
 
 
@@ -114,7 +115,7 @@ def _build_awards_service():
             "status": "pending",
             "assigned_to": None,
             "opened_at": datetime(2024, 2, 5, tzinfo=timezone.utc),
-            "due_by": datetime(2024, 3, 31, tzinfo=timezone.utc).date(),
+            "due_by": datetime(2026, 3, 31, tzinfo=timezone.utc).date(),  # Future date to avoid auto-escalation
             "resolved_at": None,
             "resolution_notes": None,
         }
@@ -136,14 +137,12 @@ def _build_awards_service():
 @pytest.fixture()
 def integration_context(monkeypatch):
     service = _build_awards_service()
-    monkeypatch.setattr(
-        api_router,
-        "_awards_service",
-        service,
-        raising=False,
-    )
+    # Use the configure function to properly set up the service
+    from sbir_cet_classifier.api import router as router_module
+    router_module.configure_awards_service(service)
+
     app = FastAPI()
-    app.include_router(api_router.router, prefix="/api")
+    app.include_router(api_router, prefix="/api")
     client = TestClient(app)
     runner = CliRunner()
     return client, runner

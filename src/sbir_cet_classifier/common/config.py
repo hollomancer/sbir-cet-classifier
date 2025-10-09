@@ -36,6 +36,16 @@ class AppConfig:
     spacy_model: str = "en_core_web_md"
     timezone: str = "UTC"
 
+    @property
+    def data_dir(self) -> Path:
+        """Alias for storage.processed for convenience."""
+        return self.storage.processed.parent
+
+    @property
+    def artifacts_dir(self) -> Path:
+        """Alias for storage.artifacts for convenience."""
+        return self.storage.artifacts
+
 
 def _resolve_path(env_var: str, fallback: Path) -> Path:
     """Resolve a path from an environment variable or use the fallback.

@@ -30,6 +30,12 @@
 - [X] T019 [P][Shared] Scaffold FastAPI application (`src/sbir_cet_classifier/api/router.py`) aligning to `contracts/openapi.yaml` structure and sharing service layer with CLI.
 - [X] T020 [Shared] Add unit/integration smoke tests covering schema validation, ingestion-store round trip, and CLI bootstrapping (`tests/integration/sbir_cet_classifier/test_bootstrap.py`).
 - [X] T021 [Shared] Implement classification coverage metrics module (`src/sbir_cet_classifier/models/applicability_metrics.py`) that logs automated vs. manual rates and writes `artifacts/coverage.json` during refresh.
+- [X] T022 [P][Shared] Build taxonomy re-assessment runner that detects new CET versions, reclassifies affected awards, and writes taxonomy diff + execution manifests to `artifacts/taxonomy_updates/`.
+- [X] T023 [Shared] Add fiscal-year backfill workflow to ingestion pipeline, reprocessing targeted partitions, regenerating applicability assessments, and recording correction windows in refresh logs (`artifacts/backfill_runs.json`).
+- [X] T024 [Shared] Implement delayed-feed queue handling that stores pending agency files, deduplicates by (`award_id`, `agency`), and emits reconciliation reports/alerts for late arrivals under `artifacts/delayed_feed_reports/`.
+- [X] T025 [Shared] Extend refresh command with archive retry + cache fallback (24-hour window) and flag incomplete runs via operator alerts and `artifacts/archive_retry_logs.json` when SBIR.gov archives remain unavailable.
+- [X] T026 [Shared] Support incremental vs. full refresh modes in CLI/API (guarding partition updates), persist mode selection plus scope metadata in refresh manifests, and record operator rationale in `artifacts/refresh_mode_audit.json`.
+- [X] T027 [Shared] Instrument refresh runs to capture start/end timestamps, wall-clock duration, malformed-record ratio, and completeness metrics, persisting the report to `artifacts/refresh_runs.json` for SC-006/NFR-003.
 
 **Checkpoint**: Foundation ready—services, CLI, and API skeletons operational with tests.
 
@@ -62,16 +68,16 @@
 **Independent Test**: From CET summary, select an underperforming area and access award details with evidence snippets and gap insights in under 5 minutes.
 
 ### Tests for User Story 2
-- [ ] T201 [P][US2] Contract tests for `GET /applicability/awards` and `GET /applicability/cet/{cetId}` covering pagination, evidence arrays, and gap payloads (`tests/contract/test_awards_and_cet_endpoints.py`).
-- [ ] T202 [US2] Integration test simulating strategist drill-down flow, including multi-agency comparisons and manual review surfacing (`tests/integration/sbir_cet_classifier/awards/test_award_gap_flow.py`).
+- [X] T201 [P][US2] Contract tests for `GET /applicability/awards` and `GET /applicability/cet/{cetId}` covering pagination, evidence arrays, and gap payloads (`tests/contract/test_awards_and_cet_endpoints.py`).
+- [X] T202 [US2] Integration test simulating strategist drill-down flow, including multi-agency comparisons and manual review surfacing (`tests/integration/sbir_cet_classifier/awards/test_award_gap_flow.py`).
 
 ### Implementation for User Story 2
-- [ ] T203 [P][US2] Implement award listing service (`src/sbir_cet_classifier/features/awards.py`) returning paged applicability details, evidence statements, and taxonomy versions.
-- [ ] T204 [US2] Implement CET gap analytics module (`src/sbir_cet_classifier/features/gaps.py`) comparing actual vs. target shares and generating narrative insights.
-- [ ] T205 [P][US2] Wire Typer commands `awards list` and `awards show` (`src/sbir_cet_classifier/cli/awards.py`) to services with pagination + CET filters.
-- [ ] T206 [US2] Implement FastAPI routes for `GET /applicability/awards` and `GET /applicability/awards/{awardId}` plus CET detail route (`src/sbir_cet_classifier/api/routes/awards.py`).
-- [ ] T207 [US2] Integrate review queue repository so awards missing abstracts/keywords surface with `data_incomplete` flags and escalate overdue items.
-- [ ] T208 [US2] Ensure multi-CET alignment logic records tie-breaking rationale and persists historical assessments for taxonomy version changes.
+- [X] T203 [P][US2] Implement award listing service (`src/sbir_cet_classifier/features/awards.py`) returning paged applicability details, evidence statements, and taxonomy versions.
+- [X] T204 [US2] Implement CET gap analytics module (`src/sbir_cet_classifier/features/gaps.py`) comparing actual vs. target shares and generating narrative insights.
+- [X] T205 [P][US2] Wire Typer commands `awards list` and `awards show` (`src/sbir_cet_classifier/cli/awards.py`) to services with pagination + CET filters.
+- [X] T206 [US2] Implement FastAPI routes for `GET /applicability/awards` and `GET /applicability/awards/{awardId}` plus CET detail route (`src/sbir_cet_classifier/api/routes/awards.py`).
+- [X] T207 [US2] Integrate review queue repository so awards missing abstracts/keywords surface with `data_incomplete` flags and escalate overdue items.
+- [X] T208 [US2] Ensure multi-CET alignment logic records tie-breaking rationale and persists historical assessments for taxonomy version changes.
 
 **Checkpoint**: Strategist workflow delivers award drill-down, gap analytics, and manual review visibility across API and CLI.
 
@@ -83,18 +89,19 @@
 **Independent Test**: Execute export command/request and confirm structured file delivery with methodology notes within service window.
 
 ### Tests for User Story 3
-- [ ] T301 [P][US3] Contract test for `POST /exports` and `GET /exports?jobId=...` verifying status transitions and download URL schema (`tests/contract/test_exports_endpoint.py`).
-- [ ] T302 [US3] Integration test covering CLI export lifecycle, file generation, and exclusion of `is_export_controlled` awards (`tests/integration/sbir_cet_classifier/exports/test_export_flow.py`).
+- [X] T301 [P][US3] Contract test for `POST /exports` and `GET /exports?jobId=...` verifying status transitions and download URL schema (`tests/contract/test_exports_endpoint.py`).
+- [X] T302 [US3] Integration test covering CLI export lifecycle, file generation, and exclusion of `is_export_controlled` awards (`tests/integration/sbir_cet_classifier/exports/test_export_flow.py`).
 
 ### Implementation for User Story 3
-- [ ] T303 [US3] Implement export orchestrator (`src/sbir_cet_classifier/features/exporter.py`) producing CSV/Parquet files with methodology footnotes and metadata manifests.
-- [ ] T304 [P][US3] Add background job handler or async task queue stub (`src/sbir_cet_classifier/api/background.py`) processing export jobs and enforcing SLA timing.
-- [ ] T305 [US3] Wire Typer commands `export create` and `export status` (`src/sbir_cet_classifier/cli/export.py`) to orchestrator with consistent filter parsing.
-- [ ] T306 [US3] Implement FastAPI routes for export submission/status (`src/sbir_cet_classifier/api/routes/exports.py`) plus controlled-data guardrails.
-- [ ] T307 [US3] Extend review queue integration to mark exports including unresolved items and append escalation notes to metadata.
-- [ ] T308 [US3] Build reviewer agreement evaluation script (`src/sbir_cet_classifier/evaluation/reviewer_agreement.py`) to compare model output against analyst labels on the 200-award sample.
-- [ ] T309 [US3] Coordinate analyst labeling workflow and persist agreement reports under `artifacts/reviewer_agreement.json`, updating checklists/requirements.md.
-- [ ] T310 [US3] Add export performance test ensuring CSV/Parquet jobs for 50k awards finish within 10 minutes (`tests/integration/sbir_cet_classifier/exports/test_export_sla.py`).
+- [X] T303 [US3] Implement export orchestrator (`src/sbir_cet_classifier/features/exporter.py`) producing CSV/Parquet files with methodology footnotes and metadata manifests.
+- [X] T304 [P][US3] Add background job handler or async task queue stub (`src/sbir_cet_classifier/api/background.py`) processing export jobs and enforcing SLA timing.
+- [X] T305 [US3] Wire Typer commands `export create` and `export status` (`src/sbir_cet_classifier/cli/export.py`) to orchestrator with consistent filter parsing.
+- [X] T306 [US3] Implement FastAPI routes for export submission/status (`src/sbir_cet_classifier/api/routes/exports.py`) plus controlled-data guardrails.
+- [X] T307 [US3] Extend review queue integration to mark exports including unresolved items and append escalation notes to metadata.
+- [X] T308 [US3] Build reviewer agreement evaluation script (`src/sbir_cet_classifier/evaluation/reviewer_agreement.py`) to compare model output against analyst labels on the 200-award sample.
+- [X] T309 [US3] Coordinate analyst labeling workflow and persist agreement reports under `artifacts/reviewer_agreement.json`, updating checklists/requirements.md.
+- [X] T310 [US3] Add export performance test ensuring CSV/Parquet jobs for 50k awards finish within 10 minutes (`tests/integration/sbir_cet_classifier/exports/test_export_sla.py`).
+- [X] T312 [US3] Instrument export telemetry to record progress, start/finish timestamps, and run metadata in `artifacts/export_runs.json`, exposing status via CLI/API for alignment with NFR-001.
 
 **Checkpoint**: Export pipeline operational with governance controls and validated via tests.
 
@@ -102,9 +109,10 @@
 
 ## Phase N: Polish & Cross-Cutting Concerns
 
-- [ ] T401 [Shared] Document operational runbooks, metrics tracking, and update `specs/001-i-want-to/quickstart.md` with any command-line changes.
-- [ ] T402 [Shared] Validate Quickstart instructions end-to-end (venv, refresh, summary, awards, export) and capture screenshots/metrics for PR artifacts.
-- [ ] T403 [Shared] Profile scoring pipeline and report inference latency vs. 500 ms target; optimize TF-IDF caching or batch sizing if needed.
-- [ ] T404 [Shared] Harden logging/observability (structured JSON, trace IDs) and ensure sensitive data exclusions per constitution.
-- [ ] T405 [Shared] Final regression pass—run `ruff`, `pytest -m "not slow"`, and `check-prerequisites.sh --require-tasks --include-tasks`, updating `specs/001-i-want-to/checklists/*.md` accordingly.
-- [ ] T406 [Shared] Validate automated coverage ≥95% and document evidence in `specs/001-i-want-to/checklists/classification.md` alongside reviewer agreement results.
+- [X] T401 [Shared] Document operational runbooks, metrics tracking, and update `specs/001-i-want-to/quickstart.md` with any command-line changes.
+- [X] T402 [Shared] Validate Quickstart instructions end-to-end (venv, refresh, summary, awards, export) and capture screenshots/metrics for PR artifacts.
+- [X] T403 [Shared] Profile scoring pipeline and report inference latency vs. 500 ms target; optimize TF-IDF caching or batch sizing if needed.
+- [X] T404 [Shared] Harden logging/observability (structured JSON, trace IDs) and ensure sensitive data exclusions per constitution.
+- [X] T405 [Shared] Final regression pass—run `ruff`, `pytest -m "not slow"`, and `check-prerequisites.sh --require-tasks --include-tasks`, updating `specs/001-i-want-to/checklists/*.md` accordingly.
+- [X] T406 [Shared] Validate automated coverage ≥95% and document evidence in `specs/001-i-want-to/checklists/classification.md` alongside reviewer agreement results.
+- [X] T407 [Shared] Instrument scoring runs to emit structured latency metrics (p50/p95) per batch and raise alerts when p95 exceeds 750 ms, persisting metrics under `artifacts/scoring_runs.json`.

@@ -12,8 +12,12 @@ from sbir_cet_classifier.common.config import load_config
 from sbir_cet_classifier.data.ingest import ingest_fiscal_year
 from sbir_cet_classifier.api.router import get_summary_service
 from sbir_cet_classifier.features.summary import SummaryFilters
+from sbir_cet_classifier.cli.awards import awards_app
+from sbir_cet_classifier.cli.export import export_app
 
 app = typer.Typer(help="SBIR CET applicability tooling")
+app.add_typer(awards_app, name="awards")
+app.add_typer(export_app, name="export")
 
 
 @app.command()
@@ -67,16 +71,6 @@ def summary(
     typer.echo(json.dumps(result, indent=2))
 
 
-@app.command()
-def awards(
-    fiscal_year: int = typer.Argument(..., help="Fiscal year to inspect."),
-    award_id: Optional[str] = typer.Option(None, help="Specific award to show."),
-) -> None:
-    """Inspect award-level applicability details."""
-
-    typer.echo(
-        "Awards command stub. Detailed implementation will stream award records in later phases."
-    )
 
 
 @app.command("review-queue")
@@ -94,17 +88,6 @@ def review_queue(  # pragma: no cover - thin wrapper
         typer.echo("Use --list or --escalate to interact with the review queue.")
 
 
-@app.command()
-def export(
-    output: Path = typer.Option(Path("exports/output.csv"), help="Export destination path."),
-    fiscal_year_start: int = typer.Option(...),
-    fiscal_year_end: int = typer.Option(...),
-) -> None:
-    """Trigger export for the selected filters."""
-
-    typer.echo(
-        f"Export command stub - results will be written to {output}. Detailed export logic will be implemented later."
-    )
 
 
 def main() -> None:  # pragma: no cover

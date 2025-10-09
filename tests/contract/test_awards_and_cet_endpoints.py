@@ -8,6 +8,17 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from sbir_cet_classifier.api import router as router_module
+from sbir_cet_classifier.api.routes import awards as awards_routes
+
+
+class MockResponse:
+    """Simple mock object that holds a dict and returns it via as_dict()."""
+
+    def __init__(self, data: dict) -> None:
+        self._data = data
+
+    def as_dict(self) -> dict:
+        return self._data
 
 
 class StubAwardsService:
@@ -137,27 +148,28 @@ class StubAwardsService:
             ],
         }
 
-    # The router under test will call these methods; we return static payloads
-    def list_awards(self, filters) -> dict:
+    # The router under test will call these methods; we return mock response objects
+    def list_awards(self, filters):
         self.last_filters = filters
-        return self.list_response
+        return MockResponse(self.list_response)
 
-    def get_award_detail(self, award_id: str) -> dict:
+    def get_award_detail(self, award_id: str):
         if award_id != "AF123":
             raise KeyError(award_id)
-        return self.detail_response
+        return MockResponse(self.detail_response)
 
-    def get_cet_detail(self, cet_id: str, filters) -> dict:
+    def get_cet_detail(self, cet_id: str, filters):
         if cet_id != "hypersonics":
             raise KeyError(cet_id)
-        return self.cet_response
+        return MockResponse(self.cet_response)
 
 
 @pytest.fixture()
 def api_client(monkeypatch):
     stub_service = StubAwardsService()
+    # Monkeypatch the awards_routes module where the service is actually used
     monkeypatch.setattr(
-        router_module,
+        awards_routes,
         "_awards_service",
         stub_service,
         raising=False,

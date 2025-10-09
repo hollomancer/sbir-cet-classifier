@@ -50,10 +50,12 @@ This project analyses Small Business Innovation Research (SBIR) awards and align
 
 ## Development Workflow
 
-The repository follows the constitution in `.specify/memory/constitution.md`:
-- Keep code modular with type hints and enforce formatting via `ruff`.
-- Author tests alongside features (`pytest -m "not slow"`).
-- Track progress in `specs/001-i-want-to/tasks.md`, marking each task once completed.
-- Run `check-prerequisites.sh --require-tasks --include-tasks` before raising a PR.
+The repository follows the constitution in `.specify/memory/constitution.md`. Key principles include:
+- Modular Design
+- Consistent Dual Interfaces: CLI and API
+- Test-Driven Development
+- Code Quality through Static Analysis
+- Specification-Driven Development
+- Performance Requirements
 
 Refer to `specs/001-i-want-to/quickstart.md` for deeper usage notes once the feature set is implemented.

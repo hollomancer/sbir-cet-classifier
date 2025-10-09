@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime, timezone
 from typing import Iterable, Mapping, Sequence
 
 import pandas as pd
@@ -317,7 +317,7 @@ class AwardsService:
         if self._review_queue.empty:
             return {}
         snapshots: dict[str, ReviewQueueSnapshot] = {}
-        now = datetime.now(tz=UTC)
+        now = datetime.now(tz=timezone.utc)
         today = now.date()
         for _, row in self._review_queue.iterrows():
             status = row.get("status")
@@ -376,7 +376,11 @@ class AwardsService:
         keywords = row.get("keywords") or []
         has_text = bool(abstract and abstract.strip()) and bool(keywords)
         queue: ReviewQueueSnapshot | None = row.get("review_queue")
-        queue_pending = queue is not None and queue.status in {"pending", "in_review", "escalated"}
+        # Check if queue is actually a ReviewQueueSnapshot, not NaN (float)
+        queue_pending = (
+            isinstance(queue, ReviewQueueSnapshot)
+            and queue.status in {"pending", "in_review", "escalated"}
+        )
         return (not has_text) or queue_pending
 
     def _build_cet_ref(self, cet_id: str | None, taxonomy_version: str | None) -> CetRef:
@@ -430,7 +434,7 @@ class AwardsService:
             primary_ref = self._build_cet_ref(row.get("primary_cet_id"), taxonomy_version)
             supporting_refs = self._build_supporting_refs(row.get("supporting_cet_ids") or [], taxonomy_version)
             assessed_at = row.get("assessed_at")
-            assessed_dt = assessed_at.to_pydatetime().astimezone(UTC) if pd.notna(assessed_at) else None
+            assessed_dt = assessed_at.to_pydatetime().astimezone(timezone.utc) if pd.notna(assessed_at) else None
             records.append(
                 AssessmentRecord(
                     assessment_id=row.get("assessment_id"),

@@ -1,43 +1,37 @@
 # Implementation Plan: SBIR Award Applicability Assessment
 
-**Branch**: `[001-i-want-to]` | **Date**: 2025-10-08 | **Spec**: `/specs/001-i-want-to/spec.md`
+**Branch**: `[001-i-want-to]` | **Date**: 2025-10-09 | **Spec**: `/specs/001-i-want-to/spec.md`
 **Input**: Feature specification from `/specs/001-i-want-to/spec.md`
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
 ## Summary
 
-Ingest SBIR.gov bulk award data, align each record to the CET taxonomy with scored applicability tiers, and surface analyst workflows (filters, drill-downs, exports) that respect manual review governance and taxonomy versioning.
+Deliver an offline-first analyst workflow that ingests SBIR.gov awards, classifies each award against the CET taxonomy with calibrated scores and evidence snippets, surfaces portfolio summaries and drill-downs, and exports governed datasets while preserving taxonomy history and manual review accountability.
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
-
-**Language/Version**: Python 3.11 (constitution mandate)  
-**Primary Dependencies**: pandas, scikit-learn, spacy, pydantic, typer, fastapi, uvicorn  
-**Storage**: Raw SBIR.gov ZIP/CSV in `data/raw/`, normalized Parquet in `data/processed/`, artefacts+manifests in `artifacts/`  
-**Testing**: pytest with unit + integration mirrors under `tests/`  
-**Target Platform**: Typer CLI for automation + spec-aligned Jupyter notebooks on analyst workstations
-**Project Type**: Single Python package with modular subpackages (`data`, `features`, `models`, `evaluation`)  
-**Performance Goals**: ≥95% automated classifications, exports within service window, inference ≤500 ms median batch (per constitution/performance goals)  
-**Constraints**: Manual refresh trigger, taxonomy version preservation, evidence statements ≤50 words, review queue cleared quarterly  
-**Scale/Scope**: Full SBIR award corpus (1983–present) across agencies; filtered analyst sessions servicing tens of thousands of awards per request
+**Language/Version**: Python 3.11 (per constitution mandate)  
+**Primary Dependencies**: pandas, scikit-learn, spaCy, pydantic, typer, FastAPI, uvicorn, pyarrow, rich  
+**Storage**: Raw ZIP/CSV under `data/raw/`, partitioned Parquet tables under `data/processed/`, artefacts + manifests in `artifacts/`  
+**Testing**: pytest with unit/integration/contract suites, coverage tracked via pytest-cov  
+**Target Platform**: Offline Typer CLI on analyst workstations; internal-only FastAPI service behind trusted network  
+**Project Type**: Single Python package (`src/sbir_cet_classifier`) with mirrored tests  
+**Performance Goals**: ≥95% automated classifications per refresh; exports ≤10 minutes for ≤50k awards; scoring batches ≤500 ms median / ≤750 ms p95; ingestion refresh ≤2 hours for ≤120k awards  
+**Constraints**: Evidence summaries ≤50 words with rationale tags; manual review queue resolved quarterly; taxonomy/version manifests immutable; access restricted to offline CLI and internal API; structured telemetry for refresh, scoring, export jobs  
+**Scale/Scope**: Historical SBIR corpus (1983–present, ≈300k+ awards) with refreshes up to 120k records per run and analyst queries spanning tens of thousands of awards across agencies
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **Gate — Code Quality First**: PASS — Plan commits to Python package layout with type hints, shared utilities, and ruff enforcement before merge.
-- **Gate — Testing Defines Delivery**: PASS — Research and design will enumerate tests ahead of implementation; unit/integration suites will anchor acceptance criteria.
-- **Gate — Consistent User Experience**: PASS — Deliverables will document CLI/notebook entry points, aligning option names with CET taxonomy terminology.
-- **Gate — Performance with Accountability**: PASS — Performance targets from success criteria and constitution will be tracked in design metrics.
-- **Gate — Reliable Data Stewardship**: PASS — Data ingestion and artefact management will adhere to immutable raw data principle and metadata logging.
+- **Gate — Code Quality First**: PASS — Plan retains single Python package, enforces typing, and integrates ruff + pytest in tooling tasks.  
+- **Gate — Testing Defines Delivery**: PASS — Contract/unit/integration suites defined per feature area with coverage targets ≥85%, aligning with Constitution principle II.  
+- **Gate — Consistent User Experience**: PASS — CLI and internal FastAPI share service layer and schema contracts, ensuring parity in filters and responses.  
+- **Gate — Performance With Accountability**: PASS — Plan commits to telemetry artefacts (`artifacts/export_runs.json`, `artifacts/scoring_runs.json`, `artifacts/refresh_runs.json`) and performance SLAs, satisfying monitoring expectations.  
+- **Gate — Reliable Data Stewardship**: PASS — Immutable raw data, versioned taxonomy/model artefacts, and manual review governance preserved throughout ingestion and export pipelines.
 
-*Re-evaluated after Phase 1 design (2025-10-08): No new violations identified; data-model, contracts, and quickstart reinforce compliance paths.*
+*Re-evaluated after Phase 1 design (2025-10-09): No new violations identified; data model, contracts, and quickstart map directly to constitutional principles.*
 
 ## Project Structure
 
@@ -45,48 +39,43 @@ Ingest SBIR.gov bulk award data, align each record to the CET taxonomy with scor
 
 ```
 specs/001-i-want-to/
-├── plan.md          # Implementation plan (this file)
-├── research.md      # Phase 0 research synthesis
-├── data-model.md    # Phase 1 entity model
-├── quickstart.md    # Phase 1 onboarding notes
-├── contracts/       # Phase 1 API contracts
-└── tasks.md         # Phase 2 execution tracker (later)
+├── plan.md              # Implementation plan (this file)
+├── research.md          # Phase 0 research synthesis
+├── data-model.md        # Phase 1 entity model
+├── quickstart.md        # Phase 1 onboarding notes
+├── contracts/           # Phase 1 API contracts (OpenAPI)
+└── tasks.md             # Phase 2 execution tracker (via /speckit.tasks)
 ```
 
 ### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
 
 ```
 src/
 └── sbir_cet_classifier/
-    ├── cli/
     ├── api/
+    │   └── routes/
+    ├── cli/
+    ├── common/
     ├── data/
+    ├── evaluation/
     ├── features/
     ├── models/
-    ├── evaluation/
-    └── common/
+    └── services/
 
 tests/
-├── unit/
+├── contract/
 │   └── sbir_cet_classifier/
 ├── integration/
 │   └── sbir_cet_classifier/
-├── contract/
+├── unit/
 │   └── sbir_cet_classifier/
 └── fixtures/
 ```
 
-**Structure Decision**: Single Python package mirroring constitution guidance; subpackages separate data ingestion, feature engineering, modeling, and evaluation with aligned test mirrors.
+**Structure Decision**: Maintain a single Python package with domain-focused subpackages (data ingestion, feature engineering, models, evaluation, API/CLI surfaces) and mirrored test hierarchy to satisfy constitution guidance and support modular ownership.
 
 ## Complexity Tracking
 
-*Fill ONLY if Constitution Check has violations that must be justified*
-
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
+| _None_ | N/A | N/A |

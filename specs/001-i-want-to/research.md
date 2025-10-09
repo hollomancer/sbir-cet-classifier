@@ -21,3 +21,13 @@
 - Decision: Provide a `typer`-based CLI for refresh/classify/export flows supplemented by spec-aligned Jupyter notebooks (`specs/001-i-want-to/notebooks/001-analysis.ipynb`) for exploratory analysis and validation dashboards.
 - Rationale: CLI ensures consistent automation hooks and supports analysts running scripted reports; notebooks mirror spec ID, satisfying constitution UX guidance and enabling rapid validation; both reuse the same service layer for deterministic outputs.
 - Alternatives considered: Full web frontend (higher upfront cost, requires hosting); Streamlit dashboard (fast but diverges from CLI/notebook parity and raises packaging overhead); pure notebook delivery (lacks repeatable automation for exports and refresh cadence).
+
+### Access Model
+- Decision: Restrict usage to offline CLI workflows and keep the FastAPI service internal-only behind trusted network controls without public authentication endpoints.
+- Rationale: Aligns with clarified security guidance, reduces credential management overhead, and fits the analyst operating environment (workstations with dataset access); minimizes attack surface for an experimental feature.
+- Alternatives considered: API key distribution (adds rotation/secret handling burden for a single-user prototype); full SSO integration (significant infrastructure setup for minimal external access need).
+
+### Telemetry & Artefact Logging
+- Decision: Emit structured JSON manifests for refresh (`artifacts/refresh_runs.json`), taxonomy updates (`artifacts/taxonomy_updates/`), backfills (`artifacts/backfill_runs.json`), delayed feeds (`artifacts/delayed_feed_reports/`), archive retries (`artifacts/archive_retry_logs.json`), scoring latency (`artifacts/scoring_runs.json`), and exports (`artifacts/export_runs.json`).
+- Rationale: Satisfies constitution expectations on performance accountability and data stewardship, enables reproducible audits, and feeds downstream dashboards without requiring external observability services.
+- Alternatives considered: Aggregating metrics solely in logs (harder to parse programmatically); external monitoring stack (overkill for offline-focused workflow, adds deployment overhead).

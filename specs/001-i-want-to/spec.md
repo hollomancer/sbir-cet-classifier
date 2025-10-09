@@ -19,6 +19,10 @@
 - Q: How should the project handle Phase III or other non-standard awards present in the SBIR.gov dataset? → A: Option A (Include them in classification alongside Phase I/II)
 - Q: How should CET weights and classifiers appear in the export CSV? → A: Option A (Include a normalized 0–1 weight column for every CET area, with weights per award summing to 1)
 
+### Session 2025-10-09
+
+- Q: Who should be able to call the CLI and FastAPI endpoints, and how should we authenticate/authorize them? → A: Limit to offline CLI; FastAPI internal only
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Portfolio Analyst Reviews Alignment (Priority: P1)
@@ -67,17 +71,16 @@ A data steward needs to export the CET applicability results for cross-agency co
 
 ### Edge Cases
 
-- Awards missing abstracts or keywords must be surfaced for manual review with a “data incomplete” status.  
+- Awards missing abstracts or keywords must be surfaced for manual review with a “data incomplete” status, routed into the manual review queue, retried against agency supplements/contracting officer addenda, and re-evaluated automatically once missing text is ingested.  
 - Awards that legitimately map to multiple CET areas must show all applicable categories with a tie-breaking explanation for the primary alignment.  
 - Newly introduced CET areas must be versioned so historical reports retain the taxonomy in effect at the time of analysis.  
 - Awards referencing controlled information must be excluded from exports while remaining visible in aggregate totals.
 - When taxonomy updates occur, the system must append a re-assessment tagged with the new taxonomy version while preserving earlier classification history, re-running the classification pipeline for affected awards and logging the taxonomy diff and execution timestamp.
 - When SBIR.gov publishes corrected award data, the ingestion pipeline must support fiscal year backfills that rerun processing for the affected partitions, regenerate applicability assessments, and record the applied correction window.  
 - If agency feeds are delayed or arrive asynchronously, the ingestion process must queue pending files, deduplicate awards using `award_id` and `agency`, and emit reconciliation reports for late arrivals.  
-- Awards missing abstracts or keywords must be marked `data_incomplete`, routed to the manual review queue, and re-evaluated automatically once the missing text is supplied; make-whole ingestion MUST attempt retrieval from agency supplements or contracting officer addenda.  
 - Tie-breaking for awards aligned to multiple CET areas must prefer the highest applicability score; ties fall back to the largest obligated amount, then the most recent award date.  
 - If SBIR.gov bulk archives are unavailable, the system must retry for up to 24 hours using cached copies before alerting the operator and flagging the refresh as incomplete.  
-- Manual refresh operations must choose between incremental (single fiscal range) and full reprocess modes; incremental runs update the selected fiscal years in place without mutating other partitions.
+- Manual refresh operations must choose between incremental (single fiscal range) and full reprocess modes; incremental runs apply when the requested window spans ≤3 contiguous fiscal years (or when explicitly approved for emergency corrections), while full reprocess is required for broader scopes or structural schema changes. Incremental runs update the selected fiscal years in place without mutating other partitions, and operator rationale must be logged in the refresh manifest.
 
 ## Requirements *(mandatory)*
 
@@ -90,6 +93,16 @@ A data steward needs to export the CET applicability results for cross-agency co
 - **FR-005**: System MUST display award-level drill-down pages summarizing applicability scores, evidence statements, source text excerpts, and taxonomy version used.  
 - **FR-006**: System MUST allow authorized users to export the filtered dataset and summary tables to a structured file (e.g., CSV or spreadsheet) accompanied by data currency and methodology notes, and each export row MUST include normalized 0–1 weight columns for every active CET area such that the weights per award sum to 1. Exports MUST surface a `data_currency_note` indicating the ingestion timestamp and SBIR.gov source archive version, list the count of controlled awards excluded from line-level output, and preserve aggregate totals for those exclusions.  
 - **FR-007**: System MUST track the percentage of awards classified automatically versus flagged for review, present unresolved items in a review queue, and ensure 100% of queued items are resolved by the end of each fiscal quarter. Review queue entries MUST be created when classifier confidence falls below calibrated thresholds, required narrative fields are missing, or analysts flag conflicts. Each queue item MUST capture an assigned reviewer, opened timestamp, due-by date (end of fiscal quarter), and resolution notes. Items transition through the states `pending` → `in_review` → `resolved` or `escalated` (if overdue). Escalated items notify the program manager and must re-enter `in_review` within 5 business days.
+
+### Non-Functional Requirements
+
+- **NFR-001**: Exports covering up to 50,000 awards MUST complete within a 10-minute service window, expose progress telemetry, and record start/finish timestamps in `artifacts/export_runs.json`.  
+- **NFR-002**: Applicability scoring MUST process batches of 100 awards with ≤500 ms median latency on the reference analyst workstation (Apple M2 Pro, 16 GB RAM) or the equivalent cloud profile (AWS m6i.xlarge), log p50/p95 metrics per run, persist results under `artifacts/scoring_runs.json`, and alert when p95 exceeds 750 ms.  
+- **NFR-003**: Ingestion refreshes MUST support monthly full runs and manual on-demand triggers, retry failed SBIR.gov downloads for 24 hours using cached archives, and log remediation notes for partitions requiring backfill.  
+- **NFR-004**: Manual review operations MUST enforce quarterly resolution SLAs, produce reconciliation reports for delayed agency feeds, and maintain audit trails for taxonomy re-assessments and tie-breaking rationale.  
+- **NFR-005**: Development MUST use Python 3.11+, enforce `ruff` formatting/linting, `pytest -m "not slow"` smoke passes, and maintain ≥85% statement coverage across unit/integration suites before merge.  
+- **NFR-006**: Observability MUST include structured JSON logs with correlation IDs across ingestion, scoring, API, and CLI surfaces, and redact controlled award details from logs and exports.  
+- **NFR-007**: Access control MUST restrict usage to offline CLI workflows operated within trusted workstations; the FastAPI service remains internal-only behind network-level controls with no external authentication surface.
 
 ### Key Entities *(include if feature involves data)*
 

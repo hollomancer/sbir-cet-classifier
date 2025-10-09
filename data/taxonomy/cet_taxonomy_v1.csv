@@ -1,0 +1,21 @@
+cet_id,name,definition,parent_cet_id,version,effective_date,retired_date,status
+advanced_manufacturing,Advanced Manufacturing,"Manufacturing technologies including additive manufacturing, robotics, and automation",,NSTC-2025Q1,2025-01-01,,active
+artificial_intelligence,Artificial Intelligence,"AI and machine learning technologies including neural networks, deep learning, and computer vision",,NSTC-2025Q1,2025-01-01,,active
+biotechnology,Biotechnology,"Biological and biomedical technologies including genomics, synthetic biology, and biomanufacturing",,NSTC-2025Q1,2025-01-01,,active
+quantum_computing,Quantum Computing,"Quantum information science including quantum computing, quantum sensing, and quantum communications",,NSTC-2025Q1,2025-01-01,,active
+quantum_sensing,Quantum Sensing,"Quantum-based sensing and measurement technologies",quantum_computing,NSTC-2025Q1,2025-01-01,,active
+hypersonics,Hypersonics,"High-speed flight technologies exceeding Mach 5",,NSTC-2025Q1,2025-01-01,,active
+advanced_materials,Advanced Materials,"Novel materials including metamaterials, nanomaterials, and smart materials",,NSTC-2025Q1,2025-01-01,,active
+thermal_protection,Thermal Protection Systems,"Materials and systems for extreme temperature protection",advanced_materials,NSTC-2025Q1,2025-01-01,,active
+energy_storage,Energy Storage,"Battery and energy storage technologies including solid-state batteries and supercapacitors",,NSTC-2025Q1,2025-01-01,,active
+renewable_energy,Renewable Energy,"Solar, wind, and other renewable energy generation technologies",,NSTC-2025Q1,2025-01-01,,active
+cybersecurity,Cybersecurity,"Information security, cryptography, and secure communications technologies",,NSTC-2025Q1,2025-01-01,,active
+space_technology,Space Technology,"Spacecraft, satellite, and space exploration technologies",,NSTC-2025Q1,2025-01-01,,active
+autonomous_systems,Autonomous Systems,"Autonomous vehicles, drones, and robotic systems",,NSTC-2025Q1,2025-01-01,,active
+advanced_communications,Advanced Communications,"5G/6G, optical communications, and next-generation networking",,NSTC-2025Q1,2025-01-01,,active
+semiconductors,Semiconductors and Microelectronics,"Chip design, fabrication, and advanced computing architectures",,NSTC-2025Q1,2025-01-01,,active
+medical_devices,Medical Devices,"Medical diagnostic and therapeutic devices and systems",,NSTC-2025Q1,2025-01-01,,active
+environmental_tech,Environmental Technology,"Pollution control, water treatment, and environmental monitoring",,NSTC-2025Q1,2025-01-01,,active
+directed_energy,Directed Energy,"Laser and high-power microwave technologies",,NSTC-2025Q1,2025-01-01,,active
+human_machine_interface,Human-Machine Interface,"Brain-computer interfaces and advanced human-system integration",,NSTC-2025Q1,2025-01-01,,active
+data_analytics,Data Analytics and Visualization,"Big data processing, analytics platforms, and visualization tools",,NSTC-2025Q1,2025-01-01,,active
