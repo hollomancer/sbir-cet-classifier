@@ -27,10 +27,11 @@ from sbir_cet_classifier.models.applicability import ApplicabilityModel, band_fo
 def load_and_normalize_csv(csv_path: Path) -> pd.DataFrame:
     """Load the award_data-3.csv and normalize it to the expected schema."""
     print(f"📂 Loading CSV from {csv_path}...")
+    print(f"   (This may take a few minutes for large files...)")
 
-    # Read only first 1000 rows for initial testing
-    df = pd.read_csv(csv_path, dtype=str, nrows=1000)
-    print(f"   Loaded {len(df)} records")
+    # Read entire CSV file
+    df = pd.read_csv(csv_path, dtype=str)
+    print(f"   Loaded {len(df):,} records")
 
     # Map CSV columns to expected schema
     column_mapping = {
@@ -74,12 +75,16 @@ def load_and_normalize_csv(csv_path: Path) -> pd.DataFrame:
     df["phase"] = df["phase"].map(lambda x: phase_mapping.get(x, "Other") if pd.notna(x) else "Other")
 
     # Ensure award_id is unique
+    initial_count = len(df)
     df = df.drop_duplicates(subset=["award_id"], keep="first")
+    duplicates_removed = initial_count - len(df)
 
     # Add keywords column (empty for now)
     df["keywords"] = [[] for _ in range(len(df))]
 
-    print(f"   Normalized to {len(df)} unique awards")
+    print(f"   Normalized to {len(df):,} unique awards")
+    if duplicates_removed > 0:
+        print(f"   (Removed {duplicates_removed:,} duplicate award_ids)")
     return df
 
 
@@ -93,7 +98,8 @@ def load_taxonomy(taxonomy_path: Path) -> pd.DataFrame:
 
 def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.DataFrame:
     """Classify awards against CET areas using the applicability model."""
-    print(f"🤖 Classifying {len(awards_df)} awards against CET taxonomy...")
+    print(f"🤖 Classifying {len(awards_df):,} awards against CET taxonomy...")
+    print(f"   (This will take approximately {len(awards_df) / 1000:.0f} seconds...)")
 
     # Prepare training data (using simple keyword matching for now)
     # In production, this would use actual labeled training data
@@ -157,11 +163,19 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
         }
         assessments.append(assessment)
 
-        if (idx + 1) % 100 == 0:
-            print(f"   Classified {idx + 1}/{len(awards_df)} awards...")
+        if (idx + 1) % 1000 == 0:
+            progress_pct = (idx + 1) / len(awards_df) * 100
+            print(f"   Classified {idx + 1:,}/{len(awards_df):,} awards ({progress_pct:.1f}%)...")
 
     assessments_df = pd.DataFrame(assessments)
-    print(f"   ✅ Classified all {len(assessments_df)} awards")
+    print(f"   ✅ Classified all {len(assessments_df):,} awards")
+
+    # Print classification summary
+    print(f"\n   Classification Distribution:")
+    for band, count in assessments_df['classification'].value_counts().items():
+        pct = count / len(assessments_df) * 100
+        print(f"      {band}: {count:,} awards ({pct:.1f}%)")
+
     return assessments_df
 
 
@@ -179,8 +193,8 @@ def save_processed_data(awards_df: pd.DataFrame, assessments_df: pd.DataFrame, t
     taxonomy_df.to_parquet(processed_dir / "taxonomy.parquet", index=False)
 
     print(f"   ✅ Saved to {processed_dir}/")
-    print(f"      - awards.parquet ({len(awards_df)} records)")
-    print(f"      - assessments.parquet ({len(assessments_df)} records)")
+    print(f"      - awards.parquet ({len(awards_df):,} records)")
+    print(f"      - assessments.parquet ({len(assessments_df):,} records)")
     print(f"      - taxonomy.parquet ({len(taxonomy_df)} records)")
 
 
