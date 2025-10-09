@@ -154,44 +154,20 @@ class AwardsService:
         *,
         target_shares: Mapping[str, float] | None = None,
     ) -> None:
-        self._awards = awards.copy()
-        if "fiscal_year" not in self._awards.columns and "award_date" in self._awards.columns:
-            self._awards["fiscal_year"] = pd.to_datetime(
-                self._awards["award_date"], errors="coerce"
-            ).dt.year
-        if "award_date" in self._awards.columns:
-            self._awards["award_date"] = pd.to_datetime(
-                self._awards["award_date"], errors="coerce"
-            ).dt.date
-        else:
-            self._awards["award_date"] = pd.Series([None] * len(self._awards))
-        if "keywords" in self._awards.columns:
-            self._awards["keywords"] = self._awards["keywords"].apply(self._normalise_keywords)
-        else:
-            self._awards["keywords"] = [[] for _ in range(len(self._awards))]
-
-        self._assessments = assessments.copy()
-        if not self._assessments.empty and "assessed_at" in self._assessments.columns:
-            self._assessments["assessed_at"] = pd.to_datetime(
-                self._assessments["assessed_at"], errors="coerce", utc=True
-            )
-
-        self._taxonomy = taxonomy.copy()
-        self._taxonomy_map = self._taxonomy.set_index("cet_id")["name"].to_dict()
-
-        self._review_queue = review_queue.copy()
-        if not self._review_queue.empty:
-            for column in ("opened_at", "resolved_at"):
-                if column in self._review_queue.columns:
-                    self._review_queue[column] = pd.to_datetime(
-                        self._review_queue[column], errors="coerce", utc=True
-                    )
-            if "due_by" in self._review_queue.columns:
-                self._review_queue["due_by"] = pd.to_datetime(
-                    self._review_queue["due_by"], errors="coerce"
-                ).dt.date
-
+        # Store references without copying unless necessary
+        self._awards = awards
+        self._assessments = assessments
+        self._taxonomy = taxonomy
+        self._review_queue = review_queue
+        
+        # Pre-compute commonly used lookups
+        self._taxonomy_map = taxonomy.set_index("cet_id")["name"].to_dict() if not taxonomy.empty else {}
         self._gap_analytics = GapAnalytics(target_shares or {})
+        
+        # Lazy initialization flags
+        self._processed_awards = None
+        self._processed_assessments = None
+        self._processed_review_queue = None
 
     @classmethod
     def from_records(
@@ -216,6 +192,45 @@ class AwardsService:
         )
 
     # --------------------------------------------------------------------- helpers
+    def _get_processed_awards(self) -> pd.DataFrame:
+        """Lazy processing of awards data."""
+        if self._processed_awards is None:
+            df = self._awards.copy()
+            if "fiscal_year" not in df.columns and "award_date" in df.columns:
+                df["fiscal_year"] = pd.to_datetime(df["award_date"], errors="coerce").dt.year
+            if "award_date" in df.columns:
+                df["award_date"] = pd.to_datetime(df["award_date"], errors="coerce").dt.date
+            else:
+                df["award_date"] = pd.Series([None] * len(df))
+            if "keywords" in df.columns:
+                df["keywords"] = df["keywords"].apply(self._normalise_keywords)
+            else:
+                df["keywords"] = [[] for _ in range(len(df))]
+            self._processed_awards = df
+        return self._processed_awards
+    
+    def _get_processed_assessments(self) -> pd.DataFrame:
+        """Lazy processing of assessments data."""
+        if self._processed_assessments is None:
+            df = self._assessments.copy()
+            if not df.empty and "assessed_at" in df.columns:
+                df["assessed_at"] = pd.to_datetime(df["assessed_at"], errors="coerce", utc=True)
+            self._processed_assessments = df
+        return self._processed_assessments
+    
+    def _get_processed_review_queue(self) -> pd.DataFrame:
+        """Lazy processing of review queue data."""
+        if self._processed_review_queue is None:
+            df = self._review_queue.copy()
+            if not df.empty:
+                for column in ("opened_at", "resolved_at"):
+                    if column in df.columns:
+                        df[column] = pd.to_datetime(df[column], errors="coerce", utc=True)
+                if "due_by" in df.columns:
+                    df["due_by"] = pd.to_datetime(df["due_by"], errors="coerce").dt.date
+            self._processed_review_queue = df
+        return self._processed_review_queue
+
     @staticmethod
     def _normalise_keywords(value) -> list[str]:
         if value is None:
@@ -225,26 +240,32 @@ class AwardsService:
         return [str(token).strip() for token in value if str(token).strip()]
 
     def _latest_assessments(self) -> pd.DataFrame:
-        if self._assessments.empty:
-            return self._assessments
-        ordered = self._assessments.sort_values("assessed_at")
-        return ordered.drop_duplicates("award_id", keep="last")
+        assessments = self._get_processed_assessments()
+        if assessments.empty:
+            return assessments
+        return assessments.sort_values("assessed_at").drop_duplicates("award_id", keep="last")
 
     def _review_queue_map(self) -> dict[str, ReviewQueueSnapshot]:
-        if self._review_queue.empty:
+        review_queue = self._get_processed_review_queue()
+        if review_queue.empty:
             return {}
+        
         snapshots: dict[str, ReviewQueueSnapshot] = {}
         now = utc_now()
         today = now.date()
-        for _, row in self._review_queue.iterrows():
+        
+        for _, row in review_queue.iterrows():
             status = row.get("status")
-            due_by = row.get("due_by")
-            if status in {"resolved"}:
+            if status == "resolved":
                 continue
+                
+            due_by = row.get("due_by")
             if due_by and status in {"pending", "in_review"} and due_by < today:
                 status = "escalated"
+                
             opened_at = row.get("opened_at")
             resolved_at = row.get("resolved_at")
+            
             snapshot = ReviewQueueSnapshot(
                 queue_id=str(row.get("queue_id")),
                 award_id=row.get("award_id"),
@@ -260,31 +281,47 @@ class AwardsService:
         return snapshots
 
     def _apply_filters(self, filters: AwardsFilters) -> pd.DataFrame:
-        df = self._awards.copy()
-        df = df[(df["fiscal_year"] >= filters.fiscal_year_start) & (df["fiscal_year"] <= filters.fiscal_year_end)]
-        if filters.agencies:
-            df = df[df["agency"].isin(filters.agencies)]
-        if filters.phases:
-            df = df[df["phase"].isin(filters.phases)]
-        if filters.location_states:
-            df = df[df["firm_state"].isin(filters.location_states)]
-
-        latest = self._latest_assessments()
-        merged = df.merge(
-            latest,
-            on="award_id",
-            how="left",
-            suffixes=("", "_assessment"),
+        awards = self._get_processed_awards()
+        
+        # Build filter mask efficiently
+        mask = (
+            (awards["fiscal_year"] >= filters.fiscal_year_start) &
+            (awards["fiscal_year"] <= filters.fiscal_year_end)
         )
+        
+        if filters.agencies:
+            mask &= awards["agency"].isin(filters.agencies)
+        if filters.phases:
+            mask &= awards["phase"].isin(filters.phases)
+        if filters.location_states:
+            mask &= awards["firm_state"].isin(filters.location_states)
+        
+        df = awards[mask].copy()
+        
+        latest = self._latest_assessments()
+        merged = df.merge(latest, on="award_id", how="left", suffixes=("", "_assessment"))
+        
         if filters.cet_areas:
             merged = merged[merged["primary_cet_id"].isin(filters.cet_areas)]
-        if "score" in merged.columns:
-            merged["score"] = pd.to_numeric(merged["score"], errors="coerce").fillna(-1)
-        else:
-            merged["score"] = -1
+        
+        # Vectorized score conversion
+        merged["score"] = pd.to_numeric(merged.get("score", -1), errors="coerce").fillna(-1)
+        
+        # Pre-compute review queue map once
         review_map = self._review_queue_map()
         merged["review_queue"] = merged["award_id"].map(review_map)
-        merged["data_incomplete"] = merged.apply(self._compute_data_incomplete, axis=1)
+        
+        # Vectorized data_incomplete computation
+        has_text = (
+            merged["abstract"].notna() & 
+            (merged["abstract"].str.strip() != "") &
+            merged["keywords"].notna()
+        )
+        queue_pending = merged["review_queue"].apply(
+            lambda x: isinstance(x, ReviewQueueSnapshot) and x.status in {"pending", "in_review", "escalated"}
+        )
+        merged["data_incomplete"] = ~has_text | queue_pending
+        
         return merged
 
     @staticmethod
@@ -341,7 +378,8 @@ class AwardsService:
         )
 
     def _build_assessment_records(self, award_id: str) -> list[AssessmentRecord]:
-        subset = self._assessments[self._assessments["award_id"] == award_id]
+        assessments = self._get_processed_assessments()
+        subset = assessments[assessments["award_id"] == award_id]
         if subset.empty:
             return []
         subset = subset.sort_values("assessed_at", ascending=False)
@@ -394,7 +432,8 @@ class AwardsService:
         return AwardListResponse(pagination=pagination, awards=items)
 
     def get_award_detail(self, award_id: str) -> AwardDetail:
-        filtered = self._awards[self._awards["award_id"] == award_id]
+        awards = self._get_processed_awards()
+        filtered = awards[awards["award_id"] == award_id]
         if filtered.empty:
             raise KeyError(award_id)
 

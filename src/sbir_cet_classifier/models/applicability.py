@@ -59,13 +59,13 @@ class ApplicabilityModel:
         cet_labels = [example.primary_cet_id for example in examples]
         y = self._label_encoder.fit_transform(cet_labels)
         X = self._vectorizer.fit_transform(texts)
-        base_classifier = LogisticRegression(max_iter=500, multi_class="ovr")
+        base_classifier = LogisticRegression(max_iter=500)
         base_classifier.fit(X, y)
 
         class_counts = np.bincount(y)
         if class_counts.size >= 2 and class_counts.min() >= 3:
             calibrated = CalibratedClassifierCV(
-                LogisticRegression(max_iter=500, multi_class="ovr"),
+                LogisticRegression(max_iter=500),
                 cv=3,
             )
             calibrated.fit(X, y)

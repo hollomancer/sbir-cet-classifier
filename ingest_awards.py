@@ -26,13 +26,27 @@ from sbir_cet_classifier.data.taxonomy import TaxonomyRepository
 from sbir_cet_classifier.models.applicability import ApplicabilityModel, band_for_score
 
 
-def load_and_normalize_csv(csv_path: Path) -> pd.DataFrame:
+def load_and_normalize_csv(csv_path: Path, max_rows: int = None) -> pd.DataFrame:
     """Load the award_data-3.csv and normalize it to the expected schema."""
     print(f"📂 Loading CSV from {csv_path}...")
-    print(f"   (This may take a few minutes for large files...)")
+    if max_rows:
+        print(f"   (Limited to first {max_rows:,} rows for processing)")
 
-    # Read entire CSV file
-    df = pd.read_csv(csv_path, dtype=str)
+    # Read CSV with optimized dtypes and row limit
+    dtype_map = {
+        "Company": "string",
+        "Award Title": "string", 
+        "Agency": "category",
+        "Branch": "string",
+        "Phase": "category",
+        "Contract": "string",
+        "Topic Code": "string",
+        "State": "category",
+        "City": "string",
+        "Abstract": "string",
+    }
+    
+    df = pd.read_csv(csv_path, dtype=dtype_map, nrows=max_rows)
     print(f"   Loaded {len(df):,} records")
 
     # Map CSV columns to expected schema
@@ -54,46 +68,44 @@ def load_and_normalize_csv(csv_path: Path) -> pd.DataFrame:
 
     df = df.rename(columns=column_mapping)
 
-    # Normalize data types and fill missing values
-    df["sub_agency"] = df.get("sub_agency", "").fillna("").astype(str)
-    df["topic_code"] = df.get("topic_code", "UNKNOWN").fillna("UNKNOWN").astype(str)
-    df["abstract"] = df.get("abstract", "").fillna("").astype(str)
-    df["firm_name"] = df.get("firm_name", "Unknown").fillna("Unknown").astype(str)
-    df["firm_city"] = df.get("firm_city", "Unknown").fillna("Unknown").astype(str)
-    df["firm_state"] = df.get("firm_state", "XX").fillna("XX").astype(str)
+    # Normalize data types efficiently
+    df["sub_agency"] = df.get("sub_agency", "").fillna("").astype("string")
+    df["topic_code"] = df.get("topic_code", "UNKNOWN").fillna("UNKNOWN").astype("string")
+    df["abstract"] = df.get("abstract", "").fillna("").astype("string")
+    df["firm_name"] = df.get("firm_name", "Unknown").fillna("Unknown").astype("string")
+    df["firm_city"] = df.get("firm_city", "Unknown").fillna("Unknown").astype("string")
+    df["firm_state"] = df.get("firm_state", "XX").fillna("XX").astype("category")
     df["award_amount"] = pd.to_numeric(df.get("award_amount", 0), errors="coerce").fillna(0)
     df["award_date"] = pd.to_datetime(df.get("award_date"), errors="coerce")
-    df["fiscal_year"] = pd.to_numeric(df.get("fiscal_year"), errors="coerce").fillna(2025).astype(int)
+    df["fiscal_year"] = pd.to_numeric(df.get("fiscal_year"), errors="coerce").fillna(2025).astype("int16")
 
     # Normalize phase values
     phase_mapping = {
         "Phase I": "I",
-        "Phase II": "II",
+        "Phase II": "II", 
         "Phase III": "III",
         "SBIR Phase I": "I",
         "SBIR Phase II": "II",
         "STTR Phase II": "II",
     }
-    df["phase"] = df["phase"].map(lambda x: phase_mapping.get(x, "Other") if pd.notna(x) else "Other")
+    df["phase"] = df["phase"].map(lambda x: phase_mapping.get(x, "Other") if pd.notna(x) else "Other").astype("category")
 
     # Generate synthetic IDs for NULL/missing contracts
-    print(f"   Generating synthetic IDs for awards with missing contracts...")
     null_mask = df["award_id"].isna() | (df["award_id"] == "")
     null_count = null_mask.sum()
 
-    def generate_synthetic_id(row):
-        """Generate unique ID from award attributes."""
-        # Create composite key from available fields
-        composite = f"{row['firm_name']}|{row['title']}|{row['award_date']}|{row['award_amount']}|{row['agency']}"
-        hash_val = hashlib.md5(composite.encode()).hexdigest()[:16]
-        return f"SYNTH-{hash_val}"
-
-    df.loc[null_mask, "award_id"] = df[null_mask].apply(generate_synthetic_id, axis=1)
-
     if null_count > 0:
-        print(f"   Generated {null_count:,} synthetic IDs for awards with missing contracts")
+        print(f"   Generating synthetic IDs for {null_count:,} awards with missing contracts...")
+        
+        def generate_synthetic_id(row):
+            """Generate unique ID from award attributes."""
+            composite = f"{row['firm_name']}|{row['title']}|{row['award_date']}|{row['award_amount']}|{row['agency']}"
+            hash_val = hashlib.md5(composite.encode()).hexdigest()[:16]
+            return f"SYNTH-{hash_val}"
 
-    # Now deduplicate - both real and synthetic IDs
+        df.loc[null_mask, "award_id"] = df[null_mask].apply(generate_synthetic_id, axis=1)
+
+    # Deduplicate efficiently
     initial_count = len(df)
     df = df.drop_duplicates(subset=["award_id"], keep="first")
     duplicates_removed = initial_count - len(df)
