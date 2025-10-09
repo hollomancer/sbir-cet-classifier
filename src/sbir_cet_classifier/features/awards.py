@@ -8,6 +8,8 @@ from typing import Iterable, Mapping, Sequence
 
 import pandas as pd
 
+from sbir_cet_classifier.common.datetime_utils import utc_now
+from sbir_cet_classifier.common.serialization import SerializableDataclass
 from sbir_cet_classifier.features.gaps import GapAnalytics, GapInsight
 
 
@@ -24,37 +26,22 @@ class AwardsFilters:
 
 
 @dataclass(frozen=True)
-class Pagination:
+class Pagination(SerializableDataclass):
     page: int
     page_size: int
     total_pages: int
     total_records: int
 
-    def as_dict(self) -> dict:
-        return {
-            "page": self.page,
-            "pageSize": self.page_size,
-            "totalPages": self.total_pages,
-            "totalRecords": self.total_records,
-        }
-
 
 @dataclass(frozen=True)
-class CetRef:
+class CetRef(SerializableDataclass):
     cet_id: str
     name: str
     taxonomy_version: str | None
 
-    def as_dict(self) -> dict:
-        return {
-            "cetId": self.cet_id,
-            "name": self.name,
-            "taxonomyVersion": self.taxonomy_version,
-        }
-
 
 @dataclass(frozen=True)
-class AwardListItem:
+class AwardListItem(SerializableDataclass):
     award_id: str
     title: str
     agency: str
@@ -66,35 +53,16 @@ class AwardListItem:
     supporting_cet: list[CetRef]
     evidence: list[dict]
 
-    def as_dict(self) -> dict:
-        return {
-            "awardId": self.award_id,
-            "title": self.title,
-            "agency": self.agency,
-            "phase": self.phase,
-            "score": self.score,
-            "classification": self.classification,
-            "dataIncomplete": self.data_incomplete,
-            "primaryCet": self.primary_cet.as_dict(),
-            "supportingCet": [ref.as_dict() for ref in self.supporting_cet],
-            "evidence": self.evidence,
-        }
 
 
 @dataclass(frozen=True)
-class AwardListResponse:
+class AwardListResponse(SerializableDataclass):
     pagination: Pagination
     awards: list[AwardListItem]
 
-    def as_dict(self) -> dict:
-        return {
-            "pagination": self.pagination.as_dict(),
-            "awards": [award.as_dict() for award in self.awards],
-        }
-
 
 @dataclass(frozen=True)
-class ReviewQueueSnapshot:
+class ReviewQueueSnapshot(SerializableDataclass):
     queue_id: str
     award_id: str
     reason: str
@@ -105,22 +73,9 @@ class ReviewQueueSnapshot:
     resolved_at: datetime | None
     resolution_notes: str | None
 
-    def as_dict(self) -> dict:
-        return {
-            "queueId": self.queue_id,
-            "awardId": self.award_id,
-            "reason": self.reason,
-            "status": self.status,
-            "openedAt": self.opened_at.isoformat(),
-            "dueBy": self.due_by.isoformat(),
-            "assignedTo": self.assigned_to,
-            "resolvedAt": self.resolved_at.isoformat() if self.resolved_at else None,
-            "resolutionNotes": self.resolution_notes,
-        }
-
 
 @dataclass(frozen=True)
-class AwardCore:
+class AwardCore(SerializableDataclass):
     award_id: str
     title: str
     abstract: str | None
@@ -133,22 +88,14 @@ class AwardCore:
     data_incomplete: bool
 
     def as_dict(self) -> dict:
-        return {
-            "awardId": self.award_id,
-            "title": self.title,
-            "abstract": self.abstract,
-            "keywords": self.keywords,
-            "agency": self.agency,
-            "phase": self.phase,
-            "obligatedUsd": round(self.obligated_usd, 2),
-            "awardDate": self.award_date.isoformat() if self.award_date else None,
-            "taxonomyVersion": self.taxonomy_version,
-            "dataIncomplete": self.data_incomplete,
-        }
+        """Override to apply custom rounding for USD amounts."""
+        result = super().as_dict()
+        result["obligatedUsd"] = round(self.obligated_usd, 2)
+        return result
 
 
 @dataclass(frozen=True)
-class AssessmentRecord:
+class AssessmentRecord(SerializableDataclass):
     assessment_id: str
     assessed_at: datetime | None
     score: int
@@ -159,36 +106,18 @@ class AssessmentRecord:
     generation_method: str
     reviewer_notes: str | None
 
-    def as_dict(self) -> dict:
-        return {
-            "assessmentId": self.assessment_id,
-            "assessedAt": self.assessed_at.isoformat() if self.assessed_at else None,
-            "score": self.score,
-            "classification": self.classification,
-            "primaryCet": self.primary_cet.as_dict(),
-            "supportingCet": [ref.as_dict() for ref in self.supporting_cet],
-            "evidence": self.evidence,
-            "generationMethod": self.generation_method,
-            "reviewerNotes": self.reviewer_notes,
-        }
 
 
 @dataclass(frozen=True)
-class AwardDetail:
+class AwardDetail(SerializableDataclass):
     award: AwardCore
     assessments: list[AssessmentRecord]
     review_queue: ReviewQueueSnapshot | None
 
-    def as_dict(self) -> dict:
-        return {
-            "award": self.award.as_dict(),
-            "assessments": [assessment.as_dict() for assessment in self.assessments],
-            "reviewQueue": self.review_queue.as_dict() if self.review_queue else None,
-        }
 
 
 @dataclass(frozen=True)
-class CetSummary:
+class CetSummary(SerializableDataclass):
     cet_id: str
     name: str
     awards: int
@@ -198,31 +127,19 @@ class CetSummary:
     applicability_breakdown: dict[str, int]
 
     def as_dict(self) -> dict:
-        return {
-            "cetId": self.cet_id,
-            "name": self.name,
-            "awards": self.awards,
-            "obligatedUsd": round(self.obligated_usd, 2),
-            "share": round(self.share, 2),
-            "topAwardId": self.top_award_id,
-            "applicabilityBreakdown": self.applicability_breakdown,
-        }
+        """Override to apply custom rounding for USD amounts and percentages."""
+        result = super().as_dict()
+        result["obligatedUsd"] = round(self.obligated_usd, 2)
+        result["share"] = round(self.share, 2)
+        return result
 
 
 @dataclass(frozen=True)
-class CetDetail:
+class CetDetail(SerializableDataclass):
     cet: CetRef
     summary: CetSummary
     representative_awards: list[AwardListItem]
     gaps: list[GapInsight]
-
-    def as_dict(self) -> dict:
-        return {
-            "cet": self.cet.as_dict(),
-            "summary": self.summary.as_dict(),
-            "representativeAwards": [award.as_dict() for award in self.representative_awards],
-            "gaps": [gap.as_dict() for gap in self.gaps],
-        }
 
 
 class AwardsService:
@@ -317,7 +234,7 @@ class AwardsService:
         if self._review_queue.empty:
             return {}
         snapshots: dict[str, ReviewQueueSnapshot] = {}
-        now = datetime.now(tz=timezone.utc)
+        now = utc_now()
         today = now.date()
         for _, row in self._review_queue.iterrows():
             status = row.get("status")

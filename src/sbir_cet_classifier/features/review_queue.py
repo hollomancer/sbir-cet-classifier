@@ -10,6 +10,7 @@ from typing import Iterable, Iterator
 from uuid import UUID, uuid4
 
 from sbir_cet_classifier.common.config import AppConfig, load_config
+from sbir_cet_classifier.common.datetime_utils import utc_now
 from sbir_cet_classifier.common.schemas import ReviewQueueItem
 
 QUEUE_FILENAME = "review_queue.jsonl"
@@ -61,7 +62,7 @@ class QueueRepository:
             reason=reason,
             status="pending",
             assigned_to=assigned_to,
-            opened_at=datetime.utcnow(),
+            opened_at=utc_now(),
             due_by=due_by,
         )
         items = self._load_items()
@@ -84,7 +85,7 @@ class QueueRepository:
                 target = item.model_copy(update={
                     "status": status,
                     "resolution_notes": resolution_notes or item.resolution_notes,
-                    "resolved_at": datetime.utcnow() if status in {"resolved", "escalated"} else item.resolved_at,
+                    "resolved_at": utc_now() if status in {"resolved", "escalated"} else item.resolved_at,
                 })
                 updated.append(target)
             else:

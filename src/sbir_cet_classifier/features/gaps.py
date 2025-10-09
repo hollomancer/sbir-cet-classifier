@@ -5,21 +5,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
+from sbir_cet_classifier.common.serialization import SerializableDataclass
+
 
 @dataclass(frozen=True)
-class GapInsight:
+class GapInsight(SerializableDataclass):
     metric: str
     current_value: float
     target_value: float
     narrative: str
 
     def as_dict(self) -> dict:
-        return {
-            "metric": self.metric,
-            "currentValue": round(self.current_value, 2),
-            "targetValue": round(self.target_value, 2),
-            "narrative": self.narrative,
-        }
+        """Override to apply custom rounding for float values."""
+        result = super().as_dict()
+        result["currentValue"] = round(self.current_value, 2)
+        result["targetValue"] = round(self.target_value, 2)
+        return result
 
 
 class GapAnalytics:
