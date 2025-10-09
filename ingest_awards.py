@@ -116,89 +116,118 @@ def load_taxonomy(taxonomy_path: Path) -> pd.DataFrame:
 
 
 def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.DataFrame:
-    """Classify awards against CET areas using multi-label weighted classification."""
+    """Classify awards against CET areas using multi-label weighted classification with context rules."""
     print(f"🤖 Classifying {len(awards_df):,} awards against CET taxonomy...")
-    print(f"   Using improved multi-label weighted classification...")
-    print(f"   (This will take approximately {len(awards_df) / 800:.0f} seconds...)")
+    print(f"   Using v3 classifier with refined keywords and context rules...")
+    print(f"   (This will take approximately {len(awards_df) / 750:.0f} seconds...)")
 
-    # Enhanced keyword matching with weighted importance
+    # Enhanced keyword matching with weighted importance and negative keywords
     # Format: {cet_id: {"core": [...], "related": [...], "negative": [...]}}
     cet_keywords = {
         "quantum_computing": {
-            "core": ["quantum computing", "quantum computer", "qubit", "quantum algorithm"],
-            "related": ["quantum", "superposition", "entanglement", "quantum gate"],
-            "negative": ["quantum mechanics", "quantum chemistry"]  # Exclude these contexts
+            "core": ["quantum computing", "quantum computer", "quantum algorithm", "quantum processor"],
+            "related": ["qubit", "quantum gate", "quantum circuit", "quantum software"],
+            "negative": ["quantum mechanics", "quantum chemistry", "quantum field theory", "quantum dot"]
         },
         "quantum_sensing": {
-            "core": ["quantum sensing", "quantum sensor", "quantum measurement"],
-            "related": ["quantum detector", "quantum metrology", "atomic clock"],
+            "core": ["quantum sensing", "quantum sensor", "quantum measurement", "quantum metrology"],
+            "related": ["quantum detector", "atomic clock", "quantum magnetometer"],
             "negative": []
         },
         "artificial_intelligence": {
-            "core": ["artificial intelligence", "deep learning", "neural network", "machine learning"],
-            "related": ["ai", "ml", "computer vision", "natural language", "nlp", "reinforcement learning"],
-            "negative": []
+            "core": ["artificial intelligence research", "deep learning framework", "neural network architecture", "ai system"],
+            "related": ["convolutional neural", "recurrent neural", "transformer model", "generative adversarial"],
+            "negative": [
+                # Medical AI should go to medical_devices
+                "ai-powered diagnostic", "ai-based diagnosis", "ai medical imaging",
+                # Manufacturing AI should go to advanced_manufacturing
+                "ai-optimized manufacturing", "ai process control", "ai quality control",
+                # Generic tool usage (not AI focus)
+                "using machine learning", "using ai", "leveraging ml", "ml-based analysis",
+                "ai-assisted", "ai-enhanced", "ml-enabled"
+            ]
         },
         "biotechnology": {
-            "core": ["biotechnology", "synthetic biology", "genetic engineering", "crispr"],
-            "related": ["biotech", "genomics", "biomanufacturing", "protein engineering", "gene editing"],
-            "negative": []
+            "core": ["biotechnology", "synthetic biology", "genetic engineering", "crispr", "gene therapy"],
+            "related": ["biotech", "genomics", "biomanufacturing", "protein engineering", "gene editing", "bioreactor"],
+            "negative": ["biomedical device", "medical diagnostic"]
         },
         "hypersonics": {
-            "core": ["hypersonic", "mach 5", "mach 6", "high-speed flight"],
-            "related": ["supersonic", "scramjet", "ramjet"],
-            "negative": []
+            "core": ["hypersonic flight", "hypersonic vehicle", "hypersonic weapon", "mach 5"],
+            "related": ["scramjet", "ramjet", "high-speed flight", "supersonic combustion"],
+            "negative": ["supersonic aircraft", "subsonic"]
         },
         "thermal_protection": {
-            "core": ["thermal protection system", "heat shield", "tps"],
-            "related": ["ablative", "thermal management", "re-entry"],
-            "negative": []
+            "core": ["thermal protection system", "heat shield", "tps", "re-entry thermal"],
+            "related": ["ablative material", "thermal barrier", "high-temperature protection"],
+            "negative": ["thermal management", "cooling system", "thermal insulation"]
         },
         "advanced_materials": {
-            "core": ["metamaterial", "nanomaterial", "smart material", "advanced material"],
-            "related": ["composite", "graphene", "carbon nanotube", "nanostructure"],
-            "negative": []
+            "core": ["metamaterial", "nanomaterial", "smart material", "advanced composite material"],
+            "related": ["graphene", "carbon nanotube", "nanostructure", "functionally graded", "shape memory alloy"],
+            "negative": ["standard composite", "conventional material"]
         },
         "cybersecurity": {
-            "core": ["cybersecurity", "information security", "network security"],
-            "related": ["encryption", "cryptography", "cyber defense", "intrusion detection"],
-            "negative": []
+            "core": ["cybersecurity", "information security", "network security", "cyber defense"],
+            "related": ["encryption", "cryptography", "intrusion detection", "penetration testing", "vulnerability assessment"],
+            "negative": ["physical security", "security system"]
         },
         "autonomous_systems": {
-            "core": ["autonomous system", "autonomous vehicle", "self-driving"],
-            "related": ["autonomous", "drone", "uav", "unmanned", "robot", "robotics"],
-            "negative": []
+            "core": ["autonomous system", "autonomous vehicle", "self-driving", "autonomous navigation"],
+            "related": ["unmanned aerial", "uav", "drone", "autonomous robot", "autonomous control"],
+            "negative": ["remote control", "teleoperated", "manual control", "automated"]
         },
         "semiconductors": {
-            "core": ["semiconductor", "microelectronics", "integrated circuit"],
-            "related": ["chip", "processor", "asic", "fpga", "transistor"],
-            "negative": []
+            "core": ["semiconductor manufacturing", "microelectronics", "integrated circuit", "chip fabrication"],
+            "related": ["cmos", "transistor", "wafer", "asic", "fpga", "semiconductor device"],
+            "negative": ["using semiconductor", "semiconductor-based sensor"]
         },
         "space_technology": {
-            "core": ["spacecraft", "satellite", "space mission"],
-            "related": ["space", "orbital", "launch vehicle", "propulsion"],
-            "negative": ["cyberspace", "workspace"]
+            "core": ["spacecraft", "satellite system", "space mission", "orbital platform"],
+            "related": ["space propulsion", "launch vehicle", "orbital mechanics", "space environment"],
+            "negative": ["cyberspace", "workspace", "aerospace material", "space-based sensor"]
         },
         "energy_storage": {
-            "core": ["energy storage", "battery technology", "electrochemical storage"],
-            "related": ["battery", "supercapacitor", "lithium-ion", "fuel cell"],
-            "negative": []
+            "core": ["energy storage system", "battery technology", "electrochemical storage", "grid storage"],
+            "related": ["lithium-ion battery", "solid-state battery", "supercapacitor", "energy storage device"],
+            "negative": ["data storage", "battery-powered", "using battery"]
         },
         "renewable_energy": {
-            "core": ["renewable energy", "solar energy", "wind energy"],
-            "related": ["solar", "wind", "photovoltaic", "solar cell", "wind turbine"],
-            "negative": []
+            "core": ["renewable energy", "solar energy system", "wind energy system", "photovoltaic system"],
+            "related": ["solar panel", "solar cell", "wind turbine", "renewable power", "clean energy"],
+            "negative": ["solar radiation", "wind tunnel", "solar heating"]
         },
         "medical_devices": {
-            "core": ["medical device", "diagnostic device", "therapeutic device"],
-            "related": ["diagnostic", "therapeutic", "healthcare device", "biomedical"],
-            "negative": []
+            "core": ["medical device", "diagnostic device", "therapeutic device", "medical imaging device"],
+            "related": ["clinical diagnostic", "patient monitoring", "surgical instrument", "prosthetic", "implantable device"],
+            "negative": ["medical research", "drug development", "pharmaceutical"]
         },
     }
 
-    # Classify each award with multi-label support
+    # Context rules: If certain keyword combinations exist, boost specific CET
+    # Format: {cet_id: [(keywords_required, boost_points)]}
+    context_rules = {
+        "medical_devices": [
+            (["ai", "diagnostic"], 20),      # AI + diagnostic → medical device
+            (["ai", "medical"], 20),          # AI + medical → medical device
+            (["machine learning", "clinical"], 20),  # ML + clinical → medical device
+            (["neural network", "patient"], 20),     # NN + patient → medical device
+        ],
+        "advanced_manufacturing": [
+            (["ai", "manufacturing"], 20),    # AI + manufacturing → manufacturing
+            (["machine learning", "production"], 20),  # ML + production → manufacturing
+            (["ai", "process control"], 20),  # AI + process control → manufacturing
+        ],
+        "autonomous_systems": [
+            (["ai", "autonomous"], 15),       # AI + autonomous → autonomous systems
+            (["machine learning", "robot"], 15),  # ML + robot → autonomous
+        ],
+    }
+
+    # Classify each award with multi-label support and context rules
     assessments = []
     ingested_at = datetime.now(timezone.utc)
+    context_rules_applied = 0
 
     for idx, row in awards_df.iterrows():
         abstract = str(row.get("abstract", "")).lower()
@@ -237,6 +266,16 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
 
             if score > 0:
                 cet_scores[cet_id] = score
+
+        # Apply context rules to boost specific CETs when keyword combinations exist
+        for cet_id, rules in context_rules.items():
+            for required_keywords, boost_points in rules:
+                if all(kw in combined_text for kw in required_keywords):
+                    if cet_id in cet_scores:
+                        cet_scores[cet_id] += boost_points
+                    else:
+                        cet_scores[cet_id] = boost_points
+                    context_rules_applied += 1
 
         # If no matches, default to advanced_manufacturing
         if not cet_scores:
@@ -278,7 +317,7 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
             "cet_weights": cet_weights,  # NEW: Normalized weights
             "all_cet_scores": dict(sorted_cets[:5]),  # NEW: Top 5 raw scores
             "evidence_statements": [],
-            "generation_method": "automated_v2_multi_label",
+            "generation_method": "automated_v3_context_aware",
             "assessed_at": ingested_at,
             "reviewer_notes": None,
         }
@@ -308,6 +347,10 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
     multi_label_count = assessments_df['supporting_cet_ids'].apply(lambda x: len(x) > 0).sum()
     print(f"\n   Multi-Label Classification:")
     print(f"      Awards with 2+ CET areas: {multi_label_count:,} ({multi_label_count/len(assessments_df)*100:.1f}%)")
+
+    print(f"\n   Context Rules Applied:")
+    print(f"      Total rule activations: {context_rules_applied:,}")
+    print(f"      Avg per award: {context_rules_applied/len(assessments_df):.3f}")
 
     return assessments_df
 
