@@ -1,0 +1,680 @@
+openapi: 3.1.0
+info:
+  title: SBIR CET Applicability API
+  version: 0.1.0
+  description: >
+    Endpoints supporting SBIR award ingestion, CET applicability scoring,
+    analyst exploration, and governed exports.
+servers:
+  - url: https://api.sbir-nist-classifier.local/v1
+paths:
+  /refresh:
+    post:
+      summary: Trigger manual refresh of SBIR.gov data and applicability scoring.
+      operationId: triggerRefresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '202':
+          description: Refresh accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshStatus'
+  /applicability/summary:
+    get:
+      summary: Retrieve CET summary metrics for filtered SBIR awards.
+      operationId: getSummary
+      parameters:
+        - $ref: '#/components/parameters/fiscalYearStart'
+        - $ref: '#/components/parameters/fiscalYearEnd'
+        - $ref: '#/components/parameters/agencies'
+        - $ref: '#/components/parameters/phases'
+        - $ref: '#/components/parameters/cetAreas'
+        - $ref: '#/components/parameters/locationState'
+      responses:
+        '200':
+          description: Summary view aligned to CET taxonomy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummaryResponse'
+  /applicability/awards:
+    get:
+      summary: List award-level applicability details for current filters.
+      operationId: listAwards
+      parameters:
+        - $ref: '#/components/parameters/fiscalYearStart'
+        - $ref: '#/components/parameters/fiscalYearEnd'
+        - $ref: '#/components/parameters/agencies'
+        - $ref: '#/components/parameters/phases'
+        - $ref: '#/components/parameters/cetAreas'
+        - $ref: '#/components/parameters/locationState'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Paged awards with applicability scores and supporting evidence.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwardListResponse'
+  /applicability/awards/{awardId}:
+    get:
+      summary: Retrieve drill-down detail for a specific award.
+      operationId: getAwardDetail
+      parameters:
+        - name: awardId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Award detail including historical assessments.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwardDetailResponse'
+        '404':
+          description: Award not found.
+  /applicability/cet/{cetId}:
+    get:
+      summary: View CET area focus including gap analytics.
+      operationId: getCetArea
+      parameters:
+        - name: cetId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/fiscalYearStart'
+        - $ref: '#/components/parameters/fiscalYearEnd'
+        - $ref: '#/components/parameters/agencies'
+        - $ref: '#/components/parameters/phases'
+      responses:
+        '200':
+          description: CET area detail with top awards and unmet targets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CetAreaResponse'
+        '404':
+          description: CET area not found.
+  /applicability/review-queue:
+    get:
+      summary: Retrieve outstanding manual review items with SLA tracking.
+      operationId: listReviewQueue
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_review, escalated]
+      responses:
+        '200':
+          description: Manual review queue snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewQueueResponse'
+  /exports:
+    post:
+      summary: Request export of current filtered dataset and summary tables.
+      operationId: createExport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequest'
+      responses:
+        '202':
+          description: Export accepted for processing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportStatus'
+    get:
+      summary: Poll export job status and retrieve download link when ready.
+      operationId: listExports
+      parameters:
+        - name: jobId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Export job status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportStatus'
+components:
+  parameters:
+    fiscalYearStart:
+      name: fiscalYearStart
+      in: query
+      description: Earliest fiscal year (inclusive).
+      schema:
+        type: integer
+        minimum: 1983
+    fiscalYearEnd:
+      name: fiscalYearEnd
+      in: query
+      description: Latest fiscal year (inclusive, must be ≥ fiscalYearStart).
+      schema:
+        type: integer
+        minimum: 1983
+    agencies:
+      name: agencies
+      in: query
+      description: Comma-delimited agency acronyms.
+      schema:
+        type: array
+        items:
+          type: string
+        style: form
+        explode: false
+    phases:
+      name: phases
+      in: query
+      description: Award phase filters.
+      schema:
+        type: array
+        items:
+          type: string
+          enum: ['I','II','III','Other']
+        style: form
+        explode: false
+    cetAreas:
+      name: cetAreas
+      in: query
+      description: Comma-delimited CET IDs for focus areas.
+      schema:
+        type: array
+        items:
+          type: string
+        style: form
+        explode: false
+    locationState:
+      name: locationState
+      in: query
+      description: Filter by awardee 2-letter state code.
+      schema:
+        type: string
+        minLength: 2
+        maxLength: 2
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+      description: Page number (default 1).
+    pageSize:
+      name: pageSize
+      in: query
+      description: Records per page (default 50, max 200).
+      schema:
+        type: integer
+        minimum: 10
+        maximum: 200
+  schemas:
+    RefreshRequest:
+      type: object
+      required:
+        - fiscalYearStart
+        - fiscalYearEnd
+      properties:
+        fiscalYearStart:
+          type: integer
+          minimum: 1983
+        fiscalYearEnd:
+          type: integer
+          minimum: 1983
+        forceRecompute:
+          type: boolean
+          default: false
+        sourceUrl:
+          type: string
+          format: uri
+          description: Optional override for SBIR.gov bulk download.
+    RefreshStatus:
+      type: object
+      required:
+        - jobId
+        - status
+        - submittedAt
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          enum: [accepted, running, completed, failed]
+        submittedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        message:
+          type: string
+          nullable: true
+    SummaryResponse:
+      type: object
+      required:
+        - taxonomyVersion
+        - totals
+        - cetSummaries
+      properties:
+        taxonomyVersion:
+          type: string
+        totals:
+          $ref: '#/components/schemas/SummaryTotals'
+        cetSummaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/CetSummary'
+        filters:
+          $ref: '#/components/schemas/AppliedFilters'
+    SummaryTotals:
+      type: object
+      required:
+        - awards
+        - obligatedUsd
+        - percentClassified
+      properties:
+        awards:
+          type: integer
+        obligatedUsd:
+          type: number
+          format: float
+        percentClassified:
+          type: number
+          format: float
+    CetSummary:
+      type: object
+      required:
+        - cetId
+        - name
+        - awards
+        - obligatedUsd
+        - share
+        - topAwardId
+        - applicabilityBreakdown
+      properties:
+        cetId:
+          type: string
+        name:
+          type: string
+        awards:
+          type: integer
+        obligatedUsd:
+          type: number
+          format: float
+        share:
+          type: number
+          format: float
+          description: Percent of total awards for the filter context.
+        topAwardId:
+          type: string
+        applicabilityBreakdown:
+          $ref: '#/components/schemas/ApplicabilityBreakdown'
+    ApplicabilityBreakdown:
+      type: object
+      required:
+        - high
+        - medium
+        - low
+      properties:
+        high:
+          type: integer
+        medium:
+          type: integer
+        low:
+          type: integer
+    AwardListResponse:
+      type: object
+      required:
+        - pagination
+        - awards
+      properties:
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        awards:
+          type: array
+          items:
+            $ref: '#/components/schemas/AwardListItem'
+    AwardListItem:
+      type: object
+      required:
+        - awardId
+        - title
+        - agency
+        - phase
+        - score
+        - classification
+        - dataIncomplete
+        - primaryCet
+        - supportingCet
+      properties:
+        awardId:
+          type: string
+        title:
+          type: string
+        agency:
+          type: string
+        phase:
+          type: string
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        classification:
+          type: string
+          enum: [High, Medium, Low]
+        dataIncomplete:
+          type: boolean
+        primaryCet:
+          $ref: '#/components/schemas/CetRef'
+        supportingCet:
+          type: array
+          items:
+            $ref: '#/components/schemas/CetRef'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceStatement'
+    AwardDetailResponse:
+      type: object
+      required:
+        - award
+        - assessments
+        - reviewQueue
+      properties:
+        award:
+          $ref: '#/components/schemas/AwardCore'
+        assessments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Assessment'
+        reviewQueue:
+          $ref: '#/components/schemas/ReviewQueueItem'
+          nullable: true
+    AwardCore:
+      type: object
+      required:
+        - awardId
+        - title
+        - abstract
+        - keywords
+        - agency
+        - phase
+        - obligatedUsd
+        - awardDate
+        - taxonomyVersion
+        - dataIncomplete
+      properties:
+        awardId:
+          type: string
+        title:
+          type: string
+        abstract:
+          type: string
+          nullable: true
+        keywords:
+          type: array
+          items:
+            type: string
+        agency:
+          type: string
+        phase:
+          type: string
+        obligatedUsd:
+          type: number
+        awardDate:
+          type: string
+          format: date
+        taxonomyVersion:
+          type: string
+        dataIncomplete:
+          type: boolean
+    Assessment:
+      type: object
+      required:
+        - assessmentId
+        - assessedAt
+        - score
+        - classification
+        - primaryCet
+        - supportingCet
+        - evidence
+        - generationMethod
+      properties:
+        assessmentId:
+          type: string
+        assessedAt:
+          type: string
+          format: date-time
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        classification:
+          type: string
+          enum: [High, Medium, Low]
+        primaryCet:
+          $ref: '#/components/schemas/CetRef'
+        supportingCet:
+          type: array
+          items:
+            $ref: '#/components/schemas/CetRef'
+        evidence:
+          type: array
+          items:
+            $ref: '#/components/schemas/EvidenceStatement'
+        generationMethod:
+          type: string
+          enum: [automated, manual_review]
+        reviewerNotes:
+          type: string
+          nullable: true
+    CetAreaResponse:
+      type: object
+      required:
+        - cet
+        - summary
+        - representativeAwards
+        - gaps
+      properties:
+        cet:
+          $ref: '#/components/schemas/CetRef'
+        summary:
+          $ref: '#/components/schemas/CetSummary'
+        representativeAwards:
+          type: array
+          items:
+            $ref: '#/components/schemas/AwardListItem'
+        gaps:
+          type: array
+          items:
+            $ref: '#/components/schemas/GapInsight'
+    GapInsight:
+      type: object
+      required:
+        - metric
+        - currentValue
+        - targetValue
+        - narrative
+      properties:
+        metric:
+          type: string
+        currentValue:
+          type: number
+        targetValue:
+          type: number
+        narrative:
+          type: string
+    ReviewQueueResponse:
+      type: object
+      required:
+        - pagination
+        - items
+      properties:
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewQueueItem'
+    ReviewQueueItem:
+      type: object
+      required:
+        - queueId
+        - awardId
+        - reason
+        - status
+        - openedAt
+        - dueBy
+      properties:
+        queueId:
+          type: string
+        awardId:
+          type: string
+        reason:
+          type: string
+          enum: [missing_text, low_confidence, controlled_data, conflict]
+        status:
+          type: string
+          enum: [pending, in_review, escalated, resolved]
+        openedAt:
+          type: string
+          format: date-time
+        dueBy:
+          type: string
+          format: date
+        assignedTo:
+          type: string
+          nullable: true
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        resolutionNotes:
+          type: string
+          nullable: true
+    ExportRequest:
+      type: object
+      required:
+        - filters
+        - format
+      properties:
+        filters:
+          $ref: '#/components/schemas/AppliedFilters'
+        format:
+          type: string
+          enum: [csv, parquet]
+        includeReviewQueue:
+          type: boolean
+          default: false
+    ExportStatus:
+      type: object
+      required:
+        - jobId
+        - status
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, complete, failed]
+        submittedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        downloadUrl:
+          type: string
+          format: uri
+          nullable: true
+        message:
+          type: string
+          nullable: true
+    Pagination:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalPages
+        - totalRecords
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+        totalRecords:
+          type: integer
+    AppliedFilters:
+      type: object
+      properties:
+        fiscalYearStart:
+          type: integer
+        fiscalYearEnd:
+          type: integer
+        agencies:
+          type: array
+          items:
+            type: string
+        phases:
+          type: array
+          items:
+            type: string
+        cetAreas:
+          type: array
+          items:
+            type: string
+        locationState:
+          type: string
+    CetRef:
+      type: object
+      required:
+        - cetId
+        - name
+      properties:
+        cetId:
+          type: string
+        name:
+          type: string
+        taxonomyVersion:
+          type: string
+    EvidenceStatement:
+      type: object
+      required:
+        - excerpt
+        - sourceLocation
+        - rationaleTag
+      properties:
+        excerpt:
+          type: string
+        sourceLocation:
+          type: string
+          enum:
+            - abstract
+            - keywords
+            - solicitation
+            - reviewer_notes
+        rationaleTag:
+          type: string

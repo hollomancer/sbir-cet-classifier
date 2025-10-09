@@ -1,0 +1,59 @@
+Metadata-Version: 2.4
+Name: sbir-cet-classifier
+Version: 0.1.0
+Summary: SBIR award applicability assessment tooling
+Author: Conrad Hollomon
+Project-URL: Homepage, https://example.com/sbir-nist-classifier
+Project-URL: Source, https://example.com/sbir-nist-classifier
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pandas>=2.2
+Requires-Dist: scikit-learn>=1.4
+Requires-Dist: spacy>=3.7
+Requires-Dist: pydantic>=2.5
+Requires-Dist: typer>=0.12
+Requires-Dist: fastapi>=0.110
+Requires-Dist: uvicorn[standard]>=0.29
+Requires-Dist: pyarrow>=15.0
+Requires-Dist: python-dateutil>=2.9
+Requires-Dist: httpx>=0.27
+Provides-Extra: dev
+Requires-Dist: pytest>=8.1; extra == "dev"
+Requires-Dist: pytest-cov>=5.0; extra == "dev"
+Requires-Dist: ruff>=0.3; extra == "dev"
+Requires-Dist: mypy>=1.8; extra == "dev"
+Requires-Dist: types-python-dateutil>=2.9; extra == "dev"
+Requires-Dist: httpx>=0.27; extra == "dev"
+
+# SBIR CET Classifier
+
+This project analyses Small Business Innovation Research (SBIR) awards and aligns them to critical and emerging technology (CET) areas. It provides tooling to ingest SBIR.gov bulk datasets, score award applicability, surface analyst workflows (summaries, drill-downs, exports), and manage manual review queues in line with the feature specification stored in `specs/001-i-want-to/`.
+
+## Repository Layout
+
+- `src/sbir_cet_classifier/` – Python package split into `data`, `features`, `models`, `evaluation`, `common`, `cli`, and `api` modules.
+- `tests/` – Unit, integration, and contract tests mirroring the source tree.
+- `specs/001-i-want-to/` – Active feature specification, plan, research, design artefacts, and tasks.
+- `artifacts/`, `data/raw/`, `data/processed/` – Default locations for ingested datasets and generated model outputs.
+
+## Getting Started
+
+1. Create a virtual environment and install dependencies:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -e .[dev]
+   python -m spacy download en_core_web_md
+   ```
+2. Review the current implementation plan and task list in `specs/001-i-want-to/` before coding.
+3. Use the Typer CLI (`python -m sbir_cet_classifier.cli.app`) and FastAPI router stubs as entry points while iteratively implementing the planned tasks.
+
+## Development Workflow
+
+The repository follows the constitution in `.specify/memory/constitution.md`:
+- Keep code modular with type hints and enforce formatting via `ruff`.
+- Author tests alongside features (`pytest -m "not slow"`).
+- Track progress in `specs/001-i-want-to/tasks.md`, marking each task once completed.
+- Run `check-prerequisites.sh --require-tasks --include-tasks` before raising a PR.
+
+Refer to `specs/001-i-want-to/quickstart.md` for deeper usage notes once the feature set is implemented.

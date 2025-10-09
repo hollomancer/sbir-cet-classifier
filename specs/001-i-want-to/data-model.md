@@ -1,0 +1,93 @@
+# Data Model — SBIR Award Applicability Assessment
+
+## SBIR Award
+- **Description**: Canonical representation of an SBIR contract/grant record sourced from SBIR.gov bulk exports.
+- **Fields**:
+  - `award_id: str` — Unique identifier (Agency code + Topic + Year + Sequence).
+  - `agency: str` — Awarding agency acronym (e.g., AF, DOE); must be in agency reference table.
+  - `sub_agency: Optional[str]` — Optional bureau/component identifier.
+  - `topic_code: str` — Solicitation/topic identifier; non-empty.
+  - `phase: Literal["I","II","III","Other"]` — Normalized phase category.
+  - `title: str` — Award title; ≤256 chars.
+  - `abstract: Optional[str]` — Narrative description; used for evidence extraction.
+  - `keywords: List[str]` — Tokenized keywords; may be empty.
+  - `award_amount_usd: Decimal` — Obligated amount; ≥0.
+  - `award_date: date` — Date of award.
+  - `firm_name: str` — Awardee business name.
+  - `firm_city: str` & `firm_state: str` — Location metadata (state is 2-letter code).
+  - `is_export_controlled: bool` — Flag for controlled information (derived from metadata).
+  - `source_version: str` — SBIR.gov dump version (YYYYMMDD).
+- **Relationships**:
+  - One-to-many with `ApplicabilityAssessment` (historical assessments).
+  - One-to-one (optional) with `ReviewQueueItem` when manual follow-up is required.
+- **Validation Rules**:
+  - `phase` must map to enumerated set.
+  - `keywords` deduplicated and trimmed.
+  - Controlled awards (`is_export_controlled=True`) cannot be included in exports.
+
+## CET Area
+- **Description**: Taxonomy entry representing a critical/emerging technology focus area.
+- **Fields**:
+  - `cet_id: str` — Stable identifier (slug).
+  - `name: str` — Display name.
+  - `definition: str` — Authoritative definition text.
+  - `parent_cet_id: Optional[str]` — Parent group slug for hierarchy.
+  - `version: str` — Taxonomy version tag (e.g., `NSTC-2025Q1`).
+  - `effective_date: date` — Start date for version applicability.
+  - `retired_date: Optional[date]` — End date when superseded.
+  - `status: Literal["active","retired"]`.
+- **Relationships**:
+  - One-to-many with `ApplicabilityAssessment` via primary and supporting associations.
+  - Self-referential parent-child hierarchy for grouping.
+- **Validation Rules**:
+  - `effective_date` ≤ `retired_date` when retired.
+  - Taxonomy versions immutable once released.
+
+## Applicability Assessment
+- **Description**: Classification output linking an SBIR award to CET areas with scores and rationale.
+- **Fields**:
+  - `assessment_id: UUID` — Unique identifier per evaluation run.
+  - `award_id: str` — Foreign key to `SBIR Award`.
+  - `taxonomy_version: str` — Snapshot tag of CET taxonomy used.
+  - `score: conint(ge=0, le=100)` — 0–100 applicability score.
+  - `classification: Literal["High","Medium","Low"]` — Derived from score bands (≥70 / 40–69 / <40).
+  - `primary_cet_id: str` — Primary CET alignment (FK to `CET Area`).
+  - `supporting_cet_ids: List[str]` — Up to 3 CET IDs providing secondary coverage.
+  - `evidence_statements: List[EvidenceStatement]` — ≤3 entries summarizing rationale.
+  - `generation_method: Literal["automated","manual_review"]`.
+  - `assessed_at: datetime` — Timestamp of assessment.
+  - `reviewer_notes: Optional[str]` — Free-text manual notes.
+- **Nested Type — EvidenceStatement**:
+  - `excerpt: str` — ≤50 words referencing source section.
+  - `source_location: str` — Reference (e.g., abstract, keywords, solicitation text).
+  - `rationale_tag: str` — Controlled vocabulary describing why CET applies.
+- **Relationships**:
+  - Many-to-one with `SBIR Award`.
+  - Many-to-one with primary `CET Area` plus associative table for supporting CET areas.
+- **Validation Rules**:
+  - Ensure `supporting_cet_ids` unique and exclude `primary_cet_id`.
+  - Evidence statements must respect word-count limit.
+  - `taxonomy_version` immutable post-creation to preserve history.
+
+## Review Queue Item
+- **Description**: Tracking entity for awards needing manual review.
+- **Fields**:
+  - `queue_id: UUID`.
+  - `award_id: str` — FK to `SBIR Award`.
+  - `reason: Literal["missing_text","low_confidence","controlled_data","conflict"]`.
+  - `status: Literal["pending","in_review","resolved","escalated"]`.
+  - `assigned_to: Optional[str]` — Analyst identifier.
+  - `opened_at: datetime`.
+  - `due_by: date` — Must fall within fiscal quarter SLA.
+  - `resolved_at: Optional[datetime]`.
+  - `resolution_notes: Optional[str]`.
+- **Relationships**:
+  - One-to-one with most recent unresolved manual review for an award.
+  - Linked to latest `ApplicabilityAssessment` when manual override applied.
+- **Validation Rules**:
+  - `due_by` must be ≤ end of current fiscal quarter.
+  - Status transitions require audit timestamps.
+- **State Transitions**:
+  - `pending` → `in_review` when analyst picks up item.
+  - `in_review` → `resolved` when classification confirmed or updated.
+  - Any state → `escalated` if overdue; `escalated` → `in_review` only after reassignment.
