@@ -118,7 +118,7 @@ def load_taxonomy(taxonomy_path: Path) -> pd.DataFrame:
 def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.DataFrame:
     """Classify awards against CET areas using multi-label weighted classification with context rules."""
     print(f"🤖 Classifying {len(awards_df):,} awards against CET taxonomy...")
-    print(f"   Using v3 classifier with refined keywords and context rules...")
+    print(f"   Using v4 classifier with lower multi-label threshold (20) and None category...")
     print(f"   (This will take approximately {len(awards_df) / 750:.0f} seconds...)")
 
     # Enhanced keyword matching with weighted importance and negative keywords
@@ -277,9 +277,9 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
                         cet_scores[cet_id] = boost_points
                     context_rules_applied += 1
 
-        # If no matches, default to advanced_manufacturing
+        # If no matches, assign to None category (uncategorized)
         if not cet_scores:
-            cet_scores = {"advanced_manufacturing": 30}
+            cet_scores = {"none": 30}
 
         # Normalize scores to 0-100 range based on max possible score
         max_possible = 15 * 4 + 10  # 4 core keywords * 15 + title bonus
@@ -293,7 +293,7 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
         top_cets = sorted_cets[:3]  # Top 3
 
         primary_cet_id, primary_score = top_cets[0]
-        supporting_cet_ids = [cet_id for cet_id, score in top_cets[1:] if score >= 30]  # Only if score >= 30
+        supporting_cet_ids = [cet_id for cet_id, score in top_cets[1:] if score >= 20]  # Only if score >= 20 (lowered from 30)
 
         # Calculate classification band
         classification = band_for_score(primary_score)
@@ -317,7 +317,7 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
             "cet_weights": cet_weights,  # NEW: Normalized weights
             "all_cet_scores": dict(sorted_cets[:5]),  # NEW: Top 5 raw scores
             "evidence_statements": [],
-            "generation_method": "automated_v3_context_aware",
+            "generation_method": "automated_v4_none_category",
             "assessed_at": ingested_at,
             "reviewer_notes": None,
         }
