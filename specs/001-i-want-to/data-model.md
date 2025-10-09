@@ -11,7 +11,7 @@
   - `title: str` — Award title; ≤256 chars.
   - `abstract: Optional[str]` — Narrative description; used for evidence extraction.
   - `keywords: List[str]` — Tokenized keywords; may be empty.
-  - `award_amount_usd: Decimal` — Obligated amount; ≥0.
+  - `award_amount: Decimal` — Obligated amount; ≥0.
   - `award_date: date` — Date of award.
   - `firm_name: str` — Awardee business name.
   - `firm_city: str` & `firm_state: str` — Location metadata (state is 2-letter code).
