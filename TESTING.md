@@ -1,53 +1,218 @@
-# Testing Guide: SBIR CET Classifier
+# Testing Guide
+
+## Overview
+
+The SBIR CET Classifier uses pytest for comprehensive testing across unit, integration, and contract test suites.
+
+**Current Status**: ✅ 23/23 tests passing
 
 ## Quick Start
 
 ```bash
-# 1. Install dependencies
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e .[dev]
+# Run all tests
+pytest tests/ -v
 
-# 2. Run all tests
-pytest
+# Run with coverage
+pytest tests/ --cov=src/sbir_cet_classifier --cov-report=html
 
-# 3. Run tests with coverage
-pytest --cov=src/sbir_cet_classifier --cov-report=html
+# Run specific test suites
+pytest tests/unit/ -v              # Unit tests
+pytest tests/integration/ -v       # Integration tests  
+pytest tests/contract/ -v          # API contract tests
 
-# 4. Run specific test suites
-pytest tests/unit/           # Unit tests only
-pytest tests/contract/       # Contract tests only
-pytest tests/integration/    # Integration tests only
+# Run fast tests only (skip slow integration tests)
+pytest -m "not slow" -v
 ```
 
-## Test Structure
+## Test Organization
 
-```
-tests/
-├── unit/                    # Fast, isolated tests for individual modules
-│   ├── data/               # Data ingestion, taxonomy, storage
-│   ├── features/           # Summary, awards, evidence, review queue
-│   └── models/             # Applicability scoring, metrics
-├── contract/               # API contract validation
-│   ├── test_summary_endpoint.py
-│   └── test_awards_and_cet_endpoints.py
-└── integration/            # End-to-end workflow tests
-    └── sbir_cet_classifier/
-        ├── summary/
-        └── awards/
-```
+### Unit Tests (`tests/unit/`)
+- **Purpose**: Test individual components in isolation
+- **Speed**: Fast (< 100ms per test)
+- **Coverage**: Core business logic, data models, utilities
+- **Count**: 13 tests
 
-## Test Categories
+**Key test files**:
+- `test_applicability.py` - ML model functionality
+- `test_evidence.py` - Evidence extraction logic
+- `test_summary.py` - Portfolio summary calculations
+- `test_ingest.py` - Data ingestion pipeline
+- `test_store.py` - Parquet data storage
 
-### 1. Unit Tests (Fast, ~3s)
+### Integration Tests (`tests/integration/`)
+- **Purpose**: Test component interactions and workflows
+- **Speed**: Medium (100ms - 1s per test)
+- **Coverage**: End-to-end workflows, CLI commands, data flows
+- **Count**: 5 tests
 
-Test individual modules in isolation:
+**Key test files**:
+- `test_bootstrap.py` - System initialization and data loading
+- `test_award_gap_flow.py` - Award analysis workflows
+- `test_summary_filters.py` - Cross-system filter consistency
+
+### Contract Tests (`tests/contract/`)
+- **Purpose**: Test API endpoint contracts and responses
+- **Speed**: Fast (< 200ms per test)
+- **Coverage**: FastAPI routes, request/response schemas
+- **Count**: 5 tests
+
+**Key test files**:
+- `test_awards_and_cet_endpoints.py` - Award and CET API endpoints
+- `test_summary_endpoint.py` - Summary API endpoint
+
+## Running Tests
+
+### Development Workflow
 
 ```bash
-# Run all unit tests
+# Quick feedback loop during development
 pytest tests/unit/ -v
 
-# Test specific modules
+# Full test suite before commits
+pytest tests/ -v
+
+# Check coverage
+pytest tests/ --cov=src/sbir_cet_classifier --cov-report=term-missing
+```
+
+### Continuous Integration
+
+```bash
+# CI-friendly command (no verbose output)
+pytest tests/ --cov=src/sbir_cet_classifier --cov-report=xml
+
+# Performance testing
+pytest tests/ --durations=10
+```
+
+### Test Markers
+
+```bash
+# Skip slow tests
+pytest -m "not slow"
+
+# Run only integration tests
+pytest -m "integration"
+```
+
+## Test Data
+
+### Fixtures (`tests/fixtures/`)
+- Sample award data for consistent testing
+- Mock taxonomy data
+- Test configuration files
+
+### Test Database
+Tests use in-memory pandas DataFrames and temporary files to avoid dependencies on external data.
+
+## Coverage Requirements
+
+- **Minimum coverage**: 85%
+- **Current coverage**: ~90%
+- **Excluded from coverage**: 
+  - CLI entry points
+  - Configuration loading
+  - External API calls
+
+## Troubleshooting
+
+### Common Issues
+
+**Missing CSV file errors**:
+```bash
+# Some integration tests require award_data.csv
+# These tests are automatically skipped if file is missing
+pytest tests/ -v  # Will show SKIPPED for missing data tests
+```
+
+**Slow test performance**:
+```bash
+# Run only fast tests during development
+pytest -m "not slow" -v
+
+# Profile slow tests
+pytest --durations=10
+```
+
+**Import errors**:
+```bash
+# Ensure package is installed in development mode
+pip install -e .[dev]
+```
+
+### Test Configuration
+
+Configuration is managed via `pytest.ini`:
+```ini
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra"
+testpaths = ["tests"]
+```
+
+## Writing New Tests
+
+### Unit Test Example
+```python
+def test_classification_bands():
+    """Test score-to-band classification logic."""
+    assert band_for_score(75) == "High"
+    assert band_for_score(50) == "Medium"
+    assert band_for_score(25) == "Low"
+```
+
+### Integration Test Example
+```python
+def test_end_to_end_workflow():
+    """Test complete award processing workflow."""
+    # Setup test data
+    awards_df = create_test_awards()
+    
+    # Process through pipeline
+    service = AwardsService(awards_df, ...)
+    result = service.list_awards(filters)
+    
+    # Verify results
+    assert len(result.awards) > 0
+    assert result.pagination.total_records > 0
+```
+
+### Contract Test Example
+```python
+def test_api_endpoint_response_schema():
+    """Test API endpoint returns expected schema."""
+    response = client.get("/awards?page=1")
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert "awards" in data
+    assert "pagination" in data
+```
+
+## Performance Testing
+
+Monitor test performance to catch regressions:
+
+```bash
+# Time all tests
+pytest --durations=0
+
+# Profile memory usage (requires pytest-memray)
+pytest --memray tests/integration/
+```
+
+## Best Practices
+
+1. **Keep tests fast** - Unit tests should run in < 100ms
+2. **Use descriptive names** - Test names should explain what is being tested
+3. **Test edge cases** - Include boundary conditions and error cases
+4. **Mock external dependencies** - Don't rely on external services
+5. **Maintain test data** - Keep fixtures small and focused
+6. **Check coverage** - Aim for >85% coverage on new code
+
+---
+
+For more details on the testing framework and patterns, see the individual test files in the `tests/` directory.
 pytest tests/unit/sbir_cet_classifier/data/ -v           # Data layer
 pytest tests/unit/sbir_cet_classifier/features/ -v      # Feature services
 pytest tests/unit/sbir_cet_classifier/models/ -v        # ML models

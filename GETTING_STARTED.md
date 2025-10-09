@@ -1,33 +1,130 @@
 # Getting Started with SBIR CET Classification
 
-## ✅ Setup Complete!
+## Current Status
 
-Your SBIR CET classification system is now operational with:
+Your SBIR CET classification system is operational with:
 - **997 awards** classified across **20 CET technology areas**
 - **$742M** in total award funding analyzed
 - Data from **5 major agencies** (DoD, HHS, NSF, DoE, EPA)
 
-## 📊 Current Classification Results
+## Quick Commands
 
-### Top CET Areas by Award Count:
-1. **Artificial Intelligence** - 781 awards
-2. **Medical Devices** - 45 awards
-3. **Space Technology** - 31 awards
-4. **Advanced Manufacturing** - 30 awards
-5. **Semiconductors and Microelectronics** - 29 awards
-
-## 🚀 Quick Commands
-
-### View CET Summary
+### View Summary Statistics
 ```bash
 python -c "
-import sys
-sys.path.insert(0, 'src')
-from pathlib import Path
+import pandas as pd
+awards = pd.read_parquet('data/processed/awards.parquet')
+assessments = pd.read_parquet('data/processed/assessments.parquet')
+
+print(f'Awards: {len(awards):,}')
+print(f'Total Funding: \${awards[\"award_amount\"].sum()/1e6:.1f}M')
+print(f'\\nTop 5 CET Areas:')
+print(assessments['primary_cet_id'].value_counts().head())
+"
+```
+
+### Explore Specific CET Areas
+```bash
+# View Artificial Intelligence awards
+python -c "
+import pandas as pd
+assessments = pd.read_parquet('data/processed/assessments.parquet')
+ai_awards = assessments[assessments['primary_cet_id'] == 'artificial_intelligence']
+print(f'AI Awards: {len(ai_awards)}')
+print(f'Score Distribution:')
+print(ai_awards['classification'].value_counts())
+"
+```
+
+### CLI Commands
+
+```bash
+# View portfolio summary
+python -m sbir_cet_classifier.cli.app summary --fiscal-year-start 2023 --fiscal-year-end 2025
+
+# List awards with filters
+python -m sbir_cet_classifier.cli.app awards list \
+  --fiscal-year-start 2023 --fiscal-year-end 2025 \
+  --cet-areas artificial_intelligence \
+  --page 1
+
+# Export filtered data
+python -m sbir_cet_classifier.cli.app export \
+  --fiscal-year-start 2023 --fiscal-year-end 2025 \
+  --format csv \
+  --output-file ai_awards.csv
+```
+
+### API Server
+
+```bash
+# Start the API server
+uvicorn sbir_cet_classifier.api.router:router --reload --port 8000
+
+# Test endpoints
+curl http://localhost:8000/summary?fiscal_year_start=2023&fiscal_year_end=2025
+curl http://localhost:8000/awards?fiscal_year_start=2023&fiscal_year_end=2025&page=1
+```
+
+## Common Queries
+
+### Find High-Value Awards in Specific CET Areas
+```python
 import pandas as pd
 
 awards = pd.read_parquet('data/processed/awards.parquet')
 assessments = pd.read_parquet('data/processed/assessments.parquet')
+
+# Merge data
+merged = awards.merge(assessments, on='award_id')
+
+# High-value AI awards
+ai_high_value = merged[
+    (merged['primary_cet_id'] == 'artificial_intelligence') &
+    (merged['award_amount'] > 1000000) &
+    (merged['classification'] == 'High')
+]
+
+print(f"High-value AI awards: {len(ai_high_value)}")
+print(f"Total funding: ${ai_high_value['award_amount'].sum()/1e6:.1f}M")
+```
+
+### Agency Distribution Analysis
+```python
+import pandas as pd
+
+awards = pd.read_parquet('data/processed/awards.parquet')
+assessments = pd.read_parquet('data/processed/assessments.parquet')
+
+merged = awards.merge(assessments, on='award_id')
+
+# Agency breakdown by CET area
+agency_cet = merged.groupby(['agency', 'primary_cet_id']).agg({
+    'award_id': 'count',
+    'award_amount': 'sum'
+}).round(2)
+
+print(agency_cet.head(10))
+```
+
+## Data Files Location
+
+- **Awards**: `data/processed/awards.parquet`
+- **Assessments**: `data/processed/assessments.parquet`
+- **Taxonomy**: `data/processed/taxonomy.parquet`
+
+## Next Steps
+
+1. **Explore the data** using the commands above
+2. **Run your own analysis** with pandas/SQL queries
+3. **Process new data** by running `python ingest_awards.py`
+4. **Set up automated workflows** using the CLI commands
+5. **Build custom reports** using the API endpoints
+
+For detailed documentation, see:
+- [README.md](README.md) - Full project overview
+- [TESTING.md](TESTING.md) - Testing and development
+- [specs/001-i-want-to/](specs/001-i-want-to/) - Technical specifications
 taxonomy = pd.read_parquet('data/processed/taxonomy.parquet')
 
 # Merge data
