@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from sbir_cet_classifier.api.router import configure_summary_service, router
 from sbir_cet_classifier.common.schemas import ApplicabilityAssessment, EvidenceStatement
-from sbir_cet_classifier.features.summary import SummaryFilters, SummaryService
+from sbir_cet_classifier.features.summary import SummaryService
 
 
 def _build_service() -> SummaryService:

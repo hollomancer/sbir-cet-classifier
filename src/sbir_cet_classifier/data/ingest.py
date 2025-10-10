@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 import zipfile
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
 
 import httpx
 import pandas as pd
@@ -153,7 +153,7 @@ def ingest_fiscal_year(
     df = pd.read_csv(csv_path, dtype=str)
     normalised = _normalise_dataframe(df)
 
-    ingested_at = datetime.now(timezone.utc)
+    ingested_at = datetime.now(UTC)
     records = _records_from_dataframe(normalised, source_version=raw_zip.name, ingested_at=ingested_at)
 
     write_partition(normalised, processed_dir, fiscal_year, filename=PROCESSED_FILENAME)

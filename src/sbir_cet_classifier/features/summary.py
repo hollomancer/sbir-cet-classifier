@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Sequence
 
 import pandas as pd
 
@@ -112,7 +112,7 @@ class SummaryService:
         awards: Sequence[dict],
         assessments: Iterable[ApplicabilityAssessment],
         taxonomy: Sequence[dict],
-    ) -> "SummaryService":
+    ) -> SummaryService:
         award_df = pd.DataFrame(list(awards))
         assessment_df = pd.DataFrame([
             assessment.model_dump()
@@ -242,8 +242,8 @@ def empty_service() -> SummaryService:
 
 
 __all__ = [
-    "SummaryService",
     "SummaryFilters",
     "SummaryResponse",
+    "SummaryService",
     "empty_service",
 ]

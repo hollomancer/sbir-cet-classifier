@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 import pytest
 
 from sbir_cet_classifier.data.bootstrap import (
     BOOTSTRAP_REQUIRED_COLUMNS,
-    COLUMN_MAPPINGS,
     BootstrapCSVError,
     BootstrapResult,
     _apply_column_mappings,

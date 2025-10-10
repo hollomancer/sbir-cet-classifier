@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -230,8 +230,8 @@ class TestPurgeOperations:
         cache = SolicitationCache(temp_cache_path)
 
         # Manually insert entries with specific timestamps
-        old_time = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-        recent_time = datetime.now(timezone.utc).isoformat()
+        old_time = (datetime.now(UTC) - timedelta(days=30)).isoformat()
+        recent_time = datetime.now(UTC).isoformat()
 
         cache.connection.execute(
             "INSERT INTO solicitations VALUES (?, ?, ?, ?, ?)",
@@ -244,7 +244,7 @@ class TestPurgeOperations:
         cache.connection.commit()
 
         # Purge entries older than 15 days
-        cutoff = datetime.now(timezone.utc) - timedelta(days=15)
+        cutoff = datetime.now(UTC) - timedelta(days=15)
         purged_count = cache.purge_by_date_range(end_date=cutoff)
 
         assert purged_count == 1
@@ -259,8 +259,8 @@ class TestPurgeOperations:
         """Should purge entries after start date."""
         cache = SolicitationCache(temp_cache_path)
 
-        old_time = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-        recent_time = datetime.now(timezone.utc).isoformat()
+        old_time = (datetime.now(UTC) - timedelta(days=30)).isoformat()
+        recent_time = datetime.now(UTC).isoformat()
 
         cache.connection.execute(
             "INSERT INTO solicitations VALUES (?, ?, ?, ?, ?)",
@@ -273,7 +273,7 @@ class TestPurgeOperations:
         cache.connection.commit()
 
         # Purge entries newer than 15 days ago
-        cutoff = datetime.now(timezone.utc) - timedelta(days=15)
+        cutoff = datetime.now(UTC) - timedelta(days=15)
         purged_count = cache.purge_by_date_range(start_date=cutoff)
 
         assert purged_count == 1
@@ -409,7 +409,7 @@ class TestEdgeCases:
         # Manually insert malformed data
         cache.connection.execute(
             "INSERT INTO solicitations VALUES (?, ?, ?, ?, ?)",
-            ("grants.gov", "BAD-001", "Description", "not valid json", datetime.now(timezone.utc).isoformat()),
+            ("grants.gov", "BAD-001", "Description", "not valid json", datetime.now(UTC).isoformat()),
         )
         cache.connection.commit()
 

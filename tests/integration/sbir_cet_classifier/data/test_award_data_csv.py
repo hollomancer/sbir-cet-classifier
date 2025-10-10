@@ -9,15 +9,13 @@ This test module uses the full SBIR awards CSV file to verify:
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
 from sbir_cet_classifier.common.schemas import Award
-from sbir_cet_classifier.data.ingest import _normalise_dataframe, _records_from_dataframe
-from datetime import datetime, timezone
-
 
 # Path to the test CSV file (relative to project root)
 CSV_FILE_PATH = Path(__file__).parent.parent.parent.parent.parent / "award_data-3.csv"
@@ -138,7 +136,7 @@ def test_award_schema_validation_sample(award_dataframe):
     sample_size = min(50, len(normalized))
     sample_df = normalized.head(sample_size)
 
-    ingested_at = datetime.now(timezone.utc)
+    ingested_at = datetime.now(UTC)
 
     valid_count = 0
     invalid_count = 0
@@ -189,7 +187,7 @@ def test_award_schema_validation_sample(award_dataframe):
     validity_pct = (valid_count / sample_size) * 100
 
     if errors:
-        print(f"\nFirst few validation errors:\n" + "\n".join(errors))
+        print("\nFirst few validation errors:\n" + "\n".join(errors))
 
     assert validity_pct > 70, f"Expected >70% valid records, got {validity_pct:.1f}%"
 

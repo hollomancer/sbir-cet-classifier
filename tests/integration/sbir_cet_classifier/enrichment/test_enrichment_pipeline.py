@@ -10,10 +10,8 @@ Tests end-to-end enrichment workflow:
 
 from __future__ import annotations
 
-import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -24,10 +22,8 @@ from sbir_cet_classifier.data.external.nih import SolicitationData as NIHSolicit
 from sbir_cet_classifier.data.external.nsf import SolicitationData as NSFSolicitation
 from sbir_cet_classifier.data.solicitation_cache import SolicitationCache
 from sbir_cet_classifier.features.batch_enrichment import BatchEnrichmentOptimizer
-from sbir_cet_classifier.features.enrichment import EnrichmentOrchestrator, EnrichedAward
+from sbir_cet_classifier.features.enrichment import EnrichmentOrchestrator
 from sbir_cet_classifier.models.applicability import (
-    ApplicabilityModel,
-    TrainingExample,
     build_enriched_text,
     prepare_award_text_for_classification,
 )
@@ -66,7 +62,7 @@ def sample_awards() -> list[Award]:
             award_amount=150000.0,
             award_date=datetime(2024, 1, 15).date(),
             source_version="test",
-            ingested_at=datetime.now(timezone.utc),
+            ingested_at=datetime.now(UTC),
         ),
         Award(
             award_id="NIH-001",
@@ -81,7 +77,7 @@ def sample_awards() -> list[Award]:
             award_amount=750000.0,
             award_date=datetime(2023, 6, 1).date(),
             source_version="test",
-            ingested_at=datetime.now(timezone.utc),
+            ingested_at=datetime.now(UTC),
         ),
         Award(
             award_id="NSF-001",
@@ -96,13 +92,13 @@ def sample_awards() -> list[Award]:
             award_amount=225000.0,
             award_date=datetime(2024, 3, 20).date(),
             source_version="test",
-            ingested_at=datetime.now(timezone.utc),
+            ingested_at=datetime.now(UTC),
         ),
     ]
 
 
 @pytest.fixture
-def mock_api_responses() -> dict[str, Optional[object]]:
+def mock_api_responses() -> dict[str, object | None]:
     """Mock API responses for different solicitations."""
     return {
         "AF241-001": GrantsSolicitation(
@@ -242,7 +238,7 @@ class TestEnrichmentPipelineEndToEnd:
                 award_amount=150000.0,
                 award_date=datetime(2024, 1, 15).date(),
                 source_version="test",
-                ingested_at=datetime.now(timezone.utc),
+                ingested_at=datetime.now(UTC),
             )
             for i in range(1, 4)
         ]
@@ -262,7 +258,7 @@ class TestEnrichmentPipelineEndToEnd:
                 award_amount=750000.0,
                 award_date=datetime(2023, 6, 1).date(),
                 source_version="test",
-                ingested_at=datetime.now(timezone.utc),
+                ingested_at=datetime.now(UTC),
             ),
             Award(
                 award_id="NSF-001",
@@ -277,7 +273,7 @@ class TestEnrichmentPipelineEndToEnd:
                 award_amount=225000.0,
                 award_date=datetime(2024, 3, 20).date(),
                 source_version="test",
-                ingested_at=datetime.now(timezone.utc),
+                ingested_at=datetime.now(UTC),
             ),
         ])
 
@@ -510,7 +506,7 @@ class TestEnrichmentPipelineEndToEnd:
             award_amount=100000.0,
             award_date=datetime(2024, 1, 1).date(),
             source_version="test",
-            ingested_at=datetime.now(timezone.utc),
+            ingested_at=datetime.now(UTC),
         )
 
         metrics = EnrichmentMetrics(artifacts_dir=temp_artifacts_dir)

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import pandas as pd
 
@@ -66,4 +66,4 @@ def list_partitions(root: Path) -> list[str]:
     return sorted(p.name for p in root.iterdir() if p.is_dir())
 
 
-__all__ = ["write_partition", "read_partition", "list_partitions", "DEFAULT_FILENAME"]
+__all__ = ["DEFAULT_FILENAME", "list_partitions", "read_partition", "write_partition"]

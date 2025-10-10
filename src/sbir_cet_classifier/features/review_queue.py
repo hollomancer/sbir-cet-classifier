@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
-from typing import Iterable, Iterator
 from uuid import UUID, uuid4
 
 from sbir_cet_classifier.common.config import AppConfig, load_config
@@ -26,7 +26,7 @@ class QueueRepository:
             self.storage_path.write_text("")
 
     @classmethod
-    def from_config(cls, config: AppConfig | None = None) -> "QueueRepository":
+    def from_config(cls, config: AppConfig | None = None) -> QueueRepository:
         app_config = config or load_config()
         return cls(app_config.storage.artifacts / QUEUE_FILENAME)
 
@@ -107,4 +107,4 @@ class QueueRepository:
         return (item for item in self._load_items() if item.status == "pending")
 
 
-__all__ = ["QueueRepository", "QUEUE_FILENAME"]
+__all__ = ["QUEUE_FILENAME", "QueueRepository"]

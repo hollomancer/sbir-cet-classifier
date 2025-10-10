@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
 
 from sbir_cet_classifier.common.config import AppConfig, load_config
 from sbir_cet_classifier.common.schemas import ApplicabilityAssessment
@@ -49,7 +49,7 @@ def compute_metrics(
         automated=automated,
         manual=manual,
         percentage_automated=round(percentage, 2),
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
     )
 
 
@@ -66,4 +66,4 @@ def write_metrics(metrics: CoverageMetrics, *, config: AppConfig | None = None) 
     return output_path
 
 
-__all__ = ["compute_metrics", "write_metrics", "CoverageMetrics", "COVERAGE_FILENAME"]
+__all__ = ["COVERAGE_FILENAME", "CoverageMetrics", "compute_metrics", "write_metrics"]

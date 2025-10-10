@@ -8,7 +8,6 @@ import httpx
 import pytest
 
 from sbir_cet_classifier.data.external.nsf import (
-    NSFAPIError,
     NSFClient,
     SolicitationData,
 )

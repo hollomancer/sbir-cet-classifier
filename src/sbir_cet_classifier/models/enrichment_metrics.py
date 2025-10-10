@@ -19,11 +19,9 @@ from __future__ import annotations
 
 import json
 import logging
-from collections import defaultdict
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -72,21 +70,21 @@ class APISourceMetrics:
         return (self.api_calls_successful / total) * 100.0
 
     @property
-    def latency_p50(self) -> Optional[float]:
+    def latency_p50(self) -> float | None:
         """Calculate p50 (median) latency in milliseconds."""
         if not self.latencies_ms:
             return None
         return float(np.percentile(self.latencies_ms, 50))
 
     @property
-    def latency_p95(self) -> Optional[float]:
+    def latency_p95(self) -> float | None:
         """Calculate p95 latency in milliseconds."""
         if not self.latencies_ms:
             return None
         return float(np.percentile(self.latencies_ms, 95))
 
     @property
-    def latency_p99(self) -> Optional[float]:
+    def latency_p99(self) -> float | None:
         """Calculate p99 latency in milliseconds."""
         if not self.latencies_ms:
             return None
@@ -121,7 +119,7 @@ class EnrichmentRun:
     started_at: datetime
     """Timestamp when enrichment run started."""
 
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     """Timestamp when enrichment run completed."""
 
     api_metrics: dict[str, APISourceMetrics] = field(default_factory=dict)
@@ -177,7 +175,7 @@ class EnrichmentMetrics:
     def __init__(
         self,
         *,
-        run_id: Optional[str] = None,
+        run_id: str | None = None,
         artifacts_dir: Path = DEFAULT_ARTIFACTS_DIR,
     ) -> None:
         """Initialize enrichment metrics tracker.
@@ -187,7 +185,7 @@ class EnrichmentMetrics:
             artifacts_dir: Directory for writing metrics (default: artifacts/)
         """
         self.run_id = run_id or self._generate_run_id()
-        self.started_at = datetime.now(timezone.utc)
+        self.started_at = datetime.now(UTC)
         self.artifacts_dir = Path(artifacts_dir)
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
 
@@ -200,7 +198,7 @@ class EnrichmentMetrics:
 
     def _generate_run_id(self) -> str:
         """Generate unique run identifier."""
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         return f"enrichment_{timestamp}"
 
     def _get_or_create_api_metrics(self, api_source: str) -> APISourceMetrics:
@@ -297,7 +295,7 @@ class EnrichmentMetrics:
         run = EnrichmentRun(
             run_id=self.run_id,
             started_at=self.started_at,
-            completed_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(UTC),
             api_metrics=self._api_metrics.copy(),
             total_awards_processed=self._total_awards_processed,
             awards_enriched=self._awards_enriched,
@@ -318,7 +316,7 @@ class EnrichmentMetrics:
             >>> path = metrics.flush()
             >>> print(f"Metrics written to {path}")
         """
-        completed_at = datetime.now(timezone.utc)
+        completed_at = datetime.now(UTC)
 
         run = EnrichmentRun(
             run_id=self.run_id,
@@ -342,7 +340,7 @@ class EnrichmentMetrics:
                         existing_runs = existing_data
                     elif isinstance(existing_data, dict) and "runs" in existing_data:
                         existing_runs = existing_data["runs"]
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 logger.warning(
                     "Failed to read existing enrichment metrics, starting fresh",
                     extra={"error": str(e)},
@@ -403,6 +401,6 @@ def load_enrichment_metrics(
             logger.warning("Unexpected enrichment metrics format")
             return []
 
-    except (json.JSONDecodeError, IOError) as e:
+    except (OSError, json.JSONDecodeError) as e:
         logger.error("Failed to load enrichment metrics", extra={"error": str(e)})
         return []

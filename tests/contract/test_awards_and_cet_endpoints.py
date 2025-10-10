@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -94,7 +94,7 @@ class StubAwardsService:
             "assessments": [
                 {
                     "assessmentId": assessment_id,
-                    "assessedAt": datetime(2024, 1, 2, tzinfo=timezone.utc).isoformat(),
+                    "assessedAt": datetime(2024, 1, 2, tzinfo=UTC).isoformat(),
                     "score": 88,
                     "classification": "High",
                     "primaryCet": {

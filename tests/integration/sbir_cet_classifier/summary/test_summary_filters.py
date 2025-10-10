@@ -9,7 +9,7 @@ from typer.testing import CliRunner
 from sbir_cet_classifier.api.router import configure_summary_service
 from sbir_cet_classifier.cli.app import app
 from sbir_cet_classifier.common.schemas import ApplicabilityAssessment, EvidenceStatement
-from sbir_cet_classifier.features.summary import SummaryFilters, SummaryService
+from sbir_cet_classifier.features.summary import SummaryService
 
 runner = CliRunner()
 

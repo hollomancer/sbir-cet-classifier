@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import zipfile
-from datetime import timezone
+from datetime import UTC
 from pathlib import Path
 
 import pandas as pd
@@ -105,4 +105,4 @@ def test_ingest_fiscal_year_processes_archive(tmp_path):
 
     rows = list(iter_awards_for_year(2023, config=config))
     assert {row.award_id for row in rows} == {"AF123", "NAV456"}
-    assert all(row.ingested_at.tzinfo == timezone.utc for row in rows)
+    assert all(row.ingested_at.tzinfo == UTC for row in rows)

@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import httpx
 
@@ -93,9 +92,9 @@ class NIHClient:
     def lookup_solicitation(
         self,
         *,
-        funding_opportunity: Optional[str] = None,
-        solicitation_id: Optional[str] = None,
-    ) -> Optional[SolicitationData]:
+        funding_opportunity: str | None = None,
+        solicitation_id: str | None = None,
+    ) -> SolicitationData | None:
         """Look up solicitation metadata by FOA or solicitation ID.
 
         Args:
@@ -177,7 +176,7 @@ class NIHClient:
         response = self.client.post(endpoint, json=payload)
         return response
 
-    def _parse_response(self, data: dict, query_id: str) -> Optional[SolicitationData]:
+    def _parse_response(self, data: dict, query_id: str) -> SolicitationData | None:
         """Parse API response into SolicitationData.
 
         Args:

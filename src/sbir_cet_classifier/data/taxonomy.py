@@ -6,7 +6,6 @@ import json
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Iterable
 
 from sbir_cet_classifier.common.schemas import CETArea
 

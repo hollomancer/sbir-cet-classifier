@@ -226,7 +226,7 @@ class TaxonomyReassessmentRunner:
 
 
 __all__ = [
-    "TaxonomyDiff",
     "ReassessmentManifest",
+    "TaxonomyDiff",
     "TaxonomyReassessmentRunner",
 ]

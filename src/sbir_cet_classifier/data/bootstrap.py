@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 from pydantic import ValidationError
@@ -144,7 +144,7 @@ class BootstrapCSVError(Exception):
 def load_bootstrap_csv(
     csv_path: Path,
     *,
-    config: Optional[AppConfig] = None,
+    config: AppConfig | None = None,
 ) -> BootstrapResult:
     """Load awards from bootstrap CSV file.
 
@@ -188,7 +188,7 @@ def load_bootstrap_csv(
     _validate_required_columns(df)
 
     # Normalize and convert to Award records
-    ingested_at = datetime.now(timezone.utc)
+    ingested_at = datetime.now(UTC)
     awards, skipped = _convert_to_awards(df, ingested_at)
 
     logger.info(
@@ -316,54 +316,48 @@ def _prepare_award_dict(row: pd.Series, ingested_at: datetime) -> dict[str, Any]
     }
 
     # Add optional fields if present
-    if "sub_agency" in row and row["sub_agency"]:
+    if row.get("sub_agency"):
         award_dict["sub_agency"] = row["sub_agency"].strip()
 
-    if "topic_code" in row and row["topic_code"]:
+    if row.get("topic_code"):
         award_dict["topic_code"] = row["topic_code"].strip()
     else:
         # topic_code is required by Award schema, provide placeholder
         award_dict["topic_code"] = "UNKNOWN"
 
-    if "keywords" in row and row["keywords"]:
+    if row.get("keywords"):
         # Handle comma-separated keywords
         keywords_str = row["keywords"].strip()
         award_dict["keywords"] = [kw.strip() for kw in keywords_str.split(",") if kw.strip()]
 
-    if "phase" in row and row["phase"]:
+    if row.get("phase"):
         phase = row["phase"].strip().upper()
-        # Normalize phase to canonical values
-        if "I" in phase and "II" not in phase and "III" not in phase:
-            award_dict["phase"] = "I"
-        elif "II" in phase and "III" not in phase:
-            award_dict["phase"] = "II"
-        elif "III" in phase:
+        # Normalize phase to canonical values (exact match first)
+        if phase in ("III", "3", "THREE"):
             award_dict["phase"] = "III"
-        elif phase in ("1", "ONE"):
-            award_dict["phase"] = "I"
-        elif phase in ("2", "TWO"):
+        elif phase in ("II", "2", "TWO"):
             award_dict["phase"] = "II"
-        elif phase in ("3", "THREE"):
-            award_dict["phase"] = "III"
+        elif phase in ("I", "1", "ONE"):
+            award_dict["phase"] = "I"
         else:
             award_dict["phase"] = "Other"
     else:
         award_dict["phase"] = "Other"
 
     # firm_name is required, use placeholder if missing
-    if "firm_name" in row and row["firm_name"]:
+    if row.get("firm_name"):
         award_dict["firm_name"] = row["firm_name"].strip()
     else:
         award_dict["firm_name"] = "UNKNOWN"
 
     # firm_city is required, use placeholder if missing
-    if "firm_city" in row and row["firm_city"]:
+    if row.get("firm_city"):
         award_dict["firm_city"] = row["firm_city"].strip()
     else:
         award_dict["firm_city"] = "Unknown"
 
     # firm_state is required (2-char code), use placeholder if missing
-    if "firm_state" in row and row["firm_state"]:
+    if row.get("firm_state"):
         state_str = row["firm_state"].strip()
         # Try to map state name to code, otherwise use as-is if already 2 chars
         state_lower = state_str.lower()
@@ -378,19 +372,19 @@ def _prepare_award_dict(row: pd.Series, ingested_at: datetime) -> dict[str, Any]
         award_dict["firm_state"] = "XX"  # Placeholder 2-char code
 
     # award_date is required, use ingestion date if missing
-    if "award_date" in row and row["award_date"]:
+    if row.get("award_date"):
         award_dict["award_date"] = _parse_award_date(row["award_date"])
     else:
         # Use ingestion timestamp date as fallback
         award_dict["award_date"] = ingested_at.date()
 
-    if "program" in row and row["program"]:
+    if row.get("program"):
         award_dict["program"] = row["program"].strip()
 
-    if "solicitation_id" in row and row["solicitation_id"]:
+    if row.get("solicitation_id"):
         award_dict["solicitation_id"] = row["solicitation_id"].strip()
 
-    if "solicitation_year" in row and row["solicitation_year"]:
+    if row.get("solicitation_year"):
         try:
             award_dict["solicitation_year"] = int(row["solicitation_year"])
         except (ValueError, TypeError):

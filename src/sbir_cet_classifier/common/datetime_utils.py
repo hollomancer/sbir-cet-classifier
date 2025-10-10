@@ -1,6 +1,6 @@
 """Datetime utilities for consistent timezone handling across the application."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def utc_now() -> datetime:
@@ -21,4 +21,4 @@ def utc_now() -> datetime:
         >>> print(timestamp.tzinfo)
         UTC
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)

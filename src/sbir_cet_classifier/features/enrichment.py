@@ -25,15 +25,14 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 from sbir_cet_classifier.common.schemas import Award
-from sbir_cet_classifier.data.external.grants_gov import GrantsGovClient, GrantsGovAPIError
-from sbir_cet_classifier.data.external.nih import NIHClient, NIHAPIError
-from sbir_cet_classifier.data.external.nsf import NSFClient, NSFAPIError
-from sbir_cet_classifier.data.solicitation_cache import SolicitationCache, CachedSolicitation
+from sbir_cet_classifier.data.external.grants_gov import GrantsGovAPIError, GrantsGovClient
+from sbir_cet_classifier.data.external.nih import NIHAPIError, NIHClient
+from sbir_cet_classifier.data.external.nsf import NSFAPIError, NSFClient
+from sbir_cet_classifier.data.solicitation_cache import SolicitationCache
 from sbir_cet_classifier.models.enrichment_metrics import EnrichmentMetrics
 
 logger = logging.getLogger(__name__)
@@ -65,19 +64,19 @@ class EnrichedAward:
     enrichment_status: str
     """Status: 'enriched', 'enrichment_failed', 'not_attempted'."""
 
-    solicitation_description: Optional[str] = None
+    solicitation_description: str | None = None
     """Solicitation description text if enriched."""
 
     solicitation_keywords: list[str] = None
     """Solicitation technical keywords if enriched."""
 
-    api_source: Optional[str] = None
+    api_source: str | None = None
     """API source used for enrichment (grants.gov, nih, nsf)."""
 
-    retrieved_at: Optional[datetime] = None
+    retrieved_at: datetime | None = None
     """Timestamp when solicitation was retrieved."""
 
-    failure_reason: Optional[str] = None
+    failure_reason: str | None = None
     """Reason if enrichment failed."""
 
     def __post_init__(self) -> None:
@@ -104,8 +103,8 @@ class EnrichmentOrchestrator:
     def __init__(
         self,
         *,
-        cache_path: Optional[Path] = None,
-        metrics: Optional[EnrichmentMetrics] = None,
+        cache_path: Path | None = None,
+        metrics: EnrichmentMetrics | None = None,
     ) -> None:
         """Initialize enrichment orchestrator.
 
@@ -117,9 +116,9 @@ class EnrichmentOrchestrator:
         self.metrics = metrics if metrics else EnrichmentMetrics()
 
         # Initialize API clients (lazy loading)
-        self.grants_gov_client: Optional[GrantsGovClient] = None
-        self.nih_client: Optional[NIHClient] = None
-        self.nsf_client: Optional[NSFClient] = None
+        self.grants_gov_client: GrantsGovClient | None = None
+        self.nih_client: NIHClient | None = None
+        self.nsf_client: NSFClient | None = None
 
         logger.info("Initialized enrichment orchestrator")
 
@@ -246,7 +245,7 @@ class EnrichmentOrchestrator:
                 solicitation_description=solicitation_data.description,
                 solicitation_keywords=solicitation_data.technical_keywords,
                 api_source=solicitation_data.api_source,
-                retrieved_at=datetime.now(timezone.utc),
+                retrieved_at=datetime.now(UTC),
             )
 
         # Enrichment failed - proceed with award-only classification
@@ -267,7 +266,7 @@ class EnrichmentOrchestrator:
             failure_reason="Solicitation not found or API error",
         )
 
-    def _determine_api_source(self, award: Award) -> Optional[str]:
+    def _determine_api_source(self, award: Award) -> str | None:
         """Determine which API source to use for the award.
 
         Args:
@@ -295,7 +294,7 @@ class EnrichmentOrchestrator:
         )
         return "grants.gov"
 
-    def _extract_solicitation_id(self, award: Award) -> Optional[str]:
+    def _extract_solicitation_id(self, award: Award) -> str | None:
         """Extract solicitation identifier from award record.
 
         Args:
@@ -324,7 +323,7 @@ class EnrichmentOrchestrator:
         api_source: str,
         solicitation_id: str,
         award: Award,
-    ) -> Optional[object]:
+    ) -> object | None:
         """Fetch solicitation from appropriate API.
 
         Args:
@@ -368,7 +367,7 @@ class EnrichmentOrchestrator:
 
         return result
 
-    def _fetch_from_grants_gov(self, solicitation_id: str) -> Optional[object]:
+    def _fetch_from_grants_gov(self, solicitation_id: str) -> object | None:
         """Fetch solicitation from Grants.gov API."""
         if not self.grants_gov_client:
             self.grants_gov_client = GrantsGovClient()
@@ -379,7 +378,7 @@ class EnrichmentOrchestrator:
             logger.warning("Grants.gov API error", extra={"error": str(e)})
             return None
 
-    def _fetch_from_nih(self, solicitation_id: str) -> Optional[object]:
+    def _fetch_from_nih(self, solicitation_id: str) -> object | None:
         """Fetch solicitation from NIH API."""
         if not self.nih_client:
             self.nih_client = NIHClient()
@@ -390,7 +389,7 @@ class EnrichmentOrchestrator:
             logger.warning("NIH API error", extra={"error": str(e)})
             return None
 
-    def _fetch_from_nsf(self, solicitation_id: str) -> Optional[object]:
+    def _fetch_from_nsf(self, solicitation_id: str) -> object | None:
         """Fetch solicitation from NSF API."""
         if not self.nsf_client:
             self.nsf_client = NSFClient()

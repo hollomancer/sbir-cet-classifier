@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -18,10 +17,10 @@ export_app = typer.Typer(help="Export commands for dataset sharing")
 def create_export(
     fiscal_year_start: int = typer.Option(..., help="Start fiscal year"),
     fiscal_year_end: int = typer.Option(..., help="End fiscal year"),
-    agency: Optional[list[str]] = typer.Option(None, "--agency", help="Filter by agencies"),
-    phase: Optional[list[str]] = typer.Option(None, "--phase", help="Filter by phases"),
+    agency: list[str] | None = typer.Option(None, "--agency", help="Filter by agencies"),
+    phase: list[str] | None = typer.Option(None, "--phase", help="Filter by phases"),
     format: str = typer.Option("csv", help="Export format: csv or parquet"),
-    output: Optional[Path] = typer.Option(None, "--output", help="Output file path"),
+    output: Path | None = typer.Option(None, "--output", help="Output file path"),
 ) -> None:
     """Create a new export job."""
     filters = SummaryFilters(

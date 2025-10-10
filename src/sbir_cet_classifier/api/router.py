@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from sbir_cet_classifier.features.summary import SummaryFilters, SummaryService, empty_service
-from sbir_cet_classifier.features.awards import AwardsService
 from sbir_cet_classifier.api.routes import awards as awards_routes
 from sbir_cet_classifier.api.routes import exports as exports_routes
+from sbir_cet_classifier.features.awards import AwardsService
+from sbir_cet_classifier.features.summary import SummaryFilters, SummaryService, empty_service
 
 router = APIRouter()
 router.include_router(awards_routes.router)
@@ -45,7 +43,7 @@ def get_awards_service() -> AwardsService:
     return _awards_service
 
 
-def _tuple(values: Optional[List[str]]) -> Tuple[str, ...]:
+def _tuple(values: list[str] | None) -> tuple[str, ...]:
     return tuple(values or [])
 
 
@@ -58,10 +56,10 @@ def healthcheck() -> dict[str, str]:
 def get_summary(
     fiscal_year_start: int,
     fiscal_year_end: int,
-    agency: Optional[List[str]] = Query(default=None),
-    phases: Optional[List[str]] = Query(default=None),
-    cet_area: Optional[List[str]] = Query(default=None),
-    location_state: Optional[List[str]] = Query(default=None),
+    agency: list[str] | None = Query(default=None),
+    phases: list[str] | None = Query(default=None),
+    cet_area: list[str] | None = Query(default=None),
+    location_state: list[str] | None = Query(default=None),
     service: SummaryService = Depends(get_summary_service),
 ) -> dict:
     filters = SummaryFilters(

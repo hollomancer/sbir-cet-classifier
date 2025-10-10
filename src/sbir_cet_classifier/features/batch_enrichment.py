@@ -24,13 +24,12 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Optional
 
 from sbir_cet_classifier.common.schemas import Award
 from sbir_cet_classifier.features.enrichment import (
-    EnrichmentOrchestrator,
-    EnrichedAward,
     AGENCY_TO_API_SOURCE,
+    EnrichedAward,
+    EnrichmentOrchestrator,
 )
 from sbir_cet_classifier.models.enrichment_metrics import EnrichmentMetrics
 
@@ -87,8 +86,8 @@ class BatchEnrichmentOptimizer:
     def __init__(
         self,
         *,
-        orchestrator: Optional[EnrichmentOrchestrator] = None,
-        metrics: Optional[EnrichmentMetrics] = None,
+        orchestrator: EnrichmentOrchestrator | None = None,
+        metrics: EnrichmentMetrics | None = None,
     ) -> None:
         """Initialize batch enrichment optimizer.
 
@@ -252,7 +251,7 @@ class BatchEnrichmentOptimizer:
 
         return groups
 
-    def _get_solicitation_key(self, award: Award) -> Optional[tuple[str, str]]:
+    def _get_solicitation_key(self, award: Award) -> tuple[str, str] | None:
         """Get (api_source, solicitation_id) key for award.
 
         Args:
@@ -273,7 +272,7 @@ class BatchEnrichmentOptimizer:
 
         return (api_source, solicitation_id)
 
-    def _determine_api_source(self, award: Award) -> Optional[str]:
+    def _determine_api_source(self, award: Award) -> str | None:
         """Determine API source for award (same logic as orchestrator)."""
         agency_upper = award.agency.upper().strip()
 
@@ -286,7 +285,7 @@ class BatchEnrichmentOptimizer:
 
         return "grants.gov"  # Default fallback
 
-    def _extract_solicitation_id(self, award: Award) -> Optional[str]:
+    def _extract_solicitation_id(self, award: Award) -> str | None:
         """Extract solicitation ID from award (same logic as orchestrator)."""
         if hasattr(award, "topic_code") and award.topic_code and award.topic_code != "UNKNOWN":
             return award.topic_code

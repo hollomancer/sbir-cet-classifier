@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -40,7 +40,7 @@ def test_award_schema_roundtrip(tmp_path):
         award_amount=150000.0,
         award_date=datetime(2023, 6, 1).date(),
         source_version="sbir_awards_FY2023.zip",
-        ingested_at=datetime.now(timezone.utc),
+        ingested_at=datetime.now(UTC),
     )
     assert award.agency == "AF"
 

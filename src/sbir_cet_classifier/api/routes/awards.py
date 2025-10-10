@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from fastapi import APIRouter, HTTPException, Query, status
 
 from sbir_cet_classifier.features.awards import AwardsFilters, AwardsService
@@ -33,10 +31,10 @@ def get_awards_service() -> AwardsService:
 def list_awards(
     fiscal_year_start: int = Query(...),
     fiscal_year_end: int = Query(...),
-    agencies: Optional[List[str]] = Query(default=None),
-    phases: Optional[List[str]] = Query(default=None),
-    cet_areas: Optional[List[str]] = Query(default=None, alias="cetAreas"),
-    location_state: Optional[str] = Query(default=None, alias="locationState"),
+    agencies: list[str] | None = Query(default=None),
+    phases: list[str] | None = Query(default=None),
+    cet_areas: list[str] | None = Query(default=None, alias="cetAreas"),
+    location_state: str | None = Query(default=None, alias="locationState"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=10, le=200, alias="pageSize"),
 ) -> dict:
@@ -78,8 +76,8 @@ def get_cet_detail(
     cet_id: str,
     fiscal_year_start: int = Query(...),
     fiscal_year_end: int = Query(...),
-    agencies: Optional[List[str]] = Query(default=None),
-    phases: Optional[List[str]] = Query(default=None),
+    agencies: list[str] | None = Query(default=None),
+    phases: list[str] | None = Query(default=None),
 ) -> dict:
     """Get CET area detail with gap analytics."""
     service = get_awards_service()
@@ -104,7 +102,7 @@ def get_cet_detail(
 
 
 __all__ = [
-    "router",
     "configure_awards_service",
     "get_awards_service",
+    "router",
 ]

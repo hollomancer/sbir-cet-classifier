@@ -3,17 +3,15 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from typing import Optional
 
 import typer
 
-from sbir_cet_classifier.common.config import load_config
-from sbir_cet_classifier.data.ingest import ingest_fiscal_year
 from sbir_cet_classifier.api.router import get_summary_service
-from sbir_cet_classifier.features.summary import SummaryFilters
 from sbir_cet_classifier.cli.awards import awards_app
 from sbir_cet_classifier.cli.export import export_app
+from sbir_cet_classifier.common.config import load_config
+from sbir_cet_classifier.data.ingest import ingest_fiscal_year
+from sbir_cet_classifier.features.summary import SummaryFilters
 
 app = typer.Typer(help="SBIR CET applicability tooling")
 app.add_typer(awards_app, name="awards")
@@ -24,7 +22,7 @@ app.add_typer(export_app, name="export")
 def refresh(
     fiscal_year_start: int = typer.Option(..., help="Inclusive fiscal year start."),
     fiscal_year_end: int = typer.Option(..., help="Inclusive fiscal year end."),
-    source_url: Optional[str] = typer.Option(None, help="Override SBIR.gov archive URL."),
+    source_url: str | None = typer.Option(None, help="Override SBIR.gov archive URL."),
     incremental: bool = typer.Option(True, help="Process only the provided fiscal range."),
 ) -> None:
     """Trigger ingestion for one or more fiscal years."""
@@ -48,7 +46,7 @@ def refresh(
 def summary(
     fiscal_year_start: int = typer.Argument(...),
     fiscal_year_end: int = typer.Argument(...),
-    agency: Optional[list[str]] = typer.Option(
+    agency: list[str] | None = typer.Option(
         None,
         "--agency",
         help="Filter by agency; pass multiple flags for multi-select.",
@@ -76,7 +74,7 @@ def summary(
 @app.command("review-queue")
 def review_queue(  # pragma: no cover - thin wrapper
     list_pending: bool = typer.Option(False, "--list", help="List pending items."),
-    escalate: Optional[str] = typer.Option(None, help="Escalate item by queue ID."),
+    escalate: str | None = typer.Option(None, help="Escalate item by queue ID."),
 ) -> None:
     """Interact with the manual review queue."""
 

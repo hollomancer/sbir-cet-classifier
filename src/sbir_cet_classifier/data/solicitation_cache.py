@@ -29,9 +29,8 @@ import json
 import logging
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +139,7 @@ class SolicitationCache:
         self,
         api_source: str,
         solicitation_id: str,
-    ) -> Optional[CachedSolicitation]:
+    ) -> CachedSolicitation | None:
         """Retrieve solicitation from cache.
 
         Args:
@@ -225,7 +224,7 @@ class SolicitationCache:
             ...     ["AI", "ML", "robotics"]
             ... )
         """
-        retrieved_at = datetime.now(timezone.utc).isoformat()
+        retrieved_at = datetime.now(UTC).isoformat()
 
         # Serialize keywords to JSON
         keywords_json = json.dumps(technical_keywords)
@@ -335,8 +334,8 @@ class SolicitationCache:
     def purge_by_date_range(
         self,
         *,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
     ) -> int:
         """Purge cache entries retrieved within a date range.
 

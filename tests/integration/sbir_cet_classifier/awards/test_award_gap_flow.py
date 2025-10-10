@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -10,7 +10,6 @@ from fastapi.testclient import TestClient
 from typer.testing import CliRunner
 
 from sbir_cet_classifier.api.router import router as api_router
-from sbir_cet_classifier.api.routes import awards as awards_routes
 from sbir_cet_classifier.cli.app import app as cli_app
 
 
@@ -72,7 +71,7 @@ def _build_awards_service():
                 }
             ],
             "generation_method": "automated",
-            "assessed_at": datetime(2024, 1, 2, tzinfo=timezone.utc),
+            "assessed_at": datetime(2024, 1, 2, tzinfo=UTC),
             "reviewer_notes": None,
         },
         {
@@ -85,7 +84,7 @@ def _build_awards_service():
             "supporting_cet_ids": [],
             "evidence_statements": [],
             "generation_method": "manual_review",
-            "assessed_at": datetime(2024, 2, 4, tzinfo=timezone.utc),
+            "assessed_at": datetime(2024, 2, 4, tzinfo=UTC),
             "reviewer_notes": "Awaiting abstract from vendor.",
         },
         {
@@ -98,7 +97,7 @@ def _build_awards_service():
             "supporting_cet_ids": ["hypersonics"],
             "evidence_statements": [],
             "generation_method": "automated",
-            "assessed_at": datetime(2024, 3, 9, tzinfo=timezone.utc),
+            "assessed_at": datetime(2024, 3, 9, tzinfo=UTC),
             "reviewer_notes": None,
         },
     ]
@@ -114,8 +113,8 @@ def _build_awards_service():
             "reason": "missing_text",
             "status": "pending",
             "assigned_to": None,
-            "opened_at": datetime(2024, 2, 5, tzinfo=timezone.utc),
-            "due_by": datetime(2026, 3, 31, tzinfo=timezone.utc).date(),  # Future date to avoid auto-escalation
+            "opened_at": datetime(2024, 2, 5, tzinfo=UTC),
+            "due_by": datetime(2026, 3, 31, tzinfo=UTC).date(),  # Future date to avoid auto-escalation
             "resolved_at": None,
             "resolution_notes": None,
         }

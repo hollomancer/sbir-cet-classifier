@@ -4,8 +4,8 @@ from datetime import datetime
 
 import pandas as pd
 
+from sbir_cet_classifier.common.schemas import EvidenceStatement
 from sbir_cet_classifier.features.summary import SummaryFilters, SummaryService
-from sbir_cet_classifier.common.schemas import ApplicabilityAssessment, EvidenceStatement
 
 
 def _create_service():

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
-from typing import Iterable, Mapping, Sequence
+from datetime import UTC, date, datetime
 
 import pandas as pd
 
@@ -178,7 +178,7 @@ class AwardsService:
         taxonomy: Sequence[dict],
         review_queue: Iterable[dict],
         target_shares: Mapping[str, float] | None = None,
-    ) -> "AwardsService":
+    ) -> AwardsService:
         awards_df = pd.DataFrame(list(awards)) if awards else pd.DataFrame()
         assessments_df = pd.DataFrame(list(assessments)) if assessments else pd.DataFrame()
         taxonomy_df = pd.DataFrame(list(taxonomy)) if taxonomy else pd.DataFrame()
@@ -389,7 +389,7 @@ class AwardsService:
             primary_ref = self._build_cet_ref(row.get("primary_cet_id"), taxonomy_version)
             supporting_refs = self._build_supporting_refs(row.get("supporting_cet_ids") or [], taxonomy_version)
             assessed_at = row.get("assessed_at")
-            assessed_dt = assessed_at.to_pydatetime().astimezone(timezone.utc) if pd.notna(assessed_at) else None
+            assessed_dt = assessed_at.to_pydatetime().astimezone(UTC) if pd.notna(assessed_at) else None
             records.append(
                 AssessmentRecord(
                     assessment_id=row.get("assessment_id"),
@@ -521,10 +521,10 @@ class AwardsService:
 
 
 __all__ = [
+    "AwardDetail",
+    "AwardListItem",
+    "AwardListResponse",
     "AwardsFilters",
     "AwardsService",
-    "AwardListResponse",
-    "AwardListItem",
-    "AwardDetail",
     "CetDetail",
 ]

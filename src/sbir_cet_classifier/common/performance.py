@@ -1,9 +1,10 @@
 """Performance monitoring utilities."""
 
-import time
 import functools
-from typing import Any, Callable, TypeVar
+import time
+from collections.abc import Callable
 from contextlib import contextmanager
+from typing import Any, TypeVar
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -24,8 +25,9 @@ def profile_memory(func: F) -> F:
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
-            import psutil
             import os
+
+            import psutil
             process = psutil.Process(os.getpid())
             mem_before = process.memory_info().rss / 1024 / 1024  # MB
             

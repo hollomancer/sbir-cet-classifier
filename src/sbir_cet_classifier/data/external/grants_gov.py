@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import httpx
 
@@ -96,9 +95,9 @@ class GrantsGovClient:
     def lookup_solicitation(
         self,
         *,
-        topic_code: Optional[str] = None,
-        solicitation_number: Optional[str] = None,
-    ) -> Optional[SolicitationData]:
+        topic_code: str | None = None,
+        solicitation_number: str | None = None,
+    ) -> SolicitationData | None:
         """Look up solicitation metadata by topic code or solicitation number.
 
         Args:
@@ -177,7 +176,7 @@ class GrantsGovClient:
         response = self.client.get(endpoint, params=params)
         return response
 
-    def _parse_response(self, data: dict, query_id: str) -> Optional[SolicitationData]:
+    def _parse_response(self, data: dict, query_id: str) -> SolicitationData | None:
         """Parse API response into SolicitationData.
 
         Args:

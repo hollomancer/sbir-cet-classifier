@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Iterable, Literal
+from typing import Literal
 
 import spacy
 
@@ -28,7 +29,7 @@ def _truncate_to_word_limit(text: str, *, limit: int = 50) -> str:
 
 
 @lru_cache(maxsize=1)
-def _get_nlp() -> "spacy.language.Language":
+def _get_nlp() -> spacy.language.Language:
     model_name = load_config().spacy_model
     try:
         nlp = spacy.load(model_name)
@@ -70,4 +71,4 @@ def build_evidence_snippet(
     return EvidenceSnippet(excerpt=excerpt, source_location=source_location, rationale_tag=rationale_tag)
 
 
-__all__ = ["EvidenceSnippet", "build_evidence_snippet", "extract_evidence_sentences", "SourceLocation"]
+__all__ = ["EvidenceSnippet", "SourceLocation", "build_evidence_snippet", "extract_evidence_sentences"]

@@ -56,7 +56,7 @@ class CETArea(BaseModel):
     status: Literal["active", "retired"] = "active"
 
     @model_validator(mode="after")
-    def _validate_dates(self) -> "CETArea":
+    def _validate_dates(self) -> CETArea:
         if self.retired_date and self.retired_date < self.effective_date:
             raise ValidationError("retired_date must be >= effective_date")
         return self
@@ -94,7 +94,7 @@ class ApplicabilityAssessment(BaseModel):
     reviewer_notes: str | None = None
 
     @model_validator(mode="after")
-    def _validate_supporting(self) -> "ApplicabilityAssessment":
+    def _validate_supporting(self) -> ApplicabilityAssessment:
         if self.primary_cet_id in self.supporting_cet_ids:
             raise ValueError("supporting_cet_ids cannot include the primary_cet_id")
         if len(set(self.supporting_cet_ids)) != len(self.supporting_cet_ids):
@@ -118,7 +118,7 @@ class ReviewQueueItem(BaseModel):
     resolution_notes: str | None = None
 
     @model_validator(mode="after")
-    def _validate_dates(self) -> "ReviewQueueItem":
+    def _validate_dates(self) -> ReviewQueueItem:
         if self.resolved_at and self.resolved_at.date() < self.opened_at.date():
             raise ValueError("resolved_at cannot precede opened_at")
         return self

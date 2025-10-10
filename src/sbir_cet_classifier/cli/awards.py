@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 import typer
 
@@ -17,10 +16,10 @@ awards_app = typer.Typer(help="Award-level drill-down commands")
 def list_awards(
     fiscal_year_start: int = typer.Option(..., help="Start fiscal year"),
     fiscal_year_end: int = typer.Option(..., help="End fiscal year"),
-    agency: Optional[list[str]] = typer.Option(None, "--agency", help="Filter by agency"),
-    phase: Optional[list[str]] = typer.Option(None, "--phase", help="Filter by phase"),
-    cet_area: Optional[list[str]] = typer.Option(None, "--cet-area", help="Filter by CET area"),
-    state: Optional[str] = typer.Option(None, "--state", help="Filter by firm state"),
+    agency: list[str] | None = typer.Option(None, "--agency", help="Filter by agency"),
+    phase: list[str] | None = typer.Option(None, "--phase", help="Filter by phase"),
+    cet_area: list[str] | None = typer.Option(None, "--cet-area", help="Filter by CET area"),
+    state: str | None = typer.Option(None, "--state", help="Filter by firm state"),
     page: int = typer.Option(1, help="Page number"),
     page_size: int = typer.Option(25, help="Records per page"),
 ) -> None:
@@ -70,8 +69,8 @@ def show_cet_detail(
     cet_id: str = typer.Option(..., "--cet-id", help="CET ID to retrieve"),
     fiscal_year_start: int = typer.Option(..., help="Start fiscal year"),
     fiscal_year_end: int = typer.Option(..., help="End fiscal year"),
-    agency: Optional[list[str]] = typer.Option(None, "--agency", help="Filter by agency"),
-    phase: Optional[list[str]] = typer.Option(None, "--phase", help="Filter by phase"),
+    agency: list[str] | None = typer.Option(None, "--agency", help="Filter by agency"),
+    phase: list[str] | None = typer.Option(None, "--phase", help="Filter by phase"),
 ) -> None:
     """Show CET area detail with gap analytics."""
     try:

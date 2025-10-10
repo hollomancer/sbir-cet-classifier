@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Sequence
 
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
@@ -54,7 +54,7 @@ class ApplicabilityModel:
         self._is_fitted = False
         self._is_calibrated = False
 
-    def fit(self, examples: Sequence[TrainingExample]) -> "ApplicabilityModel":
+    def fit(self, examples: Sequence[TrainingExample]) -> ApplicabilityModel:
         texts = [example.text for example in examples]
         cet_labels = [example.primary_cet_id for example in examples]
         y = self._label_encoder.fit_transform(cet_labels)
@@ -85,7 +85,7 @@ class ApplicabilityModel:
         X = self._vectorizer.transform([text])
         probs = self._classifier.predict_proba(X)[0]  # type: ignore[call-arg]
         labels = self._label_encoder.inverse_transform(np.arange(len(probs)))
-        ranked = sorted(zip(labels, probs), key=lambda pair: pair[1], reverse=True)
+        ranked = sorted(zip(labels, probs, strict=False), key=lambda pair: pair[1], reverse=True)
         primary_cet_id, probability = ranked[0]
         score = float(probability * 100)
         supporting = [(cet, float(p * 100)) for cet, p in ranked[1:4]]
@@ -102,13 +102,13 @@ class ApplicabilityModel:
             raise RuntimeError("Model must be fitted before prediction")
         if self._classifier is None:  # pragma: no cover - defensive
             raise RuntimeError("Classifier unavailable; call fit first")
-        award_ids, texts = zip(*records)
+        award_ids, texts = zip(*records, strict=False)
         X = self._vectorizer.transform(texts)
         probs = self._classifier.predict_proba(X)  # type: ignore[call-arg]
         labels = self._label_encoder.inverse_transform(np.arange(probs.shape[1]))
         results: list[ApplicabilityScore] = []
-        for award_id, prob_vector in zip(award_ids, probs):
-            ranked = sorted(zip(labels, prob_vector), key=lambda pair: pair[1], reverse=True)
+        for award_id, prob_vector in zip(award_ids, probs, strict=False):
+            ranked = sorted(zip(labels, prob_vector, strict=False), key=lambda pair: pair[1], reverse=True)
             primary_cet_id, probability = ranked[0]
             score = float(probability * 100)
             supporting = [(cet, float(p * 100)) for cet, p in ranked[1:4]]
