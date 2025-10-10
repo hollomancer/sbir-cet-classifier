@@ -288,7 +288,7 @@ def main():
     csv_path = Path("award_data.csv")
     output_dir = Path("reports")
     limit = None  # Set to number to limit for testing, None for all
-    use_api = False  # Set to False to skip API calls (faster for large batches)
+    use_api = True  # Enable NIH API enrichment with enhanced fields
     
     # Load awards
     awards, load_result = load_nih_awards(csv_path, limit=limit)
