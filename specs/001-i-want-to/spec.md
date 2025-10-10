@@ -36,6 +36,7 @@
 - Q: What concurrency strategy should parallel processing use for large dataset ingestion? → A: Adaptive: start with sequential, scale to parallel only when batch size exceeds threshold (e.g., >10k records)
 - Q: What should the date parsing priority order be when multiple formats could match? → A: Liberal-parsing: accept any reasonable date interpretation using dateutil parser with dayfirst=False (US convention)
 - Q: What information should validation error reports include? → A: Standard: row number, field name, error type, original value, suggested fix, timestamp
+- Q: Should taxonomy definitions and classification parameters be externalized to YAML configuration files for easier updates without code changes? → A: Yes - externalize to three YAML files: `config/taxonomy.yaml` (21 CET categories with definitions, hierarchies, keywords), `config/classification.yaml` (model hyperparameters, scoring bands, stop words), and `config/enrichment.yaml` (topic code mappings, agency focus areas, phase keywords). Implement with Pydantic validation, maintain CSV fallback for backward compatibility, add `sbir validate-config` CLI command. Estimated effort: 8-10 hours over 1-2 days. Phased rollout: taxonomy first (highest value), then classification parameters, then enrichment mappings.
 
 ## User Scenarios & Testing *(mandatory)*
 
