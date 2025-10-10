@@ -179,7 +179,15 @@ class NIHClient:
 
         payload = {
             "criteria": criteria,
-            "include_fields": ["AbstractText", "ProjectTitle", "Terms", "ProjectNum"],
+            "include_fields": [
+                "AbstractText",
+                "ProjectTitle",
+                "Terms",
+                "ProjectNum",
+                "PhrText",  # Public health relevance
+                "PrefTerms",  # Preferred terms (comprehensive)
+                "SpendingCategoriesDesc",  # Research categories
+            ],
             "offset": 0,
             "limit": 1,
         }
@@ -213,24 +221,53 @@ class NIHClient:
             # Take first matching result
             project = results[0]
 
-            # Extract description - use abstract_text as primary source
+            # Extract description - combine abstract, PHR text, and spending categories
             abstract = project.get("abstract_text", "")
             title = project.get("project_title", "")
+            phr_text = project.get("phr_text", "")
+            spending_cats = project.get("spending_categories_desc", "")
             
-            # Use abstract if available, otherwise title
-            description = abstract if abstract else title
+            # Build comprehensive description
+            description_parts = []
+            if abstract:
+                description_parts.append(abstract)
+            elif title:
+                description_parts.append(title)
+            
+            if phr_text:
+                description_parts.append(phr_text)
+            
+            if spending_cats:
+                description_parts.append(f"Research Categories: {spending_cats}")
+            
+            description = " ".join(description_parts)
             
             if not description:
                 logger.warning("No description in NIH response", extra={"query_id": query_id})
                 return None
 
-            # Extract MeSH terms as keywords
-            terms = project.get("terms", "")
+            # Extract keywords from multiple sources
             keywords = []
+            
+            # 1. MeSH terms (original source)
+            terms = project.get("terms", "")
             if terms:
                 # Terms are angle-bracket delimited
-                keywords = [term.strip() for term in terms.replace("><", "|").strip("<>").split("|") if term.strip()]
-                keywords = keywords[:10]  # Top 10 terms
+                mesh_terms = [term.strip() for term in terms.replace("><", "|").strip("<>").split("|") if term.strip()]
+                keywords.extend(mesh_terms[:10])
+            
+            # 2. Preferred terms (comprehensive, curated)
+            pref_terms = project.get("pref_terms", "")
+            if pref_terms:
+                # Preferred terms are semicolon-delimited
+                pref_list = [term.strip() for term in pref_terms.split(";") if term.strip()]
+                # Add top 20 preferred terms (avoiding duplicates)
+                for term in pref_list[:20]:
+                    if term not in keywords:
+                        keywords.append(term)
+            
+            # Limit total keywords to 30 for performance
+            keywords = keywords[:30]
 
             return SolicitationData(
                 solicitation_id=project.get("project_num", query_id),
