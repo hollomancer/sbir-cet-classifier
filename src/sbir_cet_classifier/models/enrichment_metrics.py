@@ -36,7 +36,7 @@ class APISourceMetrics:
     """Per-API-source enrichment metrics."""
 
     api_source: str
-    """API source identifier (grants.gov, nih, nsf)."""
+    """API source identifier (grants.gov, nih)."""
 
     cache_hits: int = 0
     """Number of cache hits for this API source."""
@@ -211,7 +211,7 @@ class EnrichmentMetrics:
         """Record a cache hit for the specified API source.
 
         Args:
-            api_source: API source identifier (grants.gov, nih, nsf)
+            api_source: API source identifier (grants.gov, nih)
         """
         metrics = self._get_or_create_api_metrics(api_source)
         metrics.cache_hits += 1
@@ -225,7 +225,7 @@ class EnrichmentMetrics:
         """Record a cache miss for the specified API source.
 
         Args:
-            api_source: API source identifier (grants.gov, nih, nsf)
+            api_source: API source identifier (grants.gov, nih)
         """
         metrics = self._get_or_create_api_metrics(api_source)
         metrics.cache_misses += 1
@@ -245,7 +245,7 @@ class EnrichmentMetrics:
         """Record an API call with latency and outcome.
 
         Args:
-            api_source: API source identifier (grants.gov, nih, nsf)
+            api_source: API source identifier (grants.gov, nih)
             latency_ms: API call latency in milliseconds
             success: Whether API call succeeded (True) or failed (False)
         """

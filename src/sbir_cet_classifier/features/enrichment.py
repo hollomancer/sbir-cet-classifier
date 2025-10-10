@@ -1,7 +1,7 @@
 """Lazy enrichment orchestrator for solicitation metadata.
 
 This module coordinates on-demand enrichment of SBIR awards with solicitation
-metadata from external APIs (Grants.gov, NIH, NSF). Enrichment is triggered
+metadata from external APIs (Grants.gov, NIH). Enrichment is triggered
 when awards are first accessed for classification, viewing, or export.
 
 The orchestrator checks the SQLite cache before querying APIs, handles missing
@@ -31,7 +31,6 @@ from pathlib import Path
 from sbir_cet_classifier.common.schemas import Award
 from sbir_cet_classifier.data.external.grants_gov import GrantsGovAPIError, GrantsGovClient
 from sbir_cet_classifier.data.external.nih import NIHAPIError, NIHClient
-from sbir_cet_classifier.data.external.nsf import NSFAPIError, NSFClient
 from sbir_cet_classifier.data.solicitation_cache import SolicitationCache
 from sbir_cet_classifier.models.enrichment_metrics import EnrichmentMetrics
 
@@ -45,7 +44,6 @@ AGENCY_TO_API_SOURCE = {
     "ARMY": "grants.gov",
     "AIR FORCE": "grants.gov",
     "NIH": "nih",  # National Institutes of Health has dedicated API
-    "NSF": "nsf",  # National Science Foundation has dedicated API
     "NASA": "grants.gov",  # NASA typically uses Grants.gov
     "DOE": "grants.gov",  # Department of Energy typically uses Grants.gov
     "DHS": "grants.gov",  # Department of Homeland Security
@@ -71,7 +69,7 @@ class EnrichedAward:
     """Solicitation technical keywords if enriched."""
 
     api_source: str | None = None
-    """API source used for enrichment (grants.gov, nih, nsf)."""
+    """API source used for enrichment (grants.gov, nih)."""
 
     retrieved_at: datetime | None = None
     """Timestamp when solicitation was retrieved."""
@@ -97,7 +95,6 @@ class EnrichmentOrchestrator:
         metrics: Enrichment telemetry tracker
         grants_gov_client: Grants.gov API client
         nih_client: NIH API client
-        nsf_client: NSF API client
     """
 
     def __init__(
@@ -118,7 +115,6 @@ class EnrichmentOrchestrator:
         # Initialize API clients (lazy loading)
         self.grants_gov_client: GrantsGovClient | None = None
         self.nih_client: NIHClient | None = None
-        self.nsf_client: NSFClient | None = None
 
         logger.info("Initialized enrichment orchestrator")
 
@@ -138,8 +134,6 @@ class EnrichmentOrchestrator:
             self.grants_gov_client.close()
         if self.nih_client:
             self.nih_client.close()
-        if self.nsf_client:
-            self.nsf_client.close()
 
         logger.debug("Closed enrichment orchestrator")
 
@@ -273,7 +267,7 @@ class EnrichmentOrchestrator:
             award: Award record
 
         Returns:
-            API source identifier (grants.gov, nih, nsf) or None
+            API source identifier (grants.gov, nih) or None
         """
         # Normalize agency code
         agency_upper = award.agency.upper().strip()
@@ -327,7 +321,7 @@ class EnrichmentOrchestrator:
         """Fetch solicitation from appropriate API.
 
         Args:
-            api_source: API source identifier (grants.gov, nih, nsf)
+            api_source: API source identifier (grants.gov, nih)
             solicitation_id: Solicitation identifier
             award: Award record (for additional context)
 
@@ -343,8 +337,6 @@ class EnrichmentOrchestrator:
                 result = self._fetch_from_grants_gov(solicitation_id)
             elif api_source == "nih":
                 result = self._fetch_from_nih(solicitation_id)
-            elif api_source == "nsf":
-                result = self._fetch_from_nsf(solicitation_id)
             else:
                 logger.warning("Unknown API source", extra={"api_source": api_source})
 
@@ -387,17 +379,6 @@ class EnrichmentOrchestrator:
             return self.nih_client.lookup_solicitation(funding_opportunity=solicitation_id)
         except NIHAPIError as e:
             logger.warning("NIH API error", extra={"error": str(e)})
-            return None
-
-    def _fetch_from_nsf(self, solicitation_id: str) -> object | None:
-        """Fetch solicitation from NSF API."""
-        if not self.nsf_client:
-            self.nsf_client = NSFClient()
-
-        try:
-            return self.nsf_client.lookup_solicitation(program_element=solicitation_id)
-        except NSFAPIError as e:
-            logger.warning("NSF API error", extra={"error": str(e)})
             return None
 
     def flush_metrics(self) -> Path:

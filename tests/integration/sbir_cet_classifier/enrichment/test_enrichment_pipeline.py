@@ -19,7 +19,6 @@ import pytest
 from sbir_cet_classifier.common.schemas import Award
 from sbir_cet_classifier.data.external.grants_gov import SolicitationData as GrantsSolicitation
 from sbir_cet_classifier.data.external.nih import SolicitationData as NIHSolicitation
-from sbir_cet_classifier.data.external.nsf import SolicitationData as NSFSolicitation
 from sbir_cet_classifier.data.solicitation_cache import SolicitationCache
 from sbir_cet_classifier.features.batch_enrichment import BatchEnrichmentOptimizer
 from sbir_cet_classifier.features.enrichment import EnrichmentOrchestrator
@@ -79,21 +78,6 @@ def sample_awards() -> list[Award]:
             source_version="test",
             ingested_at=datetime.now(UTC),
         ),
-        Award(
-            award_id="NSF-001",
-            agency="NSF",
-            topic_code="1505",
-            abstract="Sustainable energy solutions for rural communities",
-            keywords=["energy", "sustainability", "renewable"],
-            phase="I",
-            firm_name="GreenEnergy",
-            firm_city="Austin",
-            firm_state="TX",
-            award_amount=225000.0,
-            award_date=datetime(2024, 3, 20).date(),
-            source_version="test",
-            ingested_at=datetime.now(UTC),
-        ),
     ]
 
 
@@ -112,12 +96,6 @@ def mock_api_responses() -> dict[str, object | None]:
             description="NIH SBIR: Cancer Immunotherapy Research",
             technical_keywords=["cancer", "immunotherapy", "oncology", "biomedical"],
             api_source="nih",
-        ),
-        "1505": NSFSolicitation(
-            solicitation_id="1505",
-            description="NSF SBIR: Sustainable Energy Technologies",
-            technical_keywords=["renewable energy", "sustainability", "green technology"],
-            api_source="nsf",
         ),
     }
 
@@ -261,16 +239,16 @@ class TestEnrichmentPipelineEndToEnd:
                 ingested_at=datetime.now(UTC),
             ),
             Award(
-                award_id="NSF-001",
-                agency="NSF",
-                topic_code="1505",
-                abstract="Energy research",
-                keywords=["energy"],
+                award_id="DOD-004",
+                agency="DOD",
+                topic_code="AF241-001",  # Same as first 3 DOD awards
+                abstract="More AI research",
+                keywords=["AI"],
                 phase="I",
-                firm_name="GreenEnergy",
+                firm_name="TechCorp4",
                 firm_city="Austin",
                 firm_state="TX",
-                award_amount=225000.0,
+                award_amount=150000.0,
                 award_date=datetime(2024, 3, 20).date(),
                 source_version="test",
                 ingested_at=datetime.now(UTC),
@@ -278,13 +256,11 @@ class TestEnrichmentPipelineEndToEnd:
         ])
 
         with patch("sbir_cet_classifier.features.enrichment.GrantsGovClient") as mock_grants, \
-             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih, \
-             patch("sbir_cet_classifier.features.enrichment.NSFClient") as mock_nsf:
+             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
 
             # Mock all API clients
             mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
             mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
-            mock_nsf.return_value.lookup_solicitation.return_value = mock_api_responses["1505"]
 
             # Create batch optimizer
             metrics = EnrichmentMetrics(artifacts_dir=temp_artifacts_dir)
@@ -296,15 +272,15 @@ class TestEnrichmentPipelineEndToEnd:
             # Verify all awards enriched
             assert len(enriched_awards) == 5
 
-            # Verify deduplication - only 3 unique solicitations
+            # Verify deduplication - only 2 unique solicitations
             stats = optimizer.get_stats()
             assert stats.total_awards == 5
-            assert stats.unique_solicitations == 3
-            assert stats.deduplication_ratio == 3 / 5  # 60% unique
+            assert stats.unique_solicitations == 2
+            assert stats.deduplication_ratio == 2 / 5  # 40% unique
 
             # Verify all DOD awards have same solicitation data
             dod_awards = [ea for ea in enriched_awards if ea.award.award_id.startswith("DOD")]
-            assert len(dod_awards) == 3
+            assert len(dod_awards) == 4
             for enriched in dod_awards:
                 assert enriched.enrichment_status == "enriched"
                 assert "Artificial Intelligence for Defense" in enriched.solicitation_description
@@ -394,13 +370,11 @@ class TestEnrichmentPipelineEndToEnd:
     ) -> None:
         """Test enrichment across multiple agencies using different APIs."""
         with patch("sbir_cet_classifier.features.enrichment.GrantsGovClient") as mock_grants, \
-             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih, \
-             patch("sbir_cet_classifier.features.enrichment.NSFClient") as mock_nsf:
+             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
 
             # Mock all API clients
             mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
             mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
-            mock_nsf.return_value.lookup_solicitation.return_value = mock_api_responses["1505"]
 
             # Create orchestrator
             metrics = EnrichmentMetrics(artifacts_dir=temp_artifacts_dir)
@@ -409,22 +383,20 @@ class TestEnrichmentPipelineEndToEnd:
                 metrics=metrics,
             )
 
-            # Enrich all awards (DOD, NIH, NSF)
+            # Enrich all awards (DOD, NIH)
             enriched_awards = [orchestrator.enrich_award(award) for award in sample_awards]
 
             # Verify all enriched successfully
-            assert len(enriched_awards) == 3
+            assert len(enriched_awards) == 2
             assert all(ea.enrichment_status == "enriched" for ea in enriched_awards)
 
             # Verify correct API source used for each agency
             assert enriched_awards[0].api_source == "grants.gov"  # DOD
             assert enriched_awards[1].api_source == "nih"  # NIH
-            assert enriched_awards[2].api_source == "nsf"  # NSF
 
             # Verify content specific to each agency
             assert "Defense" in enriched_awards[0].solicitation_description
             assert "Cancer" in enriched_awards[1].solicitation_description
-            assert "Energy" in enriched_awards[2].solicitation_description
 
             orchestrator.close()
 
@@ -437,13 +409,11 @@ class TestEnrichmentPipelineEndToEnd:
     ) -> None:
         """Test that enrichment metrics are properly tracked and persisted."""
         with patch("sbir_cet_classifier.features.enrichment.GrantsGovClient") as mock_grants, \
-             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih, \
-             patch("sbir_cet_classifier.features.enrichment.NSFClient") as mock_nsf:
+             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
 
             # Mock API clients with slight delays
             mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
             mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
-            mock_nsf.return_value.lookup_solicitation.return_value = mock_api_responses["1505"]
 
             # Create orchestrator
             metrics = EnrichmentMetrics(artifacts_dir=temp_artifacts_dir)
@@ -464,21 +434,20 @@ class TestEnrichmentPipelineEndToEnd:
             summary = metrics.get_summary()
 
             # Verify metrics captured
-            assert summary["total_awards_processed"] == 6  # 3 awards x 2 passes
-            assert summary["awards_enriched"] == 6
+            assert summary["total_awards_processed"] == 4  # 2 awards x 2 passes
+            assert summary["awards_enriched"] == 4
 
             # Verify per-API metrics
             api_sources = summary["api_sources"]
             assert "grants.gov" in api_sources
             assert "nih" in api_sources
-            assert "nsf" in api_sources
 
             # Verify cache hit tracking
-            # First pass: 3 cache misses, Second pass: 3 cache hits
+            # First pass: 2 cache misses, Second pass: 2 cache hits
             total_hits = sum(src["cache_hits"] for src in api_sources.values())
             total_misses = sum(src["cache_misses"] for src in api_sources.values())
-            assert total_hits == 3
-            assert total_misses == 3
+            assert total_hits == 2
+            assert total_misses == 2
 
             # Flush metrics to file
             metrics_file = orchestrator.flush_metrics()
@@ -569,12 +538,10 @@ class TestEnrichmentCacheOperations:
     ) -> None:
         """Test cache statistics tracking."""
         with patch("sbir_cet_classifier.features.enrichment.GrantsGovClient") as mock_grants, \
-             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih, \
-             patch("sbir_cet_classifier.features.enrichment.NSFClient") as mock_nsf:
+             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
 
             mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
             mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
-            mock_nsf.return_value.lookup_solicitation.return_value = mock_api_responses["1505"]
 
             metrics = EnrichmentMetrics(artifacts_dir=temp_artifacts_dir)
             orchestrator = EnrichmentOrchestrator(
@@ -592,9 +559,8 @@ class TestEnrichmentCacheOperations:
             cache = SolicitationCache(temp_cache_path)
             stats = cache.get_cache_stats()
 
-            assert stats["total_entries"] == 3
+            assert stats["total_entries"] == 2
             assert stats["by_api_source"]["grants.gov"] == 1
             assert stats["by_api_source"]["nih"] == 1
-            assert stats["by_api_source"]["nsf"] == 1
 
             cache.close()

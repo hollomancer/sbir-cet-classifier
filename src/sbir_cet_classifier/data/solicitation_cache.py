@@ -1,7 +1,7 @@
 """SQLite-based solicitation cache for API enrichment.
 
 This module provides persistent caching of solicitation metadata retrieved
-from external APIs (Grants.gov, NIH, NSF). Solicitations are cached permanently
+from external APIs (Grants.gov, NIH). Solicitations are cached permanently
 unless explicitly invalidated by operators.
 
 The cache is keyed by (API source, solicitation identifier) with indexed lookups
@@ -64,7 +64,7 @@ class CachedSolicitation:
     """Represents a cached solicitation entry."""
 
     api_source: str
-    """API source identifier (grants.gov, nih, nsf)."""
+    """API source identifier (grants.gov, nih)."""
 
     solicitation_id: str
     """Solicitation identifier used in the query."""
@@ -143,7 +143,7 @@ class SolicitationCache:
         """Retrieve solicitation from cache.
 
         Args:
-            api_source: API source identifier (grants.gov, nih, nsf)
+            api_source: API source identifier (grants.gov, nih)
             solicitation_id: Solicitation identifier
 
         Returns:
@@ -207,7 +207,7 @@ class SolicitationCache:
         """Store solicitation in cache.
 
         Args:
-            api_source: API source identifier (grants.gov, nih, nsf)
+            api_source: API source identifier (grants.gov, nih)
             solicitation_id: Solicitation identifier
             description: Solicitation description text
             technical_keywords: Technical topic keywords
@@ -261,7 +261,7 @@ class SolicitationCache:
         """Purge all cache entries for a specific API source.
 
         Args:
-            api_source: API source identifier to purge (grants.gov, nih, nsf)
+            api_source: API source identifier to purge (grants.gov, nih)
 
         Returns:
             Number of entries purged

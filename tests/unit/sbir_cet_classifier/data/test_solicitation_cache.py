@@ -157,19 +157,15 @@ class TestCacheByAPISource:
 
         cache.put("grants.gov", "12345", "Grants.gov description", ["keyword1"])
         cache.put("nih", "12345", "NIH description", ["keyword2"])
-        cache.put("nsf", "12345", "NSF description", ["keyword3"])
 
         grants_result = cache.get("grants.gov", "12345")
         nih_result = cache.get("nih", "12345")
-        nsf_result = cache.get("nsf", "12345")
 
         assert grants_result is not None
         assert nih_result is not None
-        assert nsf_result is not None
 
         assert grants_result.description == "Grants.gov description"
         assert nih_result.description == "NIH description"
-        assert nsf_result.description == "NSF description"
 
         cache.close()
 
@@ -185,7 +181,6 @@ class TestPurgeOperations:
         cache.put("grants.gov", "SOL-001", "Grants 1", ["kw1"])
         cache.put("grants.gov", "SOL-002", "Grants 2", ["kw2"])
         cache.put("nih", "SOL-003", "NIH 1", ["kw3"])
-        cache.put("nsf", "SOL-004", "NSF 1", ["kw4"])
 
         # Purge grants.gov entries
         purged_count = cache.purge_by_api_source("grants.gov")
@@ -198,7 +193,6 @@ class TestPurgeOperations:
 
         # Verify other sources still exist
         assert cache.get("nih", "SOL-003") is not None
-        assert cache.get("nsf", "SOL-004") is not None
 
         cache.close()
 
@@ -209,7 +203,7 @@ class TestPurgeOperations:
         # Add same solicitation ID across multiple sources
         cache.put("grants.gov", "SOL-001", "Grants description", ["kw1"])
         cache.put("nih", "SOL-001", "NIH description", ["kw2"])
-        cache.put("nsf", "SOL-002", "NSF description", ["kw3"])
+        cache.put("nih", "SOL-002", "NIH description 2", ["kw3"])
 
         # Purge SOL-001 across all sources
         purged_count = cache.purge_by_solicitation_id("SOL-001")
@@ -221,7 +215,7 @@ class TestPurgeOperations:
         assert cache.get("nih", "SOL-001") is None
 
         # Verify SOL-002 still exists
-        assert cache.get("nsf", "SOL-002") is not None
+        assert cache.get("nih", "SOL-002") is not None
 
         cache.close()
 
@@ -328,15 +322,12 @@ class TestCacheStats:
         cache.put("grants.gov", "SOL-001", "Description 1", ["kw1"])
         cache.put("grants.gov", "SOL-002", "Description 2", ["kw2"])
         cache.put("nih", "SOL-003", "Description 3", ["kw3"])
-        cache.put("nsf", "SOL-004", "Description 4", ["kw4"])
-        cache.put("nsf", "SOL-005", "Description 5", ["kw5"])
 
         stats = cache.get_cache_stats()
 
-        assert stats["total_entries"] == 5
+        assert stats["total_entries"] == 3
         assert stats["by_api_source"]["grants.gov"] == 2
         assert stats["by_api_source"]["nih"] == 1
-        assert stats["by_api_source"]["nsf"] == 2
         assert stats["oldest_entry"] is not None
         assert stats["newest_entry"] is not None
 
