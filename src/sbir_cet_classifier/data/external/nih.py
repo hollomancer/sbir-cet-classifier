@@ -94,39 +94,50 @@ class NIHClient:
         *,
         funding_opportunity: str | None = None,
         solicitation_id: str | None = None,
+        project_number: str | None = None,
     ) -> SolicitationData | None:
-        """Look up solicitation metadata by FOA or solicitation ID.
+        """Look up solicitation metadata by FOA, solicitation ID, or project number.
 
         Args:
             funding_opportunity: NIH FOA number (e.g., "PA-23-123", "RFA-CA-23-001")
             solicitation_id: Alternative solicitation identifier
+            project_number: NIH project number (e.g., "4R44DE031461-02")
 
         Returns:
             SolicitationData if found, None if not found or on timeout
 
         Raises:
             NIHAPIError: For API errors other than 404/timeout
-            ValueError: If neither funding_opportunity nor solicitation_id provided
+            ValueError: If no identifier provided
 
         Example:
             >>> client = NIHClient()
+            >>> result = client.lookup_solicitation(project_number="4R44DE031461-02")
+            >>> if result:
+            ...     print(result.description)
             >>> result = client.lookup_solicitation(funding_opportunity="PA-23-123")
             >>> if result:
             ...     print(result.description)
         """
-        if not funding_opportunity and not solicitation_id:
-            raise ValueError("Must provide either funding_opportunity or solicitation_id")
+        if not funding_opportunity and not solicitation_id and not project_number:
+            raise ValueError("Must provide funding_opportunity, solicitation_id, or project_number")
 
-        query_id = funding_opportunity or solicitation_id
+        query_id = funding_opportunity or solicitation_id or project_number
+        search_type = "project" if project_number else "foa"
         assert query_id is not None  # For type checker
 
         logger.debug(
             "Looking up NIH solicitation",
-            extra={"funding_opportunity": funding_opportunity, "solicitation_id": solicitation_id},
+            extra={
+                "funding_opportunity": funding_opportunity,
+                "solicitation_id": solicitation_id,
+                "project_number": project_number,
+                "search_type": search_type,
+            },
         )
 
         try:
-            response = self._make_request(query_id)
+            response = self._make_request(query_id, search_type)
 
             if response.status_code == 404:
                 logger.info("Solicitation not found in NIH", extra={"query_id": query_id})
@@ -145,11 +156,12 @@ class NIHClient:
             logger.error("NIH API HTTP error", extra={"query_id": query_id, "error": str(e)})
             raise NIHAPIError(f"HTTP error querying NIH: {e}") from e
 
-    def _make_request(self, query_id: str) -> httpx.Response:
+    def _make_request(self, query_id: str, search_type: str = "foa") -> httpx.Response:
         """Make HTTP request to NIH Reporter API.
 
         Args:
-            query_id: Funding opportunity or solicitation identifier
+            query_id: Funding opportunity, solicitation, or project identifier
+            search_type: "foa" for funding opportunity or "project" for project number
 
         Returns:
             HTTP response object
@@ -157,16 +169,17 @@ class NIHClient:
         Raises:
             httpx.HTTPError: For network/HTTP errors
         """
-        # NIH Reporter API endpoint structure
-        # The actual endpoint depends on whether we're searching projects or FOAs
-        # For solicitations/FOAs, we'd use a different endpoint than project data
         endpoint = f"{self.base_url}/projects/search"
 
-        # Search criteria for NIH Reporter API
+        # Build search criteria based on type
+        if search_type == "project":
+            criteria = {"project_nums": [query_id]}
+        else:
+            criteria = {"foa": [query_id]}
+
         payload = {
-            "criteria": {
-                "foa": [query_id],  # Funding opportunity announcement number
-            },
+            "criteria": criteria,
+            "include_fields": ["AbstractText", "ProjectTitle", "Terms", "ProjectNum"],
             "offset": 0,
             "limit": 1,
         }
@@ -200,30 +213,27 @@ class NIHClient:
             # Take first matching result
             project = results[0]
 
-            # Extract description from various fields
-            description_fields = [
-                "project_title",
-                "abstract_text",
-                "phr_text",  # Public health relevance
-            ]
-
-            description_parts = []
-            for field in description_fields:
-                value = project.get(field)
-                if value and isinstance(value, str):
-                    description_parts.append(value.strip())
-
-            if not description_parts:
+            # Extract description - use abstract_text as primary source
+            abstract = project.get("abstract_text", "")
+            title = project.get("project_title", "")
+            
+            # Use abstract if available, otherwise title
+            description = abstract if abstract else title
+            
+            if not description:
                 logger.warning("No description in NIH response", extra={"query_id": query_id})
                 return None
 
-            description = " ".join(description_parts)
-
-            # Extract keywords
-            keywords = self._extract_keywords(project)
+            # Extract MeSH terms as keywords
+            terms = project.get("terms", "")
+            keywords = []
+            if terms:
+                # Terms are angle-bracket delimited
+                keywords = [term.strip() for term in terms.replace("><", "|").strip("<>").split("|") if term.strip()]
+                keywords = keywords[:10]  # Top 10 terms
 
             return SolicitationData(
-                solicitation_id=query_id,
+                solicitation_id=project.get("project_num", query_id),
                 description=description,
                 technical_keywords=keywords,
                 api_source="nih",
