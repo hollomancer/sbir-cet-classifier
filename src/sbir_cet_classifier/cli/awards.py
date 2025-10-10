@@ -15,14 +15,16 @@ awards_app = typer.Typer(help="Award-level drill-down commands")
 
 @awards_app.command("list")
 def list_awards(
-    fiscal_year_start: int = typer.Option(..., help="Start fiscal year"),
-    fiscal_year_end: int = typer.Option(..., help="End fiscal year"),
-    agency: list[str] | None = typer.Option(None, "--agency", help="Filter by agency"),
-    phase: list[str] | None = typer.Option(None, "--phase", help="Filter by phase"),
-    cet_area: list[str] | None = typer.Option(None, "--cet-area", help="Filter by CET area"),
-    state: str | None = typer.Option(None, "--state", help="Filter by firm state"),
-    page: int = typer.Option(1, help="Page number"),
-    page_size: int = typer.Option(25, help="Records per page"),
+    fiscal_year_start: Annotated[int, typer.Option(help="Start fiscal year")],
+    fiscal_year_end: Annotated[int, typer.Option(help="End fiscal year")],
+    agency: Annotated[list[str] | None, typer.Option("--agency", help="Filter by agency")] = None,
+    phase: Annotated[list[str] | None, typer.Option("--phase", help="Filter by phase")] = None,
+    cet_area: Annotated[
+        list[str] | None, typer.Option("--cet-area", help="Filter by CET area")
+    ] = None,
+    state: Annotated[str | None, typer.Option("--state", help="Filter by firm state")] = None,
+    page: Annotated[int, typer.Option(help="Page number")] = 1,
+    page_size: Annotated[int, typer.Option(help="Records per page")] = 25,
 ) -> None:
     """List awards with CET applicability details."""
     try:
@@ -48,7 +50,7 @@ def list_awards(
 
 @awards_app.command("show")
 def show_award_detail(
-    award_id: str = typer.Option(..., "--award-id", help="Award ID to retrieve"),
+    award_id: Annotated[str, typer.Option("--award-id", help="Award ID to retrieve")],
 ) -> None:
     """Show detailed award information with assessment history."""
     try:
@@ -67,11 +69,11 @@ def show_award_detail(
 
 @awards_app.command("cet-detail")
 def show_cet_detail(
-    cet_id: str = typer.Option(..., "--cet-id", help="CET ID to retrieve"),
-    fiscal_year_start: int = typer.Option(..., help="Start fiscal year"),
-    fiscal_year_end: int = typer.Option(..., help="End fiscal year"),
-    agency: list[str] | None = typer.Option(None, "--agency", help="Filter by agency"),
-    phase: list[str] | None = typer.Option(None, "--phase", help="Filter by phase"),
+    cet_id: Annotated[str, typer.Option("--cet-id", help="CET ID to retrieve")],
+    fiscal_year_start: Annotated[int, typer.Option(help="Start fiscal year")],
+    fiscal_year_end: Annotated[int, typer.Option(help="End fiscal year")],
+    agency: Annotated[list[str] | None, typer.Option("--agency", help="Filter by agency")] = None,
+    phase: Annotated[list[str] | None, typer.Option("--phase", help="Filter by phase")] = None,
 ) -> None:
     """Show CET area detail with gap analytics."""
     try:
