@@ -1,0 +1,105 @@
+{
+  "metadata": {
+    "timestamp": "2025-10-10T16:14:39.856736",
+    "total_awards": 47050,
+    "classification_time_seconds": 314.49255871772766,
+    "throughput_awards_per_second": 149.6060835011033
+  },
+  "enrichment": {
+    "cache_hits": 0,
+    "api_calls": 0,
+    "api_success": 0,
+    "fallback": 47050,
+    "total_enrichment_chars": 3811077
+  },
+  "classification_distribution": {
+    "High": 183,
+    "Medium": 42582,
+    "Low": 4285
+  },
+  "cet_distribution": {
+    "biotechnology": 26577,
+    "medical_devices": 20288,
+    "artificial_intelligence": 173,
+    "data_analytics": 11,
+    "advanced_materials": 1
+  },
+  "score_statistics": {
+    "mean": 47.205177986105426,
+    "median": 45.50620886719697,
+    "std": 7.255883204129206,
+    "min": 28.233667182747844,
+    "max": 96.79820926416488
+  },
+  "funding_by_cet": {
+    "medical_devices": 11416731416.46,
+    "biotechnology": 10956313698.1,
+    "artificial_intelligence": 88136413.0,
+    "data_analytics": 7872405.0,
+    "advanced_materials": 295689.0
+  },
+  "phase_distribution": {
+    "Other": 47050
+  },
+  "year_distribution": {
+    "1983": 140,
+    "1984": 288,
+    "1985": 514,
+    "1986": 536,
+    "1987": 491,
+    "1988": 487,
+    "1989": 592,
+    "1990": 636,
+    "1991": 703,
+    "1992": 805,
+    "1993": 924,
+    "1994": 756,
+    "1995": 915,
+    "1996": 753,
+    "1997": 1080,
+    "1998": 1051,
+    "1999": 1272,
+    "2000": 1350,
+    "2001": 1424,
+    "2002": 1438,
+    "2003": 1619,
+    "2004": 1992,
+    "2005": 1653,
+    "2006": 1544,
+    "2007": 1300,
+    "2008": 1400,
+    "2009": 1300,
+    "2010": 1311,
+    "2011": 1122,
+    "2012": 1280,
+    "2013": 1075,
+    "2014": 1394,
+    "2015": 1191,
+    "2016": 1369,
+    "2017": 1427,
+    "2018": 1565,
+    "2019": 1637,
+    "2020": 1390,
+    "2021": 1346,
+    "2022": 1380,
+    "2023": 1398,
+    "2024": 1202
+  },
+  "state_distribution": {
+    "CA": 9220,
+    "MA": 5986,
+    "MD": 2922,
+    "NY": 2334,
+    "NC": 2080,
+    "TX": 1904,
+    "PA": 1885,
+    "WA": 1581,
+    "VA": 1328,
+    "OH": 1173
+  },
+  "data_quality": {
+    "has_abstract": 46907,
+    "has_solicitation": 26074,
+    "avg_text_length": 1993.2431668437832
+  }
+}
