@@ -32,12 +32,12 @@ def get_awards_service() -> AwardsService:
 def list_awards(
     fiscal_year_start: Annotated[int, Query(...)],
     fiscal_year_end: Annotated[int, Query(...)],
-    agencies: Annotated[list[str] | None, Query(default=None)] = None,
-    phases: Annotated[list[str] | None, Query(default=None)] = None,
-    cet_areas: Annotated[list[str] | None, Query(default=None, alias="cetAreas")] = None,
-    location_state: Annotated[str | None, Query(default=None, alias="locationState")] = None,
-    page: Annotated[int, Query(default=1, ge=1)] = 1,
-    page_size: Annotated[int, Query(default=25, ge=10, le=200, alias="pageSize")] = 25,
+    agencies: Annotated[list[str] | None, Query()] = None,
+    phases: Annotated[list[str] | None, Query()] = None,
+    cet_areas: Annotated[list[str] | None, Query(alias="cetAreas")] = None,
+    location_state: Annotated[str | None, Query(alias="locationState")] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=10, le=200, alias="pageSize")] = 25,
 ) -> dict:
     """List awards with applicability details."""
     service = get_awards_service()
@@ -77,8 +77,8 @@ def get_cet_detail(
     cet_id: str,
     fiscal_year_start: Annotated[int, Query(...)],
     fiscal_year_end: Annotated[int, Query(...)],
-    agencies: Annotated[list[str] | None, Query(default=None)] = None,
-    phases: Annotated[list[str] | None, Query(default=None)] = None,
+    agencies: Annotated[list[str] | None, Query()] = None,
+    phases: Annotated[list[str] | None, Query()] = None,
 ) -> dict:
     """Get CET area detail with gap analytics."""
     service = get_awards_service()

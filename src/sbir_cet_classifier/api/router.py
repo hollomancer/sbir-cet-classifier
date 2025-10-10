@@ -65,10 +65,10 @@ def get_summary(
     fiscal_year_start: int,
     fiscal_year_end: int,
     service: Annotated[SummaryService, Depends(get_summary_service)],
-    agency: Annotated[list[str] | None, Query(default=None)] = None,
-    phases: Annotated[list[str] | None, Query(default=None)] = None,
-    cet_area: Annotated[list[str] | None, Query(default=None)] = None,
-    location_state: Annotated[list[str] | None, Query(default=None)] = None,
+    agency: Annotated[list[str] | None, Query()] = None,
+    phases: Annotated[list[str] | None, Query()] = None,
+    cet_area: Annotated[list[str] | None, Query()] = None,
+    location_state: Annotated[list[str] | None, Query()] = None,
 ) -> dict:
     filters = SummaryFilters(
         fiscal_year_start=fiscal_year_start,

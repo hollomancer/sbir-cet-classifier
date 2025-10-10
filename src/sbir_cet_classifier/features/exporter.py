@@ -163,33 +163,46 @@ class ExportOrchestrator:
         include_review_queue: bool,
     ) -> Path:
         """Generate the actual export file."""
-        # Merge awards with latest assessments
-        latest_assessments = (
-            assessments_df.sort_values("assessed_at")
-            .drop_duplicates("award_id", keep="last")
-        )
+        # Handle empty dataframes
+        if awards_df.empty:
+            export_df = pd.DataFrame()
+            controlled_count = 0
+        else:
+            # Merge awards with latest assessments
+            if not assessments_df.empty and "assessed_at" in assessments_df.columns:
+                latest_assessments = (
+                    assessments_df.sort_values("assessed_at")
+                    .drop_duplicates("award_id", keep="last")
+                )
+                merged = awards_df.merge(
+                    latest_assessments,
+                    on="award_id",
+                    how="left",
+                    suffixes=("", "_assessment"),
+                )
+            else:
+                merged = awards_df
 
-        merged = awards_df.merge(
-            latest_assessments,
-            on="award_id",
-            how="left",
-            suffixes=("", "_assessment"),
-        )
+            # Exclude controlled awards from line-level output
+            controlled_count = merged["is_export_controlled"].sum() if "is_export_controlled" in merged.columns else 0
+            export_df = merged[~merged.get("is_export_controlled", False)]
 
-        # Exclude controlled awards from line-level output
-        controlled_count = merged["is_export_controlled"].sum() if "is_export_controlled" in merged.columns else 0
-        export_df = merged[~merged.get("is_export_controlled", False)]
-
-        # Add normalized CET weights (0-1, summing to 1 per award)
-        export_df = self._add_cet_weights(export_df, taxonomy_df)
+            # Add normalized CET weights (0-1, summing to 1 per award)
+            export_df = self._add_cet_weights(export_df, taxonomy_df)
 
         # Generate metadata
+        taxonomy_version = "unknown"
+        if "taxonomy_version" in export_df.columns and not export_df.empty:
+            mode_values = export_df["taxonomy_version"].mode()
+            if not mode_values.empty:
+                taxonomy_version = mode_values.iloc[0]
+        
         metadata = ExportMetadata(
             data_currency_note=f"Ingested from SBIR.gov as of {datetime.now().date().isoformat()}",
             ingestion_timestamp=datetime.now().isoformat(),
             source_version="SBIR.gov bulk downloads",
             controlled_awards_excluded=int(controlled_count),
-            taxonomy_version=export_df["taxonomy_version"].mode().iloc[0] if "taxonomy_version" in export_df.columns and not export_df.empty else "unknown",
+            taxonomy_version=taxonomy_version,
             export_timestamp=datetime.now().isoformat(),
         )
 
@@ -256,6 +269,7 @@ class ExportOrchestrator:
     def _log_export_telemetry(self, job_id: str, record_count: int, metadata: ExportMetadata) -> None:
         """Log export run telemetry."""
         config = load_config()
+        config.artifacts_dir.mkdir(parents=True, exist_ok=True)
         telemetry_path = config.artifacts_dir / "export_runs.json"
 
         if telemetry_path.exists():
