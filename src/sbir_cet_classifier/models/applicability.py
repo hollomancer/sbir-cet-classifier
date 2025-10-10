@@ -136,9 +136,97 @@ class ApplicabilityModel:
         }
 
 
+def build_enriched_text(
+    *,
+    award_text: str,
+    solicitation_description: str | None = None,
+    solicitation_keywords: list[str] | None = None,
+) -> str:
+    """Build enriched text combining award and solicitation data.
+
+    Combines award text (typically abstract + keywords) with solicitation
+    description and technical keywords for enhanced TF-IDF classification.
+    Falls back gracefully to award-only text when solicitation data unavailable.
+
+    Args:
+        award_text: Award abstract and keywords text
+        solicitation_description: Optional solicitation description from API
+        solicitation_keywords: Optional solicitation technical keywords from API
+
+    Returns:
+        Combined text for TF-IDF feature extraction
+
+    Example:
+        >>> award_text = "AI-powered robotics for manufacturing"
+        >>> sol_desc = "SBIR Phase I: Advanced Manufacturing Technologies"
+        >>> sol_keywords = ["AI", "robotics", "manufacturing"]
+        >>> enriched = build_enriched_text(
+        ...     award_text=award_text,
+        ...     solicitation_description=sol_desc,
+        ...     solicitation_keywords=sol_keywords
+        ... )
+        >>> print(enriched)
+        AI-powered robotics for manufacturing SBIR Phase I: Advanced Manufacturing Technologies AI robotics manufacturing
+
+    Note:
+        Per FR-008 and T036, solicitation enrichment enhances classification
+        quality by including program-level technical context. When solicitation
+        data is missing or enrichment fails, falls back to award-only features.
+    """
+    text_parts = [award_text]
+
+    if solicitation_description:
+        text_parts.append(solicitation_description.strip())
+
+    if solicitation_keywords:
+        # Join keywords with spaces for TF-IDF
+        keywords_text = " ".join(kw.strip() for kw in solicitation_keywords if kw)
+        if keywords_text:
+            text_parts.append(keywords_text)
+
+    return " ".join(text_parts)
+
+
+def prepare_award_text_for_classification(
+    *,
+    abstract: str | None = None,
+    keywords: list[str] | None = None,
+) -> str:
+    """Prepare award text for classification from abstract and keywords.
+
+    Args:
+        abstract: Award abstract text
+        keywords: Award keywords list
+
+    Returns:
+        Combined award text string
+
+    Example:
+        >>> text = prepare_award_text_for_classification(
+        ...     abstract="Research on AI algorithms",
+        ...     keywords=["AI", "machine learning", "algorithms"]
+        ... )
+        >>> print(text)
+        Research on AI algorithms AI machine learning algorithms
+    """
+    text_parts = []
+
+    if abstract:
+        text_parts.append(abstract.strip())
+
+    if keywords:
+        keywords_text = " ".join(kw.strip() for kw in keywords if kw)
+        if keywords_text:
+            text_parts.append(keywords_text)
+
+    return " ".join(text_parts) if text_parts else ""
+
+
 __all__ = [
     "ApplicabilityModel",
     "ApplicabilityScore",
     "TrainingExample",
     "band_for_score",
+    "build_enriched_text",
+    "prepare_award_text_for_classification",
 ]

@@ -36,15 +36,15 @@
 - [X] T025 [Shared] Extend refresh command with archive retry + cache fallback (24-hour window) and flag incomplete runs via operator alerts and `artifacts/archive_retry_logs.json` when SBIR.gov archives remain unavailable.
 - [X] T026 [Shared] Support incremental vs. full refresh modes in CLI/API (guarding partition updates), persist mode selection plus scope metadata in refresh manifests, and record operator rationale in `artifacts/refresh_mode_audit.json`.
 - [X] T027 [Shared] Instrument refresh runs to capture start/end timestamps, wall-clock duration, malformed-record ratio, and completeness metrics, persisting the report to `artifacts/refresh_runs.json` for SC-006/NFR-003.
-- [ ] T028 [Shared] Implement bootstrap CSV loader (`src/sbir_cet_classifier/data/bootstrap.py`) that accepts `awards-data.csv`, validates schema compatibility with SBIR.gov format, maps columns to canonical ingestion schema, logs field mappings, and aborts if required fields (`award_id`, `agency`, `abstract`, `award_amount`) are absent; mark ingestion source as `bootstrap_csv` in metadata.
-- [ ] T029 [P][Shared] Build Grants.gov API client (`src/sbir_cet_classifier/data/external/grants_gov.py`) supporting solicitation lookup by topic code/solicitation number, returning description and technical topic keywords, with error handling for 404s and timeouts; include unit tests with mocked responses.
-- [ ] T030 [P][Shared] Build NIH API client (`src/sbir_cet_classifier/data/external/nih.py`) supporting solicitation lookup by agency-specific identifiers, returning description and technical topic keywords, with error handling for API unavailability; include unit tests.
-- [ ] T031 [P][Shared] Build NSF API client (`src/sbir_cet_classifier/data/external/nsf.py`) supporting solicitation lookup by topic code, returning description and technical topic keywords, with graceful degradation when solicitations are unmatched; include unit tests.
-- [ ] T032 [Shared] Implement SQLite solicitation cache (`src/sbir_cet_classifier/data/solicitation_cache.py`) at `artifacts/solicitation_cache.db` keyed by (API source, solicitation identifier) with indexed lookups, supporting permanent storage unless explicitly invalidated via operator command, and selective purging by API source, solicitation ID, or date range via SQL DELETE operations.
-- [ ] T033 [Shared] Build lazy enrichment orchestrator (`src/sbir_cet_classifier/features/enrichment.py`) that triggers on-demand when awards are first accessed for classification/viewing/export, checks SQLite cache before querying APIs, handles missing/unmatched solicitations gracefully by logging gaps and proceeding with award-only classification, marks failures as `enrichment_failed`, and versions solicitation text with source API and retrieval timestamp.
-- [ ] T034 [Shared] Implement batch enrichment optimization for export operations (`src/sbir_cet_classifier/features/batch_enrichment.py`) that identifies unique (API source, solicitation ID) tuples in export batches, checks cache, fetches missing solicitations concurrently (respecting API limits), and updates all awards sharing same solicitation atomically to prevent redundant fetches.
-- [ ] T035 [P][Shared] Add enrichment telemetry module (`src/sbir_cet_classifier/models/enrichment_metrics.py`) logging cache hit rates per API source, tracking enrichment latency distributions for live API calls (p50/p95/p99), and exposing metrics in `artifacts/enrichment_runs.json` for observability per NFR-008.
-- [ ] T036 [Shared] Integrate solicitation enrichment into classification pipeline (`src/sbir_cet_classifier/models/applicability.py`) so TF-IDF features include solicitation text (description + technical topic keywords) when available, with fallback to award-only features when enrichment fails or solicitation is missing.
+- [X] T028 [Shared] Implement bootstrap CSV loader (`src/sbir_cet_classifier/data/bootstrap.py`) that accepts `awards-data.csv`, validates schema compatibility with SBIR.gov format, maps columns to canonical ingestion schema, logs field mappings, and aborts if required fields (`award_id`, `agency`, `abstract`, `award_amount`) are absent; mark ingestion source as `bootstrap_csv` in metadata.
+- [X] T029 [P][Shared] Build Grants.gov API client (`src/sbir_cet_classifier/data/external/grants_gov.py`) supporting solicitation lookup by topic code/solicitation number, returning description and technical topic keywords, with error handling for 404s and timeouts; include unit tests with mocked responses.
+- [X] T030 [P][Shared] Build NIH API client (`src/sbir_cet_classifier/data/external/nih.py`) supporting solicitation lookup by agency-specific identifiers, returning description and technical topic keywords, with error handling for API unavailability; include unit tests.
+- [X] T031 [P][Shared] Build NSF API client (`src/sbir_cet_classifier/data/external/nsf.py`) supporting solicitation lookup by topic code, returning description and technical topic keywords, with graceful degradation when solicitations are unmatched; include unit tests.
+- [X] T032 [Shared] Implement SQLite solicitation cache (`src/sbir_cet_classifier/data/solicitation_cache.py`) at `artifacts/solicitation_cache.db` keyed by (API source, solicitation identifier) with indexed lookups, supporting permanent storage unless explicitly invalidated via operator command, and selective purging by API source, solicitation ID, or date range via SQL DELETE operations.
+- [X] T033 [Shared] Build lazy enrichment orchestrator (`src/sbir_cet_classifier/features/enrichment.py`) that triggers on-demand when awards are first accessed for classification/viewing/export, checks SQLite cache before querying APIs, handles missing/unmatched solicitations gracefully by logging gaps and proceeding with award-only classification, marks failures as `enrichment_failed`, and versions solicitation text with source API and retrieval timestamp.
+- [X] T034 [Shared] Implement batch enrichment optimization for export operations (`src/sbir_cet_classifier/features/batch_enrichment.py`) that identifies unique (API source, solicitation ID) tuples in export batches, checks cache, fetches missing solicitations concurrently (respecting API limits), and updates all awards sharing same solicitation atomically to prevent redundant fetches.
+- [X] T035 [P][Shared] Add enrichment telemetry module (`src/sbir_cet_classifier/models/enrichment_metrics.py`) logging cache hit rates per API source, tracking enrichment latency distributions for live API calls (p50/p95/p99), and exposing metrics in `artifacts/enrichment_runs.json` for observability per NFR-008.
+- [X] T036 [Shared] Integrate solicitation enrichment into classification pipeline (`src/sbir_cet_classifier/models/applicability.py`) so TF-IDF features include solicitation text (description + technical topic keywords) when available, with fallback to award-only features when enrichment fails or solicitation is missing.
 
 **Checkpoint**: Foundation ready—services, CLI, API skeletons, and enrichment pipeline operational with tests.
 
@@ -130,48 +130,36 @@
 
 ## Task Summary
 
-**Total Tasks**: 61 (52 completed ✅, 9 pending ⏳)
+**Total Tasks**: 61 (61 completed ✅)
 
-### Completed Tasks (T001-T027, T101-T107, T201-T208, T301-T312, T401-T407)
+### Completed Tasks (T001-T036, T101-T107, T201-T208, T301-T312, T401-T407)
 - ✅ Phase 1: Setup (3/3 tasks)
 - ✅ Phase 2: Foundational - Core (17/17 tasks)
+- ✅ Phase 2: Foundational - Enrichment (9/9 tasks) - **NEW**
 - ✅ Phase 3: User Story 1 (7/7 tasks)
 - ✅ Phase 4: User Story 2 (8/8 tasks)
 - ✅ Phase 5: User Story 3 (10/10 tasks)
 - ✅ Phase N: Polish (7/7 tasks)
 
-### Pending Tasks (T028-T036) - FR-008 Solicitation Enrichment
-- ⏳ Phase 2: Foundational - Enrichment (9/9 tasks)
-  - T028: Bootstrap CSV loader
-  - T029-T031: API clients (Grants.gov, NIH, NSF) [P]
-  - T032: SQLite solicitation cache
-  - T033: Lazy enrichment orchestrator
-  - T034: Batch enrichment optimization
-  - T035: Enrichment telemetry [P]
-  - T036: Classification pipeline integration
+### Completed Enrichment Tasks (T028-T036) - FR-008 Solicitation Enrichment
+- ✅ T028: Bootstrap CSV loader
+- ✅ T029-T031: API clients (Grants.gov, NIH, NSF) [P]
+- ✅ T032: SQLite solicitation cache
+- ✅ T033: Lazy enrichment orchestrator
+- ✅ T034: Batch enrichment optimization
+- ✅ T035: Enrichment telemetry [P]
+- ✅ T036: Classification pipeline integration
 
-### Parallel Execution Opportunities (Enrichment)
-- **Phase 2 Enrichment** (T029-T031, T035 can run in parallel):
-  - API client development (Grants.gov, NIH, NSF)
-  - Enrichment telemetry module
+### Implementation Notes
 
-### Dependencies
-- T028 (Bootstrap CSV) → Independent, can start immediately
-- T029-T031 (API clients) → Independent of each other, parallel development
-- T032 (SQLite cache) → Required before T033
-- T033 (Enrichment orchestrator) → Requires T029-T032
-- T034 (Batch optimization) → Requires T033
-- T035 (Telemetry) → Independent, parallel with API clients
-- T036 (Classification integration) → Requires T033 (enrichment orchestrator)
+**Phase 2 Enrichment tasks (T028-T036)** have been completed, enhancing classification quality by adding solicitation text to TF-IDF features. The enrichment pipeline is fully operational with:
 
-### Implementation Strategy
+- **Bootstrap CSV loader** for cold-start ingestion
+- **Three API clients** (Grants.gov, NIH, NSF) with error handling and graceful degradation
+- **SQLite cache** for persistent solicitation storage
+- **Lazy enrichment orchestrator** for on-demand enrichment
+- **Batch optimization** for efficient export operations
+- **Telemetry tracking** for cache hit rates and API latencies
+- **Classification integration** with fallback to award-only features
 
-**Phase 2 Enrichment tasks** should be completed before proceeding to user stories, as they enhance classification quality by adding solicitation text to TF-IDF features.
-
-**Suggested Order**:
-1. T028 (Bootstrap CSV) - Start immediately for cold-start support
-2. T029-T031 + T035 (parallel) - API clients and telemetry
-3. T032 (SQLite cache) - Enables persistent storage
-4. T033 (Enrichment orchestrator) - Coordinates lazy loading
-5. T034 (Batch optimization) - Optimizes export performance
-6. T036 (Classification integration) - Completes the enrichment pipeline
+All 61 tasks across all phases are now complete. The SBIR CET Classifier feature is ready for testing and deployment.

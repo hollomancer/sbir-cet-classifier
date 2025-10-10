@@ -1,0 +1,415 @@
+"""Lazy enrichment orchestrator for solicitation metadata.
+
+This module coordinates on-demand enrichment of SBIR awards with solicitation
+metadata from external APIs (Grants.gov, NIH, NSF). Enrichment is triggered
+when awards are first accessed for classification, viewing, or export.
+
+The orchestrator checks the SQLite cache before querying APIs, handles missing
+or unmatched solicitations gracefully, and tracks enrichment failures.
+
+Typical usage:
+    from sbir_cet_classifier.features.enrichment import EnrichmentOrchestrator
+    from sbir_cet_classifier.common.schemas import Award
+
+    orchestrator = EnrichmentOrchestrator()
+    enriched_award = orchestrator.enrich_award(award)
+
+    if enriched_award.enrichment_status == "enriched":
+        print(f"Enriched with: {enriched_award.solicitation_description}")
+    elif enriched_award.enrichment_status == "enrichment_failed":
+        print("Failed to enrich, proceeding with award-only classification")
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+from sbir_cet_classifier.common.schemas import Award
+from sbir_cet_classifier.data.external.grants_gov import GrantsGovClient, GrantsGovAPIError
+from sbir_cet_classifier.data.external.nih import NIHClient, NIHAPIError
+from sbir_cet_classifier.data.external.nsf import NSFClient, NSFAPIError
+from sbir_cet_classifier.data.solicitation_cache import SolicitationCache, CachedSolicitation
+from sbir_cet_classifier.models.enrichment_metrics import EnrichmentMetrics
+
+logger = logging.getLogger(__name__)
+
+# API source detection rules based on agency codes
+AGENCY_TO_API_SOURCE = {
+    "DOD": "grants.gov",  # Department of Defense typically uses Grants.gov
+    "DARPA": "grants.gov",
+    "NAVY": "grants.gov",
+    "ARMY": "grants.gov",
+    "AIR FORCE": "grants.gov",
+    "NIH": "nih",  # National Institutes of Health has dedicated API
+    "NSF": "nsf",  # National Science Foundation has dedicated API
+    "NASA": "grants.gov",  # NASA typically uses Grants.gov
+    "DOE": "grants.gov",  # Department of Energy typically uses Grants.gov
+    "DHS": "grants.gov",  # Department of Homeland Security
+    "EPA": "grants.gov",  # Environmental Protection Agency
+    "USDA": "grants.gov",  # Department of Agriculture
+}
+
+
+@dataclass
+class EnrichedAward:
+    """Award with solicitation enrichment metadata."""
+
+    award: Award
+    """Original award record."""
+
+    enrichment_status: str
+    """Status: 'enriched', 'enrichment_failed', 'not_attempted'."""
+
+    solicitation_description: Optional[str] = None
+    """Solicitation description text if enriched."""
+
+    solicitation_keywords: list[str] = None
+    """Solicitation technical keywords if enriched."""
+
+    api_source: Optional[str] = None
+    """API source used for enrichment (grants.gov, nih, nsf)."""
+
+    retrieved_at: Optional[datetime] = None
+    """Timestamp when solicitation was retrieved."""
+
+    failure_reason: Optional[str] = None
+    """Reason if enrichment failed."""
+
+    def __post_init__(self) -> None:
+        """Initialize default values."""
+        if self.solicitation_keywords is None:
+            self.solicitation_keywords = []
+
+
+class EnrichmentOrchestrator:
+    """Coordinates lazy enrichment of awards with solicitation metadata.
+
+    Manages the enrichment workflow: cache lookup → API query → failure handling.
+    Tracks enrichment metrics and ensures graceful degradation when solicitations
+    are unavailable.
+
+    Attributes:
+        cache: SQLite solicitation cache
+        metrics: Enrichment telemetry tracker
+        grants_gov_client: Grants.gov API client
+        nih_client: NIH API client
+        nsf_client: NSF API client
+    """
+
+    def __init__(
+        self,
+        *,
+        cache_path: Optional[Path] = None,
+        metrics: Optional[EnrichmentMetrics] = None,
+    ) -> None:
+        """Initialize enrichment orchestrator.
+
+        Args:
+            cache_path: Optional path to cache database (uses default if not provided)
+            metrics: Optional metrics tracker (creates new if not provided)
+        """
+        self.cache = SolicitationCache(cache_path) if cache_path else SolicitationCache()
+        self.metrics = metrics if metrics else EnrichmentMetrics()
+
+        # Initialize API clients (lazy loading)
+        self.grants_gov_client: Optional[GrantsGovClient] = None
+        self.nih_client: Optional[NIHClient] = None
+        self.nsf_client: Optional[NSFClient] = None
+
+        logger.info("Initialized enrichment orchestrator")
+
+    def __enter__(self) -> EnrichmentOrchestrator:
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        """Context manager exit - closes connections."""
+        self.close()
+
+    def close(self) -> None:
+        """Close all connections."""
+        self.cache.close()
+
+        if self.grants_gov_client:
+            self.grants_gov_client.close()
+        if self.nih_client:
+            self.nih_client.close()
+        if self.nsf_client:
+            self.nsf_client.close()
+
+        logger.debug("Closed enrichment orchestrator")
+
+    def enrich_award(self, award: Award) -> EnrichedAward:
+        """Enrich award with solicitation metadata.
+
+        Triggers lazy enrichment: checks cache first, queries API if needed,
+        handles failures gracefully. Records metrics for observability.
+
+        Args:
+            award: Award record to enrich
+
+        Returns:
+            EnrichedAward with enrichment status and solicitation data if available
+
+        Example:
+            >>> orchestrator = EnrichmentOrchestrator()
+            >>> enriched = orchestrator.enrich_award(award)
+            >>> if enriched.enrichment_status == "enriched":
+            ...     print(f"Description: {enriched.solicitation_description}")
+        """
+        # Determine which API source to use based on agency
+        api_source = self._determine_api_source(award)
+
+        if not api_source:
+            logger.debug(
+                "No API source mapping for agency, skipping enrichment",
+                extra={"award_id": award.award_id, "agency": award.agency},
+            )
+            return EnrichedAward(
+                award=award,
+                enrichment_status="not_attempted",
+                failure_reason=f"No API mapping for agency: {award.agency}",
+            )
+
+        # Extract solicitation identifier
+        solicitation_id = self._extract_solicitation_id(award)
+
+        if not solicitation_id:
+            logger.debug(
+                "No solicitation ID available, skipping enrichment",
+                extra={"award_id": award.award_id},
+            )
+            return EnrichedAward(
+                award=award,
+                enrichment_status="not_attempted",
+                failure_reason="No solicitation ID in award record",
+            )
+
+        # Check cache first
+        cached = self.cache.get(api_source, solicitation_id)
+
+        if cached:
+            self.metrics.record_cache_hit(api_source)
+            self.metrics.record_award_processed(enriched=True)
+
+            logger.debug(
+                "Enriched award from cache",
+                extra={
+                    "award_id": award.award_id,
+                    "api_source": api_source,
+                    "solicitation_id": solicitation_id,
+                },
+            )
+
+            return EnrichedAward(
+                award=award,
+                enrichment_status="enriched",
+                solicitation_description=cached.description,
+                solicitation_keywords=cached.technical_keywords,
+                api_source=cached.api_source,
+                retrieved_at=cached.retrieved_at,
+            )
+
+        # Cache miss - query API
+        self.metrics.record_cache_miss(api_source)
+
+        solicitation_data = self._fetch_from_api(api_source, solicitation_id, award)
+
+        if solicitation_data:
+            # Store in cache
+            self.cache.put(
+                solicitation_data.api_source,
+                solicitation_data.solicitation_id,
+                solicitation_data.description,
+                solicitation_data.technical_keywords,
+            )
+
+            self.metrics.record_award_processed(enriched=True)
+
+            logger.info(
+                "Enriched award from API",
+                extra={
+                    "award_id": award.award_id,
+                    "api_source": api_source,
+                    "solicitation_id": solicitation_id,
+                },
+            )
+
+            return EnrichedAward(
+                award=award,
+                enrichment_status="enriched",
+                solicitation_description=solicitation_data.description,
+                solicitation_keywords=solicitation_data.technical_keywords,
+                api_source=solicitation_data.api_source,
+                retrieved_at=datetime.now(timezone.utc),
+            )
+
+        # Enrichment failed - proceed with award-only classification
+        self.metrics.record_award_processed(enriched=False)
+
+        logger.info(
+            "Enrichment failed, proceeding with award-only classification",
+            extra={
+                "award_id": award.award_id,
+                "api_source": api_source,
+                "solicitation_id": solicitation_id,
+            },
+        )
+
+        return EnrichedAward(
+            award=award,
+            enrichment_status="enrichment_failed",
+            failure_reason="Solicitation not found or API error",
+        )
+
+    def _determine_api_source(self, award: Award) -> Optional[str]:
+        """Determine which API source to use for the award.
+
+        Args:
+            award: Award record
+
+        Returns:
+            API source identifier (grants.gov, nih, nsf) or None
+        """
+        # Normalize agency code
+        agency_upper = award.agency.upper().strip()
+
+        # Direct match
+        if agency_upper in AGENCY_TO_API_SOURCE:
+            return AGENCY_TO_API_SOURCE[agency_upper]
+
+        # Partial match for agency codes with prefixes
+        for known_agency, api_source in AGENCY_TO_API_SOURCE.items():
+            if known_agency in agency_upper or agency_upper in known_agency:
+                return api_source
+
+        # Default fallback to Grants.gov for unknown agencies
+        logger.debug(
+            "Unknown agency, defaulting to Grants.gov",
+            extra={"agency": award.agency},
+        )
+        return "grants.gov"
+
+    def _extract_solicitation_id(self, award: Award) -> Optional[str]:
+        """Extract solicitation identifier from award record.
+
+        Args:
+            award: Award record
+
+        Returns:
+            Solicitation identifier or None
+        """
+        # Try topic_code first (most common)
+        if hasattr(award, "topic_code") and award.topic_code and award.topic_code != "UNKNOWN":
+            return award.topic_code
+
+        # Try solicitation_id if available
+        if hasattr(award, "solicitation_id") and award.solicitation_id:
+            return award.solicitation_id
+
+        # Try program + solicitation year combination
+        if hasattr(award, "program") and hasattr(award, "solicitation_year"):
+            if award.program and award.solicitation_year:
+                return f"{award.program}-{award.solicitation_year}"
+
+        return None
+
+    def _fetch_from_api(
+        self,
+        api_source: str,
+        solicitation_id: str,
+        award: Award,
+    ) -> Optional[object]:
+        """Fetch solicitation from appropriate API.
+
+        Args:
+            api_source: API source identifier (grants.gov, nih, nsf)
+            solicitation_id: Solicitation identifier
+            award: Award record (for additional context)
+
+        Returns:
+            SolicitationData if successful, None on failure
+        """
+        start_time = time.time()
+        success = False
+        result = None
+
+        try:
+            if api_source == "grants.gov":
+                result = self._fetch_from_grants_gov(solicitation_id)
+            elif api_source == "nih":
+                result = self._fetch_from_nih(solicitation_id)
+            elif api_source == "nsf":
+                result = self._fetch_from_nsf(solicitation_id)
+            else:
+                logger.warning("Unknown API source", extra={"api_source": api_source})
+
+            success = result is not None
+
+        except Exception as e:
+            logger.warning(
+                "API fetch failed with exception",
+                extra={
+                    "api_source": api_source,
+                    "solicitation_id": solicitation_id,
+                    "error": str(e),
+                },
+            )
+
+        finally:
+            # Record metrics
+            latency_ms = (time.time() - start_time) * 1000
+            self.metrics.record_api_call(api_source, latency_ms=latency_ms, success=success)
+
+        return result
+
+    def _fetch_from_grants_gov(self, solicitation_id: str) -> Optional[object]:
+        """Fetch solicitation from Grants.gov API."""
+        if not self.grants_gov_client:
+            self.grants_gov_client = GrantsGovClient()
+
+        try:
+            return self.grants_gov_client.lookup_solicitation(topic_code=solicitation_id)
+        except GrantsGovAPIError as e:
+            logger.warning("Grants.gov API error", extra={"error": str(e)})
+            return None
+
+    def _fetch_from_nih(self, solicitation_id: str) -> Optional[object]:
+        """Fetch solicitation from NIH API."""
+        if not self.nih_client:
+            self.nih_client = NIHClient()
+
+        try:
+            return self.nih_client.lookup_solicitation(funding_opportunity=solicitation_id)
+        except NIHAPIError as e:
+            logger.warning("NIH API error", extra={"error": str(e)})
+            return None
+
+    def _fetch_from_nsf(self, solicitation_id: str) -> Optional[object]:
+        """Fetch solicitation from NSF API."""
+        if not self.nsf_client:
+            self.nsf_client = NSFClient()
+
+        try:
+            return self.nsf_client.lookup_solicitation(program_element=solicitation_id)
+        except NSFAPIError as e:
+            logger.warning("NSF API error", extra={"error": str(e)})
+            return None
+
+    def flush_metrics(self) -> Path:
+        """Flush enrichment metrics to artifacts.
+
+        Returns:
+            Path to metrics file
+
+        Example:
+            >>> orchestrator = EnrichmentOrchestrator()
+            >>> # ... enrich awards ...
+            >>> metrics_path = orchestrator.flush_metrics()
+        """
+        return self.metrics.flush()
