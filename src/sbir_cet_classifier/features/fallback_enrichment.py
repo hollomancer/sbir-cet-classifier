@@ -5,45 +5,10 @@ synthetic solicitation context for classification.
 """
 
 from sbir_cet_classifier.common.schemas import Award
+from sbir_cet_classifier.common.yaml_config import load_enrichment_config
 
-
-# Topic code to domain mapping (NSF and other agency SBIR topics)
-TOPIC_DOMAINS = {
-    # NSF SBIR Topic Codes (most common)
-    "AI": ("Artificial Intelligence", ["machine learning", "neural networks", "AI", "deep learning", "computer vision"]),
-    "BC": ("Biological and Chemical Technologies", ["biotechnology", "chemistry", "biochemistry", "molecular biology", "drug discovery"]),
-    "BM": ("Biomedical Technologies", ["medical devices", "diagnostics", "therapeutics", "healthcare", "clinical"]),
-    "BT": ("Biotechnology", ["biotechnology", "gene editing", "synthetic biology", "biomedical", "genomics"]),
-    "CT": ("Communications Technology", ["telecommunications", "wireless", "networking", "5G", "signal processing"]),
-    "EA": ("Environmental and Agricultural Technologies", ["environmental monitoring", "agriculture", "sustainability", "climate", "water"]),
-    "EI": ("Energy and Industrial Technologies", ["energy systems", "industrial automation", "manufacturing", "process control"]),
-    "EL": ("Electronics and Photonics", ["electronics", "photonics", "optics", "sensors", "imaging"]),
-    "IT": ("Information Technology", ["software", "cybersecurity", "data analytics", "cloud computing", "databases"]),
-    "LC": ("Low Carbon Energy", ["renewable energy", "energy storage", "sustainability", "clean energy", "solar"]),
-    "MI": ("Materials and Instrumentation", ["advanced materials", "instrumentation", "measurement", "testing", "characterization"]),
-    "NM": ("Nanotechnology and Advanced Materials", ["nanotechnology", "nanomaterials", "advanced materials", "composites", "coatings"]),
-    "SE": ("Semiconductors and Electronics", ["semiconductors", "microelectronics", "integrated circuits", "chip design", "VLSI"]),
-    
-    # Generic/Legacy Topic Codes
-    "ET": ("Emerging Technologies", ["quantum computing", "quantum sensing", "advanced technology", "emerging tech"]),
-    "MD": ("Medical Devices", ["medical devices", "diagnostics", "healthcare technology", "clinical", "therapeutic"]),
-    "PT": ("Physical Technologies", ["advanced materials", "nanotechnology", "manufacturing", "materials science"]),
-    "MT": ("Manufacturing Technology", ["advanced manufacturing", "automation", "robotics", "3D printing", "additive"]),
-    "ST": ("Space Technology", ["aerospace", "satellite", "space systems", "propulsion", "orbital"]),
-}
-
-# Agency-specific focus areas
-AGENCY_FOCUS = {
-    "NSF": "fundamental research and technology development",
-    "DOD": "defense and national security applications",
-    "AF": "air force and aerospace systems",
-    "NAVY": "naval and maritime systems",
-    "ARMY": "ground systems and soldier technology",
-    "DOE": "energy systems and national laboratories",
-    "NASA": "space exploration and aeronautics",
-    "NIH": "biomedical research and healthcare innovation",
-    "NOAA": "environmental monitoring and climate science",
-}
+# Load configuration from YAML
+_config = load_enrichment_config()
 
 
 def generate_fallback_solicitation(award: Award) -> tuple[str, list[str]]:
@@ -57,10 +22,17 @@ def generate_fallback_solicitation(award: Award) -> tuple[str, list[str]]:
     """
     # Extract topic domain
     topic_prefix = award.topic_code[:2].upper() if len(award.topic_code) >= 2 else ""
-    domain_name, keywords = TOPIC_DOMAINS.get(topic_prefix, ("Technology Development", ["innovation", "research"]))
+    topic_domain = _config.topic_domains.get(topic_prefix)
+    
+    if topic_domain:
+        domain_name = topic_domain.name
+        keywords = list(topic_domain.keywords)
+    else:
+        domain_name = "Technology Development"
+        keywords = ["innovation", "research"]
     
     # Get agency focus
-    agency_focus = AGENCY_FOCUS.get(award.agency, "research and development")
+    agency_focus = _config.agency_focus.get(award.agency, "research and development")
     
     # Generate description
     description = f"{domain_name} research for {agency_focus}"
@@ -69,9 +41,9 @@ def generate_fallback_solicitation(award: Award) -> tuple[str, list[str]]:
     if award.program:
         program_lower = award.program.lower()
         if "phase i" in program_lower:
-            keywords = keywords + ["feasibility", "proof of concept"]
+            keywords = keywords + _config.phase_keywords.phase_i
         elif "phase ii" in program_lower:
-            keywords = keywords + ["development", "commercialization"]
+            keywords = keywords + _config.phase_keywords.phase_ii
     
     return description, keywords
 

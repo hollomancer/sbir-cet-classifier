@@ -13,20 +13,10 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.class_weight import compute_class_weight
 
-# Domain-specific stop words for SBIR/technical text
-SBIR_STOP_WORDS = frozenset([
-    "phase", "sbir", "sttr", "award", "contract", "proposal", "program",
-    "project", "research", "development", "technology", "technical",
-    "company", "firm", "small", "business", "innovative", "innovation",
-    "objective", "approach", "anticipated", "benefits", "commercial",
-    "applications", "potential", "proposed", "develop", "provide",
-])
+from sbir_cet_classifier.common.yaml_config import load_classification_config
 
-CLASSIFICATION_BANDS = {
-    "High": (70, 100),
-    "Medium": (40, 69),
-    "Low": (0, 39),
-}
+# Load configuration from YAML
+_config = load_classification_config()
 
 
 @dataclass(frozen=True)
@@ -48,27 +38,29 @@ class ApplicabilityScore:
 
 
 def band_for_score(score: float) -> str:
-    if score >= 70:
-        return "High"
-    if score >= 40:
-        return "Medium"
-    return "Low"
+    """Determine classification band for a score using YAML config."""
+    for band_name, band_config in _config.scoring.bands.items():
+        if band_config.min <= score <= band_config.max:
+            return band_config.label
+    return "Low"  # Default fallback
 
 
 class ApplicabilityModel:
     """Wrapper around TF-IDF + calibrated logistic regression with optimizations."""
 
     def __init__(self) -> None:
-        # Enhanced TF-IDF with trigrams and domain stop words
+        # Load config from YAML
+        vec_cfg = _config.vectorizer
         self._vectorizer = TfidfVectorizer(
-            ngram_range=(1, 3),  # Unigrams, bigrams, trigrams
-            max_features=50000,  # Increased for richer features
-            stop_words=list(SBIR_STOP_WORDS),
-            min_df=2,  # Ignore very rare terms
-            max_df=0.95,  # Ignore very common terms
+            ngram_range=tuple(vec_cfg.ngram_range),
+            max_features=vec_cfg.max_features,
+            stop_words=_config.stop_words,
+            min_df=vec_cfg.min_df,
+            max_df=vec_cfg.max_df,
         )
-        # Feature selection to reduce noise
-        self._feature_selector = SelectKBest(chi2, k=20000)
+        # Feature selection
+        fs_cfg = _config.feature_selection
+        self._feature_selector = SelectKBest(chi2, k=fs_cfg.k) if fs_cfg.enabled else None
         self._classifier: LogisticRegression | CalibratedClassifierCV | None = None
         self._label_encoder = LabelEncoder()
         self._is_fitted = False
@@ -82,34 +74,42 @@ class ApplicabilityModel:
         # TF-IDF vectorization
         X = self._vectorizer.fit_transform(texts)
         
-        # Feature selection
-        X_selected = self._feature_selector.fit_transform(X, y)
+        # Feature selection (if enabled)
+        if self._feature_selector:
+            X_selected = self._feature_selector.fit_transform(X, y)
+        else:
+            X_selected = X
         
         # Compute class weights for imbalanced data
         classes = np.unique(y)
-        class_weights = compute_class_weight("balanced", classes=classes, y=y)
-        class_weight_dict = dict(zip(classes, class_weights))
+        clf_cfg = _config.classifier
+        if clf_cfg.class_weight == "balanced":
+            class_weights = compute_class_weight("balanced", classes=classes, y=y)
+            class_weight_dict = dict(zip(classes, class_weights))
+        else:
+            class_weight_dict = None
         
-        # Train base classifier with class weights
+        # Train base classifier
         base_classifier = LogisticRegression(
-            max_iter=500,
+            max_iter=clf_cfg.max_iter,
             class_weight=class_weight_dict,
-            solver="lbfgs",
-            n_jobs=-1,  # Use all CPU cores
+            solver=clf_cfg.solver,
+            n_jobs=clf_cfg.n_jobs,
         )
         base_classifier.fit(X_selected, y)
 
-        # Calibrate if enough samples per class
+        # Calibrate if enabled and enough samples per class
+        cal_cfg = _config.calibration
         class_counts = np.bincount(y)
-        if class_counts.size >= 2 and class_counts.min() >= 3:
+        if cal_cfg.enabled and class_counts.size >= 2 and class_counts.min() >= cal_cfg.min_samples_per_class:
             calibrated = CalibratedClassifierCV(
                 LogisticRegression(
-                    max_iter=500,
+                    max_iter=clf_cfg.max_iter,
                     class_weight=class_weight_dict,
-                    solver="lbfgs",
-                    n_jobs=-1,
+                    solver=clf_cfg.solver,
+                    n_jobs=clf_cfg.n_jobs,
                 ),
-                cv=3,
+                cv=cal_cfg.cv,
             )
             calibrated.fit(X_selected, y)
             self._classifier = calibrated
@@ -128,14 +128,18 @@ class ApplicabilityModel:
         
         # Apply same transformations as training
         X = self._vectorizer.transform([text])
-        X_selected = self._feature_selector.transform(X)
+        if self._feature_selector:
+            X_selected = self._feature_selector.transform(X)
+        else:
+            X_selected = X
         
         probs = self._classifier.predict_proba(X_selected)[0]  # type: ignore[call-arg]
         labels = self._label_encoder.inverse_transform(np.arange(len(probs)))
         ranked = sorted(zip(labels, probs, strict=False), key=lambda pair: pair[1], reverse=True)
         primary_cet_id, probability = ranked[0]
         score = float(probability * 100)
-        supporting = [(cet, float(p * 100)) for cet, p in ranked[1:4]]
+        max_supporting = _config.scoring.max_supporting
+        supporting = [(cet, float(p * 100)) for cet, p in ranked[1:max_supporting+1]]
         return ApplicabilityScore(
             award_id=award_id,
             primary_cet_id=primary_cet_id,
@@ -151,14 +155,19 @@ class ApplicabilityModel:
             raise RuntimeError("Classifier unavailable; call fit first")
         award_ids, texts = zip(*records, strict=False)
         X = self._vectorizer.transform(texts)
-        probs = self._classifier.predict_proba(X)  # type: ignore[call-arg]
+        if self._feature_selector:
+            X_selected = self._feature_selector.transform(X)
+        else:
+            X_selected = X
+        probs = self._classifier.predict_proba(X_selected)  # type: ignore[call-arg]
         labels = self._label_encoder.inverse_transform(np.arange(probs.shape[1]))
         results: list[ApplicabilityScore] = []
+        max_supporting = _config.scoring.max_supporting
         for award_id, prob_vector in zip(award_ids, probs, strict=False):
             ranked = sorted(zip(labels, prob_vector, strict=False), key=lambda pair: pair[1], reverse=True)
             primary_cet_id, probability = ranked[0]
             score = float(probability * 100)
-            supporting = [(cet, float(p * 100)) for cet, p in ranked[1:4]]
+            supporting = [(cet, float(p * 100)) for cet, p in ranked[1:max_supporting+1]]
             results.append(
                 ApplicabilityScore(
                     award_id=award_id,

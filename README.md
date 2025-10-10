@@ -132,6 +132,30 @@ pytest -m "not slow" -v
 
 See [PERFORMANCE_OPTIMIZATIONS.md](docs/PERFORMANCE_OPTIMIZATIONS.md) for details.
 
+## Configuration
+
+Classification parameters and enrichment mappings are externalized to YAML files in the `config/` directory:
+
+- **`config/classification.yaml`** — Model hyperparameters, stop words, classification bands
+- **`config/enrichment.yaml`** — Topic domain mappings, agency focus areas, phase keywords
+
+**Validate configuration changes:**
+```bash
+python validate_config.py
+```
+
+**Example: Tuning classification bands**
+```yaml
+# config/classification.yaml
+scoring:
+  bands:
+    high:
+      min: 80  # Raise threshold for High classification
+      max: 100
+```
+
+See [config/README.md](config/README.md) for detailed configuration documentation.
+
 ## Key Concepts
 
 ### CET Taxonomy

@@ -5,8 +5,8 @@ import pytest
 from sbir_cet_classifier.models.applicability import (
     ApplicabilityModel,
     TrainingExample,
-    SBIR_STOP_WORDS,
 )
+from sbir_cet_classifier.common.yaml_config import load_classification_config
 
 
 class TestEnhancedModel:
@@ -14,9 +14,11 @@ class TestEnhancedModel:
 
     def test_sbir_stop_words_defined(self):
         """Test SBIR-specific stop words are defined."""
-        assert "sbir" in SBIR_STOP_WORDS
-        assert "phase" in SBIR_STOP_WORDS
-        assert "proposal" in SBIR_STOP_WORDS
+        config = load_classification_config()
+        stop_words = config.stop_words
+        assert "sbir" in stop_words
+        assert "phase" in stop_words
+        assert "proposal" in stop_words
 
     def test_model_uses_trigrams(self):
         """Test model is configured for trigrams."""
