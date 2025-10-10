@@ -1,5 +1,29 @@
 version: "1.0.0"
-description: Fallback enrichment mappings
+description: Fallback enrichment mappings and NIH matcher configuration
+
+nih_matcher:
+  # Amount tolerance for matching (±10% = 0.9 to 1.1)
+  amount_tolerance_min: 0.9
+  amount_tolerance_max: 1.1
+  
+  # Abstract similarity threshold (0.0 to 1.0)
+  similarity_threshold: 0.5
+  
+  # Organization name suffixes to remove for fuzzy matching
+  org_suffixes:
+    - ' INC'
+    - ' LLC'
+    - ' CORP'
+    - ' CO'
+    - ' LTD'
+    - ' INCORPORATED'
+    - ','
+    - '.'
+  
+  # API search limits
+  exact_match_limit: 1
+  fuzzy_match_limit: 1
+  similarity_match_limit: 10
 
 topic_domains:
   # NSF SBIR topic codes

@@ -88,6 +88,17 @@ class TopicDomainConfig(BaseModel):
     keywords: list[str]
 
 
+class NIHMatcherConfig(BaseModel):
+    """NIH matcher configuration."""
+    amount_tolerance_min: float = Field(ge=0.0, le=1.0)
+    amount_tolerance_max: float = Field(ge=1.0, le=2.0)
+    similarity_threshold: float = Field(ge=0.0, le=1.0)
+    org_suffixes: list[str]
+    exact_match_limit: int = Field(ge=1)
+    fuzzy_match_limit: int = Field(ge=1)
+    similarity_match_limit: int = Field(ge=1)
+
+
 class PhaseKeywordsConfig(BaseModel):
     """Phase-specific keywords."""
     phase_i: list[str]
@@ -98,6 +109,7 @@ class EnrichmentConfig(BaseModel):
     """Complete enrichment configuration."""
     version: str
     description: str
+    nih_matcher: NIHMatcherConfig
     topic_domains: dict[str, TopicDomainConfig]
     agency_focus: dict[str, str]
     phase_keywords: PhaseKeywordsConfig

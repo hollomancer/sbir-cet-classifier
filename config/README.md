@@ -47,11 +47,24 @@ scoring:
 
 ### enrichment.yaml
 
-Fallback enrichment mappings for awards without API data:
+Fallback enrichment mappings and NIH matcher configuration:
 
+- **NIH Matcher**: Hybrid matching strategy parameters
+  - `amount_tolerance_min/max`: Award amount matching tolerance (default: ±10%)
+  - `similarity_threshold`: Abstract text similarity threshold (default: 0.5 = 50%)
+  - `org_suffixes`: Organization name suffixes to remove for fuzzy matching
+  - `exact_match_limit`, `fuzzy_match_limit`, `similarity_match_limit`: API search limits
 - **Topic Domains**: NSF SBIR topic codes mapped to domain names and keywords
 - **Agency Focus**: Agency-specific research focus descriptions
 - **Phase Keywords**: Phase I/II specific terminology
+
+**Example: Adjusting NIH matcher sensitivity**
+```yaml
+nih_matcher:
+  amount_tolerance_min: 0.85  # Stricter: ±15% instead of ±10%
+  amount_tolerance_max: 1.15
+  similarity_threshold: 0.6   # Require 60% similarity instead of 50%
+```
 
 **Example: Adding a new topic code**
 ```yaml

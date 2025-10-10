@@ -8,8 +8,12 @@ from difflib import SequenceMatcher
 import httpx
 
 from sbir_cet_classifier.common.schemas import Award
+from sbir_cet_classifier.common.yaml_config import load_enrichment_config
 
 logger = logging.getLogger(__name__)
+
+# Load configuration
+_config = load_enrichment_config()
 
 
 class NIHMatcher:
@@ -108,8 +112,9 @@ class NIHMatcher:
     
     def _exact_match(self, award: Award) -> dict | None:
         """Match by exact organization + amount + year."""
-        amount_min = int(award.award_amount * 0.9)
-        amount_max = int(award.award_amount * 1.1)
+        cfg = _config.nih_matcher
+        amount_min = int(award.award_amount * cfg.amount_tolerance_min)
+        amount_max = int(award.award_amount * cfg.amount_tolerance_max)
         
         criteria = {
             'org_names': [award.firm_name],
@@ -117,19 +122,21 @@ class NIHMatcher:
             'fiscal_years': [award.award_date.year]
         }
         
-        results = self._search_api(criteria, limit=1)
+        results = self._search_api(criteria, limit=cfg.exact_match_limit)
         return results[0] if results else None
     
     def _fuzzy_match(self, award: Award) -> dict | None:
         """Match by fuzzy organization name + amount + year."""
+        cfg = _config.nih_matcher
+        
         # Normalize organization name
         org_name = award.firm_name.upper()
-        for suffix in [' INC', ' LLC', ' CORP', ' CO', ' LTD', ' INCORPORATED', ',', '.']:
+        for suffix in cfg.org_suffixes:
             org_name = org_name.replace(suffix, '')
         org_name = org_name.strip()
         
-        amount_min = int(award.award_amount * 0.9)
-        amount_max = int(award.award_amount * 1.1)
+        amount_min = int(award.award_amount * cfg.amount_tolerance_min)
+        amount_max = int(award.award_amount * cfg.amount_tolerance_max)
         
         # Try variations
         variations = [
@@ -148,7 +155,7 @@ class NIHMatcher:
                 'fiscal_years': [award.award_date.year]
             }
             
-            results = self._search_api(criteria, limit=1)
+            results = self._search_api(criteria, limit=cfg.fuzzy_match_limit)
             if results:
                 return results[0]
         
@@ -159,13 +166,15 @@ class NIHMatcher:
         if not award.abstract:
             return None
         
+        cfg = _config.nih_matcher
+        
         # Broad search by org + year
         criteria = {
             'org_names': [award.firm_name],
             'fiscal_years': [award.award_date.year]
         }
         
-        candidates = self._search_api(criteria, limit=10)
+        candidates = self._search_api(criteria, limit=cfg.similarity_match_limit)
         if not candidates:
             return None
         
@@ -186,8 +195,8 @@ class NIHMatcher:
                     best_score = score
                     best_match = candidate
         
-        # Return if similarity > 50%
-        return best_match if best_score > 0.5 else None
+        # Return if similarity exceeds threshold
+        return best_match if best_score > cfg.similarity_threshold else None
 
 
 __all__ = ['NIHMatcher']
