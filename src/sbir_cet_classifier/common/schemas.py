@@ -27,6 +27,9 @@ class Award(BaseModel):
     is_export_controlled: bool = False
     source_version: str = Field(min_length=1)
     ingested_at: datetime
+    program: str | None = None
+    solicitation_id: str | None = None
+    solicitation_year: int | None = None
 
     @field_validator("keywords", mode="before")
     @classmethod

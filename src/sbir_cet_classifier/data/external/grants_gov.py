@@ -202,7 +202,17 @@ class GrantsGovClient:
             # Take first matching opportunity
             opp = opportunities[0]
 
-            description = opp.get("synopsis", "") or opp.get("description", "")
+            # Combine synopsis and description when both available
+            synopsis = opp.get("synopsis", "").strip()
+            desc_field = opp.get("description", "").strip()
+
+            if synopsis and desc_field:
+                # Both present: combine them
+                description = f"{synopsis}. {desc_field}"
+            else:
+                # Use whichever is available
+                description = synopsis or desc_field
+
             if not description:
                 logger.warning("No description in Grants.gov response", extra={"query_id": query_id})
                 return None

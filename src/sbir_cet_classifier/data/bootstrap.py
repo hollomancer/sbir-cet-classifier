@@ -28,6 +28,24 @@ from sbir_cet_classifier.common.schemas import Award
 
 logger = logging.getLogger(__name__)
 
+# US State name to 2-character code mapping
+US_STATE_CODES = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
+    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
+    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
+    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
+    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
+    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
+    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
+    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
+    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
+    "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV",
+    "wisconsin": "WI", "wyoming": "WY", "district of columbia": "DC",
+    "puerto rico": "PR", "guam": "GU", "virgin islands": "VI",
+}
+
 # Minimum required columns for bootstrap CSV (matches FR-008 specification)
 BOOTSTRAP_REQUIRED_COLUMNS = {
     "award_id",
@@ -58,6 +76,7 @@ COLUMN_MAPPINGS = {
     "agency_name": "agency",
     "bureau_code": "sub_agency",
     "bureau": "sub_agency",
+    "branch": "sub_agency",
     "sub_agency_code": "sub_agency",
     # Firm fields
     "firm": "firm_name",
@@ -67,17 +86,31 @@ COLUMN_MAPPINGS = {
     "city": "firm_city",
     "location_state": "firm_state",
     "location_city": "firm_city",
+    # Award ID mappings (various formats)
+    "agency tracking number": "award_id",
+    "contract": "award_id",
+    "award_number": "award_id",
+    "contract_number": "award_id",
     # Award fields
+    "award year": "award_date",
     "award_year": "award_date",
     "fiscal_year": "award_date",
     "year": "award_date",
+    "proposal award date": "award_date",
+    "award amount": "award_amount",
     "amount": "award_amount",
     "dollars": "award_amount",
     "obligated_amount": "award_amount",
     # Topic fields
     "topic": "topic_code",
+    "topic code": "topic_code",
     "topic_number": "topic_code",
     "solicitation_topic": "topic_code",
+    # Solicitation fields
+    "solicitation number": "solicitation_id",
+    "solicitation_number": "solicitation_id",
+    "solicitation year": "solicitation_year",
+    "solicitation_year": "solicitation_year",
 }
 
 
@@ -188,16 +221,26 @@ def _apply_column_mappings(df: pd.DataFrame) -> dict[str, str]:
         Dictionary of applied mappings {original_name: canonical_name}
     """
     applied_mappings: dict[str, str] = {}
+    already_mapped_to: set[str] = set()  # Track which canonical names have been assigned
 
     for original_col in df.columns:
         original_lower = original_col.lower().strip()
         if original_lower in COLUMN_MAPPINGS:
             canonical_name = COLUMN_MAPPINGS[original_lower]
-            if canonical_name not in df.columns:  # Avoid overwriting existing canonical columns
+            # Skip if this canonical name has already been assigned (avoid duplicates)
+            if canonical_name in already_mapped_to:
+                continue
+            # Avoid overwriting existing canonical columns
+            if canonical_name not in df.columns:
                 applied_mappings[original_col] = canonical_name
+                already_mapped_to.add(canonical_name)
 
     if applied_mappings:
         df.rename(columns=applied_mappings, inplace=True)
+
+    # Normalize all column names to lowercase for consistent access
+    lowercase_mapping = {col: col.lower() for col in df.columns}
+    df.rename(columns=lowercase_mapping, inplace=True)
 
     return applied_mappings
 
@@ -266,7 +309,7 @@ def _prepare_award_dict(row: pd.Series, ingested_at: datetime) -> dict[str, Any]
     award_dict: dict[str, Any] = {
         "award_id": row["award_id"].strip(),
         "agency": row["agency"].strip(),
-        "abstract": row["abstract"].strip() if row.get("abstract") else None,
+        "abstract": row["abstract"].strip() if ("abstract" in row.index and row["abstract"]) else None,
         "award_amount": _parse_amount(row["award_amount"]),
         "ingested_at": ingested_at,
         "source_version": "bootstrap_csv",  # Mark as bootstrap ingestion per FR-008
@@ -290,28 +333,56 @@ def _prepare_award_dict(row: pd.Series, ingested_at: datetime) -> dict[str, Any]
     if "phase" in row and row["phase"]:
         phase = row["phase"].strip().upper()
         # Normalize phase to canonical values
-        if phase in ("I", "1", "ONE"):
+        if "I" in phase and "II" not in phase and "III" not in phase:
             award_dict["phase"] = "I"
-        elif phase in ("II", "2", "TWO"):
+        elif "II" in phase and "III" not in phase:
             award_dict["phase"] = "II"
-        elif phase in ("III", "3", "THREE"):
+        elif "III" in phase:
+            award_dict["phase"] = "III"
+        elif phase in ("1", "ONE"):
+            award_dict["phase"] = "I"
+        elif phase in ("2", "TWO"):
+            award_dict["phase"] = "II"
+        elif phase in ("3", "THREE"):
             award_dict["phase"] = "III"
         else:
             award_dict["phase"] = "Other"
     else:
         award_dict["phase"] = "Other"
 
+    # firm_name is required, use placeholder if missing
     if "firm_name" in row and row["firm_name"]:
         award_dict["firm_name"] = row["firm_name"].strip()
+    else:
+        award_dict["firm_name"] = "UNKNOWN"
 
+    # firm_city is required, use placeholder if missing
     if "firm_city" in row and row["firm_city"]:
         award_dict["firm_city"] = row["firm_city"].strip()
+    else:
+        award_dict["firm_city"] = "Unknown"
 
+    # firm_state is required (2-char code), use placeholder if missing
     if "firm_state" in row and row["firm_state"]:
-        award_dict["firm_state"] = row["firm_state"].strip().upper()
+        state_str = row["firm_state"].strip()
+        # Try to map state name to code, otherwise use as-is if already 2 chars
+        state_lower = state_str.lower()
+        if state_lower in US_STATE_CODES:
+            award_dict["firm_state"] = US_STATE_CODES[state_lower]
+        elif len(state_str) == 2:
+            award_dict["firm_state"] = state_str.upper()
+        else:
+            # Invalid state format, use placeholder
+            award_dict["firm_state"] = "XX"
+    else:
+        award_dict["firm_state"] = "XX"  # Placeholder 2-char code
 
+    # award_date is required, use ingestion date if missing
     if "award_date" in row and row["award_date"]:
         award_dict["award_date"] = _parse_award_date(row["award_date"])
+    else:
+        # Use ingestion timestamp date as fallback
+        award_dict["award_date"] = ingested_at.date()
 
     if "program" in row and row["program"]:
         award_dict["program"] = row["program"].strip()
