@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -396,11 +396,53 @@ def _prepare_award_dict(row: pd.Series, ingested_at: datetime) -> dict[str, Any]
     else:
         award_dict["firm_state"] = "XX"  # Placeholder 2-char code
 
-    # award_date is required, use ingestion date if missing
-    if row.get("award_date"):
-        award_dict["award_date"] = _parse_award_date(row["award_date"])
+    # award_date is required, use award_year, then solicitation_year, then ingestion date if missing
+    raw_date = row.get("award_date")
+    if raw_date and pd.notna(raw_date):
+        # If it's a numeric year, convert to July 1st of that year
+        if isinstance(raw_date, (int, float)):
+            try:
+                year = int(raw_date)
+                award_dict["award_date"] = date(year, 7, 1)
+            except (ValueError, TypeError):
+                award_dict["award_date"] = ingested_at.date()
+        else:
+            # It's a string, parse it
+            parsed_date = _parse_award_date(raw_date)
+            # If parsed_date is just a year string (4 digits), convert to July 1st
+            if isinstance(parsed_date, str) and parsed_date.isdigit() and len(parsed_date) == 4:
+                try:
+                    year = int(parsed_date)
+                    award_dict["award_date"] = date(year, 7, 1)
+                except (ValueError, TypeError):
+                    award_dict["award_date"] = ingested_at.date()
+            else:
+                # It's a proper date string
+                award_dict["award_date"] = parsed_date
+    elif "award year" in row.index and pd.notna(row["award year"]):
+        # Use award year column as first fallback (assume July 1st of that year)
+        try:
+            year = int(row["award year"])
+            award_dict["award_date"] = date(year, 7, 1)
+        except (ValueError, TypeError):
+            # If award year is invalid, try solicitation_year
+            if "solicitation_year" in row.index and pd.notna(row["solicitation_year"]):
+                try:
+                    year = int(row["solicitation_year"])
+                    award_dict["award_date"] = date(year, 7, 1)
+                except (ValueError, TypeError):
+                    award_dict["award_date"] = ingested_at.date()
+            else:
+                award_dict["award_date"] = ingested_at.date()
+    elif "solicitation_year" in row.index and pd.notna(row["solicitation_year"]):
+        # Use solicitation_year as second fallback (assume July 1st of that year)
+        try:
+            year = int(row["solicitation_year"])
+            award_dict["award_date"] = date(year, 7, 1)
+        except (ValueError, TypeError):
+            award_dict["award_date"] = ingested_at.date()
     else:
-        # Use ingestion timestamp date as fallback
+        # Use ingestion timestamp date as last resort fallback
         award_dict["award_date"] = ingested_at.date()
 
     if row.get("program"):
