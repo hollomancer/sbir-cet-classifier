@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "timestamp": "2025-10-10T15:34:16.727967",
+    "total_awards": 1000,
+    "classification_time_seconds": 3.4807260036468506,
+    "throughput_awards_per_second": 287.29638556791684
+  },
+  "enrichment": {
+    "cache_hits": 0,
+    "api_calls": 0,
+    "api_success": 0,
+    "fallback": 1000,
+    "total_enrichment_chars": 81000
+  },
+  "classification_distribution": {
+    "High": 35,
+    "Medium": 946,
+    "Low": 19
+  },
+  "cet_distribution": {
+    "medical_devices": 516,
+    "biotechnology": 440,
+    "artificial_intelligence": 38,
+    "data_analytics": 5,
+    "advanced_materials": 1
+  },
+  "score_statistics": {
+    "mean": 54.80337409736973,
+    "median": 54.42455051326348,
+    "std": 8.337079230595632,
+    "min": 35.77544336233325,
+    "max": 96.79820926416488
+  },
+  "funding_by_cet": {
+    "medical_devices": 337143991.0,
+    "biotechnology": 263997531.0,
+    "artificial_intelligence": 20638093.0,
+    "data_analytics": 2973344.0,
+    "advanced_materials": 295689.0
+  },
+  "phase_distribution": {
+    "Other": 1000
+  },
+  "year_distribution": {
+    "2024": 1000
+  },
+  "state_distribution": {
+    "CA": 197,
+    "MA": 89,
+    "NC": 66,
+    "NY": 60,
+    "TX": 46,
+    "PA": 44,
+    "MD": 40,
+    "MN": 32,
+    "OR": 32,
+    "IL": 31
+  },
+  "data_quality": {
+    "has_abstract": 1000,
+    "has_solicitation": 999,
+    "avg_text_length": 2779.171
+  }
+}

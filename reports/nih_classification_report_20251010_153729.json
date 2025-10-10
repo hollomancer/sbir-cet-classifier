@@ -1,0 +1,85 @@
+{
+  "metadata": {
+    "timestamp": "2025-10-10T15:37:29.765313",
+    "total_awards": 47050,
+    "classification_time_seconds": 158.09165620803833,
+    "throughput_awards_per_second": 297.61216454134217
+  },
+  "enrichment": {
+    "cache_hits": 0,
+    "api_calls": 0,
+    "api_success": 0,
+    "fallback": 47050,
+    "total_enrichment_chars": 3811077
+  },
+  "classification_distribution": {
+    "High": 183,
+    "Medium": 42582,
+    "Low": 4285
+  },
+  "cet_distribution": {
+    "biotechnology": 26577,
+    "medical_devices": 20288,
+    "artificial_intelligence": 173,
+    "data_analytics": 11,
+    "advanced_materials": 1
+  },
+  "score_statistics": {
+    "mean": 47.205177986105426,
+    "median": 45.50620886719697,
+    "std": 7.255883204129206,
+    "min": 28.233667182747844,
+    "max": 96.79820926416488
+  },
+  "funding_by_cet": {
+    "medical_devices": 11416731416.46,
+    "biotechnology": 10956313698.1,
+    "artificial_intelligence": 88136413.0,
+    "data_analytics": 7872405.0,
+    "advanced_materials": 295689.0
+  },
+  "phase_distribution": {
+    "Other": 47050
+  },
+  "year_distribution": {
+    "1996": 1,
+    "1997": 1,
+    "1999": 1,
+    "2000": 1,
+    "2005": 1,
+    "2006": 1,
+    "2010": 1,
+    "2011": 7,
+    "2012": 11,
+    "2013": 88,
+    "2014": 505,
+    "2015": 1081,
+    "2016": 1275,
+    "2017": 1347,
+    "2018": 1467,
+    "2019": 1510,
+    "2020": 1279,
+    "2021": 1256,
+    "2022": 1284,
+    "2023": 1300,
+    "2024": 1084,
+    "2025": 33549
+  },
+  "state_distribution": {
+    "CA": 9220,
+    "MA": 5986,
+    "MD": 2922,
+    "NY": 2334,
+    "NC": 2080,
+    "TX": 1904,
+    "PA": 1885,
+    "WA": 1581,
+    "VA": 1328,
+    "OH": 1173
+  },
+  "data_quality": {
+    "has_abstract": 46907,
+    "has_solicitation": 26074,
+    "avg_text_length": 1993.2431668437832
+  }
+}
