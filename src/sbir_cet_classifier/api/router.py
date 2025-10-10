@@ -26,7 +26,10 @@ def configure_summary_service(service: SummaryService) -> None:
 
 def get_summary_service() -> SummaryService:
     if _summary_service is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Summary service not configured")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Summary service not configured",
+        )
     return _summary_service
 
 
@@ -39,7 +42,10 @@ def configure_awards_service(service: AwardsService) -> None:
 
 def get_awards_service() -> AwardsService:
     if _awards_service is None:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Awards service not configured")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Awards service not configured",
+        )
     return _awards_service
 
 
@@ -77,9 +83,15 @@ def get_summary(
 
 @router.get("/applicability/review-queue")
 def get_review_queue() -> dict[str, str]:
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Review queue not yet implemented")
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Review queue not yet implemented",
+    )
 
 
 @router.post("/refresh")
 def trigger_refresh() -> dict[str, str]:
-    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Refresh trigger not yet implemented")
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Refresh trigger not yet implemented",
+    )

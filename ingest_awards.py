@@ -10,20 +10,17 @@ This script:
 5. Saves the processed data for use with CLI/API
 """
 
-import sys
 import hashlib
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
 
 import pandas as pd
-import numpy as np
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from sbir_cet_classifier.common.config import AppConfig, StoragePaths
-from sbir_cet_classifier.data.taxonomy import TaxonomyRepository
-from sbir_cet_classifier.models.applicability import ApplicabilityModel, band_for_score
+from sbir_cet_classifier.models.applicability import band_for_score
 
 
 def load_and_normalize_csv(csv_path: Path, max_rows: int = None) -> pd.DataFrame:
@@ -77,7 +74,9 @@ def load_and_normalize_csv(csv_path: Path, max_rows: int = None) -> pd.DataFrame
     df["firm_state"] = df.get("firm_state", "XX").fillna("XX").astype("category")
     df["award_amount"] = pd.to_numeric(df.get("award_amount", 0), errors="coerce").fillna(0)
     df["award_date"] = pd.to_datetime(df.get("award_date"), errors="coerce")
-    df["fiscal_year"] = pd.to_numeric(df.get("fiscal_year"), errors="coerce").fillna(2025).astype("int16")
+    df["fiscal_year"] = (
+        pd.to_numeric(df.get("fiscal_year"), errors="coerce").fillna(2025).astype("int16")
+    )
 
     # Normalize phase values
     phase_mapping = {
@@ -88,7 +87,11 @@ def load_and_normalize_csv(csv_path: Path, max_rows: int = None) -> pd.DataFrame
         "SBIR Phase II": "II",
         "STTR Phase II": "II",
     }
-    df["phase"] = df["phase"].map(lambda x: phase_mapping.get(x, "Other") if pd.notna(x) else "Other").astype("category")
+    df["phase"] = (
+        df["phase"]
+        .map(lambda x: phase_mapping.get(x, "Other") if pd.notna(x) else "Other")
+        .astype("category")
+    )
 
     # Generate synthetic IDs for NULL/missing contracts
     null_mask = df["award_id"].isna() | (df["award_id"] == "")
@@ -99,7 +102,10 @@ def load_and_normalize_csv(csv_path: Path, max_rows: int = None) -> pd.DataFrame
         
         def generate_synthetic_id(row):
             """Generate unique ID from award attributes."""
-            composite = f"{row['firm_name']}|{row['title']}|{row['award_date']}|{row['award_amount']}|{row['agency']}"
+            composite = (
+                f"{row['firm_name']}|{row['title']}|{row['award_date']}|"
+                f"{row['award_amount']}|{row['agency']}"
+            )
             hash_val = hashlib.md5(composite.encode()).hexdigest()[:16]
             return f"SYNTH-{hash_val}"
 
@@ -128,9 +134,12 @@ def load_taxonomy(taxonomy_path: Path) -> pd.DataFrame:
 
 
 def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.DataFrame:
-    """Classify awards against CET areas using multi-label weighted classification with context rules and agency/branch priors."""
+    """Classify awards against CET areas using multi-label weighted classification with context
+    rules and agency/branch priors."""
     print(f"🤖 Classifying {len(awards_df):,} awards against CET taxonomy...")
-    print(f"   Using v5 classifier with Agency/Branch priors, lower None score, and multi-label threshold (20)...")
+    print(
+        "   Using v5 classifier with Agency/Branch priors, lower None score, and multi-label threshold (20)..."
+    )
     print(f"   (This will take approximately {len(awards_df) / 750:.0f} seconds...)")
 
     # Agency-based CET priors: boost CET scores based on funding agency
@@ -252,18 +261,43 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
     # Format: {cet_id: {"core": [...], "related": [...], "negative": [...]}}
     cet_keywords = {
         "quantum_computing": {
-            "core": ["quantum computing", "quantum computer", "quantum algorithm", "quantum processor"],
+            "core": [
+                "quantum computing",
+                "quantum computer",
+                "quantum algorithm",
+                "quantum processor",
+            ],
             "related": ["qubit", "quantum gate", "quantum circuit", "quantum software"],
-            "negative": ["quantum mechanics", "quantum chemistry", "quantum field theory", "quantum dot"]
+            "negative": [
+                "quantum mechanics",
+                "quantum chemistry",
+                "quantum field theory",
+                "quantum dot",
+            ]
         },
         "quantum_sensing": {
-            "core": ["quantum sensing", "quantum sensor", "quantum measurement", "quantum metrology"],
+            "core": [
+                "quantum sensing",
+                "quantum sensor",
+                "quantum measurement",
+                "quantum metrology",
+            ],
             "related": ["quantum detector", "atomic clock", "quantum magnetometer"],
             "negative": []
         },
         "artificial_intelligence": {
-            "core": ["artificial intelligence research", "deep learning framework", "neural network architecture", "ai system"],
-            "related": ["convolutional neural", "recurrent neural", "transformer model", "generative adversarial"],
+            "core": [
+                "artificial intelligence research",
+                "deep learning framework",
+                "neural network architecture",
+                "ai system",
+            ],
+            "related": [
+                "convolutional neural",
+                "recurrent neural",
+                "transformer model",
+                "generative adversarial",
+            ],
             "negative": [
                 # Medical AI should go to medical_devices
                 "ai-powered diagnostic", "ai-based diagnosis", "ai medical imaging",
@@ -275,8 +309,21 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
             ]
         },
         "biotechnology": {
-            "core": ["biotechnology", "synthetic biology", "genetic engineering", "crispr", "gene therapy"],
-            "related": ["biotech", "genomics", "biomanufacturing", "protein engineering", "gene editing", "bioreactor"],
+            "core": [
+                "biotechnology",
+                "synthetic biology",
+                "genetic engineering",
+                "crispr",
+                "gene therapy",
+            ],
+            "related": [
+                "biotech",
+                "genomics",
+                "biomanufacturing",
+                "protein engineering",
+                "gene editing",
+                "bioreactor",
+            ],
             "negative": ["biomedical device", "medical diagnostic"]
         },
         "hypersonics": {
@@ -290,43 +337,113 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
             "negative": ["thermal management", "cooling system", "thermal insulation"]
         },
         "advanced_materials": {
-            "core": ["metamaterial", "nanomaterial", "smart material", "advanced composite material"],
-            "related": ["graphene", "carbon nanotube", "nanostructure", "functionally graded", "shape memory alloy"],
+            "core": [
+                "metamaterial",
+                "nanomaterial",
+                "smart material",
+                "advanced composite material",
+            ],
+            "related": [
+                "graphene",
+                "carbon nanotube",
+                "nanostructure",
+                "functionally graded",
+                "shape memory alloy",
+            ],
             "negative": ["standard composite", "conventional material"]
         },
         "cybersecurity": {
             "core": ["cybersecurity", "information security", "network security", "cyber defense"],
-            "related": ["encryption", "cryptography", "intrusion detection", "penetration testing", "vulnerability assessment"],
+            "related": [
+                "encryption",
+                "cryptography",
+                "intrusion detection",
+                "penetration testing",
+                "vulnerability assessment",
+            ],
             "negative": ["physical security", "security system"]
         },
         "autonomous_systems": {
-            "core": ["autonomous system", "autonomous vehicle", "self-driving", "autonomous navigation"],
-            "related": ["unmanned aerial", "uav", "drone", "autonomous robot", "autonomous control"],
+            "core": [
+                "autonomous system",
+                "autonomous vehicle",
+                "self-driving",
+                "autonomous navigation",
+            ],
+            "related": [
+                "unmanned aerial",
+                "uav",
+                "drone",
+                "autonomous robot",
+                "autonomous control",
+            ],
             "negative": ["remote control", "teleoperated", "manual control", "automated"]
         },
         "semiconductors": {
-            "core": ["semiconductor manufacturing", "microelectronics", "integrated circuit", "chip fabrication"],
+            "core": [
+                "semiconductor manufacturing",
+                "microelectronics",
+                "integrated circuit",
+                "chip fabrication",
+            ],
             "related": ["cmos", "transistor", "wafer", "asic", "fpga", "semiconductor device"],
             "negative": ["using semiconductor", "semiconductor-based sensor"]
         },
         "space_technology": {
             "core": ["spacecraft", "satellite system", "space mission", "orbital platform"],
-            "related": ["space propulsion", "launch vehicle", "orbital mechanics", "space environment"],
+            "related": [
+                "space propulsion",
+                "launch vehicle",
+                "orbital mechanics",
+                "space environment",
+            ],
             "negative": ["cyberspace", "workspace", "aerospace material", "space-based sensor"]
         },
         "energy_storage": {
-            "core": ["energy storage system", "battery technology", "electrochemical storage", "grid storage"],
-            "related": ["lithium-ion battery", "solid-state battery", "supercapacitor", "energy storage device"],
+            "core": [
+                "energy storage system",
+                "battery technology",
+                "electrochemical storage",
+                "grid storage",
+            ],
+            "related": [
+                "lithium-ion battery",
+                "solid-state battery",
+                "supercapacitor",
+                "energy storage device",
+            ],
             "negative": ["data storage", "battery-powered", "using battery"]
         },
         "renewable_energy": {
-            "core": ["renewable energy", "solar energy system", "wind energy system", "photovoltaic system"],
-            "related": ["solar panel", "solar cell", "wind turbine", "renewable power", "clean energy"],
+            "core": [
+                "renewable energy",
+                "solar energy system",
+                "wind energy system",
+                "photovoltaic system",
+            ],
+            "related": [
+                "solar panel",
+                "solar cell",
+                "wind turbine",
+                "renewable power",
+                "clean energy",
+            ],
             "negative": ["solar radiation", "wind tunnel", "solar heating"]
         },
         "medical_devices": {
-            "core": ["medical device", "diagnostic device", "therapeutic device", "medical imaging device"],
-            "related": ["clinical diagnostic", "patient monitoring", "surgical instrument", "prosthetic", "implantable device"],
+            "core": [
+                "medical device",
+                "diagnostic device",
+                "therapeutic device",
+                "medical imaging device",
+            ],
+            "related": [
+                "clinical diagnostic",
+                "patient monitoring",
+                "surgical instrument",
+                "prosthetic",
+                "implantable device",
+            ],
             "negative": ["medical research", "drug development", "pharmaceutical"]
         },
     }
@@ -353,7 +470,7 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
 
     # Classify each award with multi-label support and context rules
     assessments = []
-    ingested_at = datetime.now(timezone.utc)
+    ingested_at = datetime.now(UTC)
     context_rules_applied = 0
 
     for idx, row in awards_df.iterrows():
@@ -413,8 +530,9 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
         cet_scores = apply_branch_prior(cet_scores, branch)
 
         # If no matches, assign to None category (uncategorized) with lower score
+        # CHANGED: Was 30, now 20 (will normalize to 33 instead of 42)
         if not cet_scores:
-            cet_scores = {"none": 20}  # CHANGED: Was 30, now 20 (will normalize to 33 instead of 42)
+            cet_scores = {"none": 20}
 
         # Normalize scores to 0-100 range based on max possible score
         max_possible = 15 * 4 + 10  # 4 core keywords * 15 + title bonus
@@ -428,7 +546,8 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
         top_cets = sorted_cets[:3]  # Top 3
 
         primary_cet_id, primary_score = top_cets[0]
-        supporting_cet_ids = [cet_id for cet_id, score in top_cets[1:] if score >= 20]  # Only if score >= 20 (lowered from 30)
+        # Only if score >= 20 (lowered from 30)
+        supporting_cet_ids = [cet_id for cet_id, score in top_cets[1:] if score >= 20]
 
         # Calculate classification band
         classification = band_for_score(primary_score)
@@ -466,13 +585,13 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
     print(f"   ✅ Classified all {len(assessments_df):,} awards")
 
     # Print classification summary
-    print(f"\n   Classification Distribution:")
+    print("\n   Classification Distribution:")
     for band, count in assessments_df['classification'].value_counts().items():
         pct = count / len(assessments_df) * 100
         print(f"      {band}: {count:,} awards ({pct:.1f}%)")
 
     # Print score statistics
-    print(f"\n   Score Statistics:")
+    print("\n   Score Statistics:")
     print(f"      Min: {assessments_df['score'].min():.0f}")
     print(f"      Max: {assessments_df['score'].max():.0f}")
     print(f"      Mean: {assessments_df['score'].mean():.1f}")
@@ -480,19 +599,24 @@ def classify_awards(awards_df: pd.DataFrame, taxonomy_df: pd.DataFrame) -> pd.Da
 
     # Count multi-label awards
     multi_label_count = assessments_df['supporting_cet_ids'].apply(lambda x: len(x) > 0).sum()
-    print(f"\n   Multi-Label Classification:")
-    print(f"      Awards with 2+ CET areas: {multi_label_count:,} ({multi_label_count/len(assessments_df)*100:.1f}%)")
+    print("\n   Multi-Label Classification:")
+    print(
+        f"      Awards with 2+ CET areas: {multi_label_count:,} "
+        f"({multi_label_count/len(assessments_df)*100:.1f}%)"
+    )
 
-    print(f"\n   Context Rules Applied:")
+    print("\n   Context Rules Applied:")
     print(f"      Total rule activations: {context_rules_applied:,}")
     print(f"      Avg per award: {context_rules_applied/len(assessments_df):.3f}")
 
     return assessments_df
 
 
-def save_processed_data(awards_df: pd.DataFrame, assessments_df: pd.DataFrame, taxonomy_df: pd.DataFrame):
+def save_processed_data(
+    awards_df: pd.DataFrame, assessments_df: pd.DataFrame, taxonomy_df: pd.DataFrame
+):
     """Save processed data to parquet files."""
-    print(f"💾 Saving processed data...")
+    print("💾 Saving processed data...")
 
     # Create directories
     processed_dir = Path("data/processed")
@@ -540,8 +664,14 @@ def main():
     print("✅ Ingestion Complete!")
     print("=" * 60)
     print("\nNext steps:")
-    print("  1. View summary: python -m sbir_cet_classifier.cli.app summary --fiscal-year-start 2023 --fiscal-year-end 2025")
-    print("  2. List awards: python -m sbir_cet_classifier.cli.app awards list --fiscal-year-start 2023 --fiscal-year-end 2025 --page 1")
+    print(
+        "  1. View summary: python -m sbir_cet_classifier.cli.app summary "
+        "--fiscal-year-start 2023 --fiscal-year-end 2025"
+    )
+    print(
+        "  2. List awards: python -m sbir_cet_classifier.cli.app awards list "
+        "--fiscal-year-start 2023 --fiscal-year-end 2025 --page 1"
+    )
     print("  3. Start API: uvicorn sbir_cet_classifier.api.router:router --reload")
 
     return 0

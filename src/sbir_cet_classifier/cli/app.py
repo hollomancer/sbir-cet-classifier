@@ -34,7 +34,9 @@ def refresh(
         typer.echo(f"Ingesting fiscal year {fiscal_year} from {url}")
         result = ingest_fiscal_year(fiscal_year, url, config=config)
         typer.echo(
-            f"Processed fiscal year {result.fiscal_year}: {result.records_ingested} records, archive={result.raw_archive.name}"
+            f"Processed fiscal year {result.fiscal_year}: "
+            f"{result.records_ingested} records, "
+            f"archive={result.raw_archive.name}"
         )
     if incremental:
         typer.echo("Incremental refresh complete")

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -57,7 +57,7 @@ def benchmark_bootstrap_ingestion(csv_path: Path) -> dict[str, Any]:
     print(f"File size: {csv_path.stat().st_size / (1024**2):.1f} MB")
 
     start_time = time.time()
-    start_dt = datetime.now(timezone.utc)
+    start_dt = datetime.now(UTC)
 
     try:
         result = load_bootstrap_csv(csv_path)
@@ -65,7 +65,7 @@ def benchmark_bootstrap_ingestion(csv_path: Path) -> dict[str, Any]:
         end_time = time.time()
         duration = end_time - start_time
 
-        print(f"\n✅ Ingestion completed successfully")
+        print("\n✅ Ingestion completed successfully")
         print(f"   Duration: {format_duration(duration)}")
         print(f"   Total rows: {result.total_rows:,}")
         print(f"   Loaded: {result.loaded_count:,}")
@@ -81,7 +81,7 @@ def benchmark_bootstrap_ingestion(csv_path: Path) -> dict[str, Any]:
         metrics = {
             "operation": "bootstrap_ingestion",
             "start_time": start_dt.isoformat(),
-            "end_time": datetime.now(timezone.utc).isoformat(),
+            "end_time": datetime.now(UTC).isoformat(),
             "duration_seconds": duration,
             "input_file": str(csv_path),
             "file_size_mb": csv_path.stat().st_size / (1024**2),
@@ -90,7 +90,9 @@ def benchmark_bootstrap_ingestion(csv_path: Path) -> dict[str, Any]:
             "skipped_count": result.skipped_count,
             "success_rate_pct": result.loaded_count / result.total_rows * 100,
             "throughput_records_per_sec": result.loaded_count / duration if duration > 0 else 0,
-            "per_record_latency_ms": (duration / result.loaded_count * 1000) if result.loaded_count > 0 else 0,
+            "per_record_latency_ms": (
+                (duration / result.loaded_count * 1000) if result.loaded_count > 0 else 0
+            ),
             "field_mappings": result.field_mappings,
         }
 
@@ -101,12 +103,12 @@ def benchmark_bootstrap_ingestion(csv_path: Path) -> dict[str, Any]:
         duration = end_time - start_time
 
         print(f"\n❌ Ingestion failed after {format_duration(duration)}")
-        print(f"   Error: {str(e)}")
+        print(f"   Error: {e!s}")
 
         return {
             "operation": "bootstrap_ingestion",
             "start_time": start_dt.isoformat(),
-            "end_time": datetime.now(timezone.utc).isoformat(),
+            "end_time": datetime.now(UTC).isoformat(),
             "duration_seconds": duration,
             "status": "failed",
             "error": str(e),
@@ -125,7 +127,7 @@ def generate_benchmark_report(metrics: dict[str, Any], output_path: Path) -> Non
     print("=" * 80)
 
     report = {
-        "benchmark_date": datetime.now(timezone.utc).isoformat(),
+        "benchmark_date": datetime.now(UTC).isoformat(),
         "environment": {
             "python_version": "3.11.13",
             "platform": "macOS Darwin 24.6.0",
@@ -194,8 +196,8 @@ def main() -> None:
     print("\n" + "=" * 80)
     print("SBIR CET CLASSIFIER - PERFORMANCE BENCHMARK")
     print("=" * 80)
-    print(f"Dataset: award_data.csv (533k+ awards)")
-    print(f"Timestamp: {datetime.now(timezone.utc).isoformat()}")
+    print("Dataset: award_data.csv (533k+ awards)")
+    print(f"Timestamp: {datetime.now(UTC).isoformat()}")
 
     csv_path = Path("award_data.csv")
 
@@ -230,7 +232,14 @@ def main() -> None:
         if "loaded_count" in ingestion_metrics:
             print(f"   - Records loaded: {ingestion_metrics['loaded_count']:,}")
             print(f"   - Success rate: {ingestion_metrics['success_rate_pct']:.1f}%")
-            print(f"   - Throughput: {format_throughput(ingestion_metrics['loaded_count'], ingestion_metrics['duration_seconds'])}")
+            print(
+                "   - Throughput: {}".format(
+                    format_throughput(
+                        ingestion_metrics["loaded_count"],
+                        ingestion_metrics["duration_seconds"],
+                    )
+                )
+            )
 
     print("\n" + "=" * 80)
     print("Benchmark complete! Review artifacts/ for detailed metrics.")
