@@ -23,7 +23,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 # NSF API configuration
-NSF_API_BASE = "https://api.nsf.gov/services/v1"
+NSF_API_BASE = "https://www.research.gov/awardapi-service/v1"
 DEFAULT_TIMEOUT = 30.0  # seconds
 MAX_RETRIES = 3
 
