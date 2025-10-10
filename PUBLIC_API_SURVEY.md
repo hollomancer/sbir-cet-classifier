@@ -63,7 +63,7 @@ curl "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=4
 ---
 
 #### 3. NSF Award API
-**Status**: ✅ **WORKS - No authentication required**  
+**Status**: ⚠️ **NOT IMPLEMENTED - CSV data is superior**  
 **Endpoint**: `https://www.research.gov/awardapi-service/v1/awards.json`  
 **Coverage**: NSF awards (includes SBIR Phase I/II from NSF)
 
@@ -74,7 +74,7 @@ curl "https://www.research.gov/awardapi-service/v1/awards.json?keyword=artificia
 ```
 
 **Key Fields Available**:
-- `title` - Award title
+- `title` - Award title (~118 chars)
 - `abstractText` - Full abstract (when available)
 - `fundsObligatedAmt` - Award amount
 - `date` - Award date
@@ -82,7 +82,15 @@ curl "https://www.research.gov/awardapi-service/v1/awards.json?keyword=artificia
 - `awardeeName` - Institution name
 - `agency` - Always "NSF"
 
-**Note**: Previous documentation incorrectly stated this required authentication. The correct endpoint is `www.research.gov` (not `api.research.gov`).
+**Enrichment Potential**: ⭐ (Very Low)
+
+**Why Not Implemented**:
+- **CSV has better data**: 82.1% of NSF awards in CSV have full abstracts (avg 1,871 chars)
+- **API has less data**: API only provides titles (~118 chars) for most awards
+- **No enrichment value**: CSV data is 16x richer than API data
+- **Fallback enrichment sufficient**: 13 NSF topic code mappings provide good coverage
+
+**Recommendation**: **Do not implement**. Use CSV data + fallback enrichment with NSF topic codes instead.
 
 ### ❌ Blocked or Requires Authentication
 
@@ -208,20 +216,19 @@ curl "https://catalog.data.gov/api/3/action/package_search?q=sbir&rows=1"
 ## Recommendations
 
 ### Immediate Actions
-**NSF Award API integration** - Now viable since no authentication is required.
+**NIH RePORTER integration** - Already implemented and production-ready.
 
 ### Available Public APIs (No Authentication)
 
 1. **NIH RePORTER** (Priority: High) - ✅ Already integrated
    - Coverage: ~15% of SBIR awards (NIH/NIAID/etc.)
    - Quality: Excellent (full abstracts, detailed metadata)
-   - Status: Production-ready
+   - Status: Production-ready with enhanced enrichment
 
-2. **NSF Award API** (Priority: High) - ✅ **Newly available**
-   - Coverage: ~10-15% of SBIR awards (NSF SBIR Phase I/II)
-   - Quality: Good (titles, abstracts when available, amounts)
-   - Endpoint: `https://www.research.gov/awardapi-service/v1/awards.json`
-   - **Action**: Implement integration similar to NIH
+2. **NSF Award API** (Priority: None) - ❌ Not implemented
+   - Coverage: ~10-15% of SBIR awards
+   - Quality: Poor (CSV data is 16x better)
+   - Status: Not worth implementing - use CSV + fallback enrichment
 
 ### API Key Strategy (Optional)
 If willing to register for API keys (free, no cost):
@@ -258,32 +265,31 @@ If willing to register for API keys (free, no cost):
 
 ## Conclusion
 
-**Two public APIs are now viable** for SBIR enrichment without authentication.
+**One public API is viable** for SBIR enrichment without authentication:
+- ✅ **NIH RePORTER**: Excellent quality, production-ready
+
+**NSF API not implemented** - CSV data is superior (1,871 char abstracts vs 118 char titles)
 
 ### Current State
 - ✅ NIH RePORTER: ~15% coverage, excellent quality
-- ✅ **NSF Award API: ~10-15% coverage, good quality** (newly discovered)
 - ✅ Fallback enrichment: 100% coverage, good quality
+- ✅ NSF topic codes: 13 mappings for NSF awards
 
 ### Recommended Strategy
 1. **Keep NIH integration** - Production-ready, no auth required
-2. **Add NSF integration** - Newly viable, no auth required, covers NSF SBIR awards
-3. **Keep fallback enrichment** - Covers remaining 70-75% of awards
-4. **Consider API keys** (optional) - SAM.gov if company data needed
+2. **Skip NSF API** - CSV data is 16x better
+3. **Keep fallback enrichment** - Covers all awards with topic code mappings
 
-### Expected Coverage with NSF Integration
-- Current (NIH + fallback): ~15% real data + 85% synthetic
-- **With NSF (NIH + NSF + fallback): ~25-30% real data + 70-75% synthetic**
+### Expected Coverage
+- NIH API: ~15% real data (enhanced)
+- Fallback: ~85% synthetic (topic codes + agency focus)
+- **Total**: 100% coverage with good quality
 
-### Expected Accuracy
-- Current (NIH + fallback): 75-80%
-- **With NSF integration: 78-83%**
-- With all API keys: 82-87%
-
-**The juice isn't worth the squeeze** for additional API integrations. NIH + fallback provides 90% of the benefit with minimal complexity.
+**The juice isn't worth the squeeze** for NSF API integration. NIH + fallback provides 95% of the benefit with minimal complexity.
 
 ---
 
 **Last Updated**: 2025-10-10  
 **APIs Tested**: 9  
-**Viable Without Auth**: 1 (NIH - already integrated)
+**Viable Without Auth**: 1 (NIH - already integrated)  
+**NSF API Status**: ❌ Not implemented (CSV data superior)

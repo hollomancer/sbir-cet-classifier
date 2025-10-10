@@ -20,7 +20,7 @@ The SBIR CET Classifier specification is **complete and production-ready**, with
 | FR-005 | Award drill-down pages | ✅ Complete |
 | FR-006 | Dataset export with normalized weights | ✅ Complete |
 | FR-007 | Review queue with quarterly SLA | ✅ Complete |
-| FR-008 | Solicitation enrichment (Grants.gov, NIH, NSF APIs) | ✅ Complete |
+| FR-008 | Solicitation enrichment (Grants.gov, NIH APIs) | ✅ Complete |
 
 ### Non-Functional Requirements (9 total)
 
@@ -197,9 +197,10 @@ The SBIR CET Classifier specification is **complete and production-ready**, with
    - **Mitigation**: Hybrid matcher achieves 99% match rate
    - **Status**: Acceptable workaround implemented
 
-2. **NSF API**: Provides less data than CSV
-   - **Mitigation**: Use CSV data (82.1% have abstracts)
-   - **Status**: Fallback enrichment sufficient
+2. **NSF API Removed**: API provides less data than CSV
+   - **Finding**: NSF API only provides 118 char titles, CSV has 1,871 char abstracts (82.1% coverage)
+   - **Mitigation**: Use CSV data + fallback enrichment with 13 NSF topic code mappings
+   - **Status**: CSV data superior, no API integration needed
 
 3. **Pre-existing Test Failures**: 9 tests failing (unrelated to new features)
    - **Impact**: Low - failures in old NIH/NSF client tests

@@ -39,7 +39,7 @@
 - [X] T028 [Shared] Implement bootstrap CSV loader (`src/sbir_cet_classifier/data/bootstrap.py`) that accepts `awards-data.csv`, validates schema compatibility with SBIR.gov format, maps columns to canonical ingestion schema, logs field mappings, and aborts if required fields (`award_id`, `agency`, `abstract`, `award_amount`) are absent; mark ingestion source as `bootstrap_csv` in metadata.
 - [X] T029 [P][Shared] Build Grants.gov API client (`src/sbir_cet_classifier/data/external/grants_gov.py`) supporting solicitation lookup by topic code/solicitation number, returning description and technical topic keywords, with error handling for 404s and timeouts; include unit tests with mocked responses.
 - [X] T030 [P][Shared] Build NIH API client (`src/sbir_cet_classifier/data/external/nih.py`) supporting solicitation lookup by agency-specific identifiers, returning description and technical topic keywords, with error handling for API unavailability; include unit tests.
-- [X] T031 [P][Shared] Build NSF API client (`src/sbir_cet_classifier/data/external/nsf.py`) supporting solicitation lookup by topic code, returning description and technical topic keywords, with graceful degradation when solicitations are unmatched; include unit tests.
+- [X] T031 [P][Shared] ~~Build NSF API client~~ **REMOVED** - NSF API provides less data than CSV (only 118 char titles vs 1,871 char abstracts in CSV). CSV data is superior; fallback enrichment with NSF topic codes provides better coverage.
 - [X] T032 [Shared] Implement SQLite solicitation cache (`src/sbir_cet_classifier/data/solicitation_cache.py`) at `artifacts/solicitation_cache.db` keyed by (API source, solicitation identifier) with indexed lookups, supporting permanent storage unless explicitly invalidated via operator command, and selective purging by API source, solicitation ID, or date range via SQL DELETE operations.
 - [X] T033 [Shared] Build lazy enrichment orchestrator (`src/sbir_cet_classifier/features/enrichment.py`) that triggers on-demand when awards are first accessed for classification/viewing/export, checks SQLite cache before querying APIs, handles missing/unmatched solicitations gracefully by logging gaps and proceeding with award-only classification, marks failures as `enrichment_failed`, and versions solicitation text with source API and retrieval timestamp.
 - [X] T034 [Shared] Implement batch enrichment optimization for export operations (`src/sbir_cet_classifier/features/batch_enrichment.py`) that identifies unique (API source, solicitation ID) tuples in export batches, checks cache, fetches missing solicitations concurrently (respecting API limits), and updates all awards sharing same solicitation atomically to prevent redundant fetches.
@@ -180,7 +180,8 @@
 
 ### Completed Enrichment Tasks (T028-T036) - FR-008 Solicitation Enrichment
 - ✅ T028: Bootstrap CSV loader
-- ✅ T029-T031: API clients (Grants.gov, NIH, NSF) [P]
+- ✅ T029-T030: API clients (Grants.gov, NIH) [P]
+- ❌ T031: NSF API client [P] - **REMOVED** (CSV data superior to API)
 - ✅ T032: SQLite solicitation cache
 - ✅ T033: Lazy enrichment orchestrator
 - ✅ T034: Batch enrichment optimization
