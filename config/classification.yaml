@@ -1,5 +1,220 @@
 version: "1.0.0"
-description: Classification model hyperparameters
+description: Classification model hyperparameters and CET taxonomy
+
+taxonomy:
+  version: NSTC-2025Q1
+  effective_date: "2025-01-01"
+  categories:
+    - id: advanced_manufacturing
+      name: Advanced Manufacturing
+      definition: Manufacturing technologies including additive manufacturing, robotics, and automation
+      keywords:
+        - additive manufacturing
+        - 3D printing
+        - robotics
+        - automation
+        - advanced manufacturing
+    
+    - id: artificial_intelligence
+      name: Artificial Intelligence
+      definition: AI and machine learning technologies including neural networks, deep learning, and computer vision
+      keywords:
+        - artificial intelligence
+        - machine learning
+        - neural networks
+        - deep learning
+        - computer vision
+        - natural language processing
+        - AI
+    
+    - id: biotechnology
+      name: Biotechnology
+      definition: Biological and biomedical technologies including genomics, synthetic biology, and biomanufacturing
+      keywords:
+        - biotechnology
+        - genomics
+        - synthetic biology
+        - biomanufacturing
+        - gene editing
+        - CRISPR
+    
+    - id: quantum_computing
+      name: Quantum Computing
+      definition: Quantum information science including quantum computing, quantum sensing, and quantum communications
+      keywords:
+        - quantum computing
+        - quantum algorithms
+        - qubits
+        - quantum error correction
+        - quantum information
+    
+    - id: quantum_sensing
+      name: Quantum Sensing
+      definition: Quantum-based sensing and measurement technologies
+      parent: quantum_computing
+      keywords:
+        - quantum sensing
+        - quantum metrology
+        - atomic clocks
+        - quantum sensors
+    
+    - id: hypersonics
+      name: Hypersonics
+      definition: High-speed flight technologies exceeding Mach 5
+      keywords:
+        - hypersonic
+        - supersonic
+        - high-speed flight
+        - scramjet
+        - Mach 5
+    
+    - id: advanced_materials
+      name: Advanced Materials
+      definition: Novel materials including metamaterials, nanomaterials, and smart materials
+      keywords:
+        - advanced materials
+        - metamaterials
+        - nanomaterials
+        - smart materials
+        - composites
+    
+    - id: thermal_protection
+      name: Thermal Protection Systems
+      definition: Materials and systems for extreme temperature protection
+      parent: advanced_materials
+      keywords:
+        - thermal protection
+        - heat shields
+        - ablative materials
+        - high temperature materials
+    
+    - id: energy_storage
+      name: Energy Storage
+      definition: Battery and energy storage technologies including solid-state batteries and supercapacitors
+      keywords:
+        - energy storage
+        - batteries
+        - solid-state batteries
+        - supercapacitors
+        - lithium-ion
+    
+    - id: renewable_energy
+      name: Renewable Energy
+      definition: Solar, wind, and other renewable energy generation technologies
+      keywords:
+        - renewable energy
+        - solar
+        - wind
+        - photovoltaic
+        - clean energy
+    
+    - id: cybersecurity
+      name: Cybersecurity
+      definition: Information security, cryptography, and secure communications technologies
+      keywords:
+        - cybersecurity
+        - cryptography
+        - encryption
+        - information security
+        - secure communications
+    
+    - id: space_technology
+      name: Space Technology
+      definition: Spacecraft, satellite, and space exploration technologies
+      keywords:
+        - space technology
+        - spacecraft
+        - satellite
+        - space exploration
+        - orbital
+        - propulsion
+    
+    - id: autonomous_systems
+      name: Autonomous Systems
+      definition: Autonomous vehicles, drones, and robotic systems
+      keywords:
+        - autonomous systems
+        - autonomous vehicles
+        - drones
+        - UAV
+        - robotics
+        - self-driving
+    
+    - id: advanced_communications
+      name: Advanced Communications
+      definition: 5G/6G, optical communications, and next-generation networking
+      keywords:
+        - 5G
+        - 6G
+        - optical communications
+        - networking
+        - telecommunications
+        - wireless
+    
+    - id: semiconductors
+      name: Semiconductors and Microelectronics
+      definition: Chip design, fabrication, and advanced computing architectures
+      keywords:
+        - semiconductors
+        - microelectronics
+        - chip design
+        - integrated circuits
+        - VLSI
+        - fabrication
+    
+    - id: medical_devices
+      name: Medical Devices
+      definition: Medical diagnostic and therapeutic devices and systems
+      keywords:
+        - medical devices
+        - diagnostics
+        - therapeutic devices
+        - healthcare technology
+        - clinical
+    
+    - id: environmental_tech
+      name: Environmental Technology
+      definition: Pollution control, water treatment, and environmental monitoring
+      keywords:
+        - environmental technology
+        - pollution control
+        - water treatment
+        - environmental monitoring
+        - sustainability
+    
+    - id: directed_energy
+      name: Directed Energy
+      definition: Laser and high-power microwave technologies
+      keywords:
+        - directed energy
+        - laser
+        - high-power microwave
+        - beam weapons
+    
+    - id: human_machine_interface
+      name: Human-Machine Interface
+      definition: Brain-computer interfaces and advanced human-system integration
+      keywords:
+        - human-machine interface
+        - brain-computer interface
+        - BCI
+        - neural interface
+        - human-system integration
+    
+    - id: data_analytics
+      name: Data Analytics and Visualization
+      definition: Big data processing, analytics platforms, and visualization tools
+      keywords:
+        - data analytics
+        - big data
+        - data visualization
+        - analytics platforms
+        - data processing
+    
+    - id: none
+      name: None / Uncategorized
+      definition: Awards that do not clearly fit into any specific CET category
+      keywords: []
 
 vectorizer:
   ngram_range: [1, 3]  # Unigrams, bigrams, trigrams

@@ -4,10 +4,25 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field
+
+
+class CategoryConfig(BaseModel):
+    """CET category configuration."""
+    id: str
+    name: str
+    definition: str
+    parent: str | None = None
+    keywords: list[str] = Field(default_factory=list)
+
+
+class TaxonomyConfig(BaseModel):
+    """CET taxonomy configuration."""
+    version: str
+    effective_date: str
+    categories: list[CategoryConfig]
 
 
 class VectorizerConfig(BaseModel):
@@ -58,6 +73,7 @@ class ClassificationConfig(BaseModel):
     """Complete classification configuration."""
     version: str
     description: str
+    taxonomy: TaxonomyConfig
     vectorizer: VectorizerConfig
     feature_selection: FeatureSelectionConfig
     classifier: ClassifierConfig
@@ -123,3 +139,4 @@ def load_enrichment_config(path: Path | None = None) -> EnrichmentConfig:
         data = yaml.safe_load(f)
     
     return EnrichmentConfig(**data)
+

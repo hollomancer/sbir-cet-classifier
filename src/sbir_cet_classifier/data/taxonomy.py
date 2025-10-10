@@ -8,6 +8,7 @@ from datetime import date
 from pathlib import Path
 
 from sbir_cet_classifier.common.schemas import CETArea
+from sbir_cet_classifier.common.yaml_config import load_classification_config
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,33 @@ class CETTaxonomy:
 
     def get(self, cet_id: str) -> CETArea | None:
         return next((entry for entry in self.entries if entry.cet_id == cet_id), None)
+
+
+def load_taxonomy_from_yaml() -> CETTaxonomy:
+    """Load taxonomy from YAML configuration file.
+    
+    Returns:
+        CETTaxonomy loaded from config/classification.yaml
+    """
+    config = load_classification_config()
+    effective_date = date.fromisoformat(config.taxonomy.effective_date)
+    entries = tuple(
+        CETArea(
+            cet_id=cat.id,
+            name=cat.name,
+            definition=cat.definition,
+            parent_cet_id=cat.parent,
+            version=config.taxonomy.version,
+            effective_date=effective_date,
+            status="active"
+        )
+        for cat in config.taxonomy.categories
+    )
+    return CETTaxonomy(
+        version=config.taxonomy.version,
+        effective_date=effective_date,
+        entries=entries
+    )
 
 
 def load_taxonomy_file(path: Path) -> CETTaxonomy:
@@ -73,10 +101,16 @@ class TaxonomyRepository:
 
 
 def load_taxonomy_from_directory(directory: Path) -> CETTaxonomy:
-    """Load the most recent taxonomy stored in `directory`."""
-
+    """Load the most recent taxonomy stored in `directory`.
+    
+    Falls back to YAML config if no JSON files found.
+    """
     repo = TaxonomyRepository(directory)
-    return repo.latest()
+    try:
+        return repo.latest()
+    except FileNotFoundError:
+        # Fallback to YAML config
+        return load_taxonomy_from_yaml()
 
 
 __all__ = [
@@ -84,4 +118,5 @@ __all__ = [
     "TaxonomyRepository",
     "load_taxonomy_file",
     "load_taxonomy_from_directory",
+    "load_taxonomy_from_yaml",
 ]
