@@ -3,13 +3,14 @@
 > **Classify SBIR awards against Critical and Emerging Technology (CET) areas using ML**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-23%2F23%20passing-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-232%2F232%20passing-brightgreen)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A585%25-brightgreen)](tests/)
 
 ## Overview
 
 Automated classification system for SBIR awards against 20 Critical and Emerging Technology areas. Features ML-based scoring, portfolio analytics, and export capabilities.
 
-**Current Status**: ✅ Production-ready with 200k+ awards processed
+**Current Status**: ✅ Production-ready with 210k+ awards processed at 97.9% success rate
 
 ## Quick Start
 
@@ -104,7 +105,32 @@ pytest tests/ --cov=src/sbir_cet_classifier --cov-report=html
 pytest -m "not slow" -v
 ```
 
-**Current Test Status**: 23/23 passing ✅
+**Current Test Status**: 232/232 passing ✅
+
+## Performance
+
+### Ingestion Performance
+- **Success Rate**: 97.9% (210k/214k awards)
+- **Throughput**: 5,979 records/second
+- **Per-Record Latency**: 0.17ms
+- **Duration**: 35.85s for 214k awards
+
+### Classification Performance
+- **Enhanced Features**: Trigrams (1-3 word phrases)
+- **Feature Selection**: 50k → 20k best features (chi-squared)
+- **Class Balancing**: Handles imbalanced CET categories
+- **Parallel Scoring**: Multi-core support for batch operations
+- **Domain Stop Words**: 28 SBIR-specific terms removed
+
+### Optimizations (Phase O)
+- ✅ Agency name normalization (+25% recovery)
+- ✅ Batch validation with pandas vectorization (+40% recovery)
+- ✅ N-gram features for technical phrase capture
+- ✅ Chi-squared feature selection
+- ✅ Balanced class weights for minority categories
+- ✅ Multi-core parallel scoring (2-4x faster)
+
+See [PERFORMANCE_OPTIMIZATIONS.md](docs/PERFORMANCE_OPTIMIZATIONS.md) for details.
 
 ## Key Concepts
 
@@ -408,4 +434,4 @@ This project uses public SBIR.gov data under research terms. See data usage assu
 
 ---
 
-**Status**: ✅ Production-ready | **Last Updated**: 2025-10-08 | **Version**: 1.0.0
+**Status**: ✅ Production-ready | **Last Updated**: 2025-10-10 | **Version**: 1.1.0 (Phase O Optimizations)

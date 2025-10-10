@@ -25,6 +25,12 @@ from pydantic import ValidationError
 
 from sbir_cet_classifier.common.config import AppConfig
 from sbir_cet_classifier.common.schemas import Award
+from sbir_cet_classifier.data.agency_mapping import normalize_agency_name
+from sbir_cet_classifier.data.batch_validation import (
+    normalize_agencies_batch,
+    optimize_dtypes,
+    prevalidate_batch,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -265,7 +271,7 @@ def _validate_required_columns(df: pd.DataFrame) -> None:
 
 
 def _convert_to_awards(df: pd.DataFrame, ingested_at: datetime) -> tuple[list[Award], int]:
-    """Convert DataFrame rows to Award records.
+    """Convert DataFrame rows to Award records with batch validation.
 
     Args:
         df: Normalized DataFrame with canonical column names
@@ -274,10 +280,29 @@ def _convert_to_awards(df: pd.DataFrame, ingested_at: datetime) -> tuple[list[Aw
     Returns:
         Tuple of (successfully loaded awards, count of skipped rows)
     """
+    # Optimize dtypes for performance
+    df = optimize_dtypes(df)
+    
+    # Normalize agency names in batch
+    df = normalize_agencies_batch(df)
+    
+    # Pre-validate in batch (fast pandas operations)
+    valid_df, invalid_df = prevalidate_batch(df)
+    
+    logger.info(
+        "Batch pre-validation complete",
+        extra={
+            "total_rows": len(df),
+            "valid_rows": len(valid_df),
+            "invalid_rows": len(invalid_df),
+        },
+    )
+    
+    # Convert valid records to Award objects
     awards: list[Award] = []
-    skipped = 0
+    skipped = len(invalid_df)
 
-    for idx, row in df.iterrows():
+    for idx, row in valid_df.iterrows():
         try:
             award_dict = _prepare_award_dict(row, ingested_at)
             award = Award(**award_dict)
@@ -307,9 +332,9 @@ def _prepare_award_dict(row: pd.Series, ingested_at: datetime) -> dict[str, Any]
         Dictionary suitable for Award model construction
     """
     award_dict: dict[str, Any] = {
-        "award_id": row["award_id"].strip(),
-        "agency": row["agency"].strip(),
-        "abstract": row["abstract"].strip() if ("abstract" in row.index and row["abstract"]) else None,
+        "award_id": row["award_id"].strip() if isinstance(row["award_id"], str) else str(row["award_id"]),
+        "agency": row["agency"] if isinstance(row["agency"], str) else str(row["agency"]),  # Already normalized
+        "abstract": row["abstract"].strip() if ("abstract" in row.index and row["abstract"] and pd.notna(row["abstract"])) else None,
         "award_amount": _parse_amount(row["award_amount"]),
         "ingested_at": ingested_at,
         "source_version": "bootstrap_csv",  # Mark as bootstrap ingestion per FR-008
@@ -384,7 +409,7 @@ def _prepare_award_dict(row: pd.Series, ingested_at: datetime) -> dict[str, Any]
     if row.get("solicitation_id"):
         award_dict["solicitation_id"] = row["solicitation_id"].strip()
 
-    if row.get("solicitation_year"):
+    if "solicitation_year" in row.index and pd.notna(row["solicitation_year"]):
         try:
             award_dict["solicitation_year"] = int(row["solicitation_year"])
         except (ValueError, TypeError):
@@ -393,11 +418,11 @@ def _prepare_award_dict(row: pd.Series, ingested_at: datetime) -> dict[str, Any]
     return award_dict
 
 
-def _parse_amount(amount_str: str) -> float:
-    """Parse award amount string to float.
+def _parse_amount(amount_str: str | int | float) -> float:
+    """Parse award amount to float.
 
     Args:
-        amount_str: Amount string (may contain $, commas, etc.)
+        amount_str: Amount as string, int, or float (may contain $, commas, etc.)
 
     Returns:
         Parsed amount as float
@@ -405,6 +430,10 @@ def _parse_amount(amount_str: str) -> float:
     Raises:
         ValueError: If amount cannot be parsed
     """
+    # Handle numeric types directly
+    if isinstance(amount_str, (int, float)):
+        return float(amount_str)
+    
     # Strip currency symbols, commas, whitespace
     cleaned = amount_str.replace("$", "").replace(",", "").strip()
     try:

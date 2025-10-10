@@ -8,8 +8,19 @@ from dataclasses import dataclass
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import LabelEncoder
+from sklearn.utils.class_weight import compute_class_weight
+
+# Domain-specific stop words for SBIR/technical text
+SBIR_STOP_WORDS = frozenset([
+    "phase", "sbir", "sttr", "award", "contract", "proposal", "program",
+    "project", "research", "development", "technology", "technical",
+    "company", "firm", "small", "business", "innovative", "innovation",
+    "objective", "approach", "anticipated", "benefits", "commercial",
+    "applications", "potential", "proposed", "develop", "provide",
+])
 
 CLASSIFICATION_BANDS = {
     "High": (70, 100),
@@ -45,10 +56,19 @@ def band_for_score(score: float) -> str:
 
 
 class ApplicabilityModel:
-    """Wrapper around TF-IDF + calibrated logistic regression."""
+    """Wrapper around TF-IDF + calibrated logistic regression with optimizations."""
 
     def __init__(self) -> None:
-        self._vectorizer = TfidfVectorizer(ngram_range=(1, 2), max_features=20000)
+        # Enhanced TF-IDF with trigrams and domain stop words
+        self._vectorizer = TfidfVectorizer(
+            ngram_range=(1, 3),  # Unigrams, bigrams, trigrams
+            max_features=50000,  # Increased for richer features
+            stop_words=list(SBIR_STOP_WORDS),
+            min_df=2,  # Ignore very rare terms
+            max_df=0.95,  # Ignore very common terms
+        )
+        # Feature selection to reduce noise
+        self._feature_selector = SelectKBest(chi2, k=20000)
         self._classifier: LogisticRegression | CalibratedClassifierCV | None = None
         self._label_encoder = LabelEncoder()
         self._is_fitted = False
@@ -58,17 +78,40 @@ class ApplicabilityModel:
         texts = [example.text for example in examples]
         cet_labels = [example.primary_cet_id for example in examples]
         y = self._label_encoder.fit_transform(cet_labels)
+        
+        # TF-IDF vectorization
         X = self._vectorizer.fit_transform(texts)
-        base_classifier = LogisticRegression(max_iter=500)
-        base_classifier.fit(X, y)
+        
+        # Feature selection
+        X_selected = self._feature_selector.fit_transform(X, y)
+        
+        # Compute class weights for imbalanced data
+        classes = np.unique(y)
+        class_weights = compute_class_weight("balanced", classes=classes, y=y)
+        class_weight_dict = dict(zip(classes, class_weights))
+        
+        # Train base classifier with class weights
+        base_classifier = LogisticRegression(
+            max_iter=500,
+            class_weight=class_weight_dict,
+            solver="lbfgs",
+            n_jobs=-1,  # Use all CPU cores
+        )
+        base_classifier.fit(X_selected, y)
 
+        # Calibrate if enough samples per class
         class_counts = np.bincount(y)
         if class_counts.size >= 2 and class_counts.min() >= 3:
             calibrated = CalibratedClassifierCV(
-                LogisticRegression(max_iter=500),
+                LogisticRegression(
+                    max_iter=500,
+                    class_weight=class_weight_dict,
+                    solver="lbfgs",
+                    n_jobs=-1,
+                ),
                 cv=3,
             )
-            calibrated.fit(X, y)
+            calibrated.fit(X_selected, y)
             self._classifier = calibrated
             self._is_calibrated = True
         else:
@@ -82,8 +125,12 @@ class ApplicabilityModel:
             raise RuntimeError("Model must be fitted before prediction")
         if self._classifier is None:  # pragma: no cover - defensive
             raise RuntimeError("Classifier unavailable; call fit first")
+        
+        # Apply same transformations as training
         X = self._vectorizer.transform([text])
-        probs = self._classifier.predict_proba(X)[0]  # type: ignore[call-arg]
+        X_selected = self._feature_selector.transform(X)
+        
+        probs = self._classifier.predict_proba(X_selected)[0]  # type: ignore[call-arg]
         labels = self._label_encoder.inverse_transform(np.arange(len(probs)))
         ranked = sorted(zip(labels, probs, strict=False), key=lambda pair: pair[1], reverse=True)
         primary_cet_id, probability = ranked[0]
