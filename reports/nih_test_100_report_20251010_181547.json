@@ -1,0 +1,30 @@
+{
+  "metadata": {
+    "timestamp": "2025-10-10T18:15:47.487264",
+    "total_awards": 100
+  },
+  "enrichment": {
+    "cache_hits": 0,
+    "api_calls": 100,
+    "api_success": 0,
+    "fallback": 100,
+    "total_enrichment_chars": 8100
+  },
+  "classification_distribution": {
+    "High": 75,
+    "Medium": 24,
+    "Low": 1
+  },
+  "cet_distribution": {
+    "medical_devices": 68,
+    "biotechnology": 31,
+    "artificial_intelligence": 1
+  },
+  "score_statistics": {
+    "mean": 76.47612373777129,
+    "median": 78.80875461213301,
+    "std": 10.718786965548258,
+    "min": 44.73937857512236,
+    "max": 90.32305520127989
+  }
+}
