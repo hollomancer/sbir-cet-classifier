@@ -7,18 +7,29 @@ synthetic solicitation context for classification.
 from sbir_cet_classifier.common.schemas import Award
 
 
-# Topic code to domain mapping (NSF SBIR topics)
+# Topic code to domain mapping (NSF and other agency SBIR topics)
 TOPIC_DOMAINS = {
-    "AI": ("Artificial Intelligence", ["machine learning", "neural networks", "AI", "deep learning"]),
-    "BT": ("Biotechnology", ["biotechnology", "gene editing", "synthetic biology", "biomedical"]),
-    "LC": ("Low Carbon Energy", ["renewable energy", "energy storage", "sustainability", "clean energy"]),
-    "ET": ("Emerging Technologies", ["quantum computing", "quantum sensing", "advanced technology"]),
-    "MD": ("Medical Devices", ["medical devices", "diagnostics", "healthcare technology", "clinical"]),
+    # NSF SBIR Topic Codes (most common)
+    "AI": ("Artificial Intelligence", ["machine learning", "neural networks", "AI", "deep learning", "computer vision"]),
+    "BC": ("Biological and Chemical Technologies", ["biotechnology", "chemistry", "biochemistry", "molecular biology", "drug discovery"]),
+    "BM": ("Biomedical Technologies", ["medical devices", "diagnostics", "therapeutics", "healthcare", "clinical"]),
+    "BT": ("Biotechnology", ["biotechnology", "gene editing", "synthetic biology", "biomedical", "genomics"]),
+    "CT": ("Communications Technology", ["telecommunications", "wireless", "networking", "5G", "signal processing"]),
+    "EA": ("Environmental and Agricultural Technologies", ["environmental monitoring", "agriculture", "sustainability", "climate", "water"]),
+    "EI": ("Energy and Industrial Technologies", ["energy systems", "industrial automation", "manufacturing", "process control"]),
+    "EL": ("Electronics and Photonics", ["electronics", "photonics", "optics", "sensors", "imaging"]),
+    "IT": ("Information Technology", ["software", "cybersecurity", "data analytics", "cloud computing", "databases"]),
+    "LC": ("Low Carbon Energy", ["renewable energy", "energy storage", "sustainability", "clean energy", "solar"]),
+    "MI": ("Materials and Instrumentation", ["advanced materials", "instrumentation", "measurement", "testing", "characterization"]),
+    "NM": ("Nanotechnology and Advanced Materials", ["nanotechnology", "nanomaterials", "advanced materials", "composites", "coatings"]),
+    "SE": ("Semiconductors and Electronics", ["semiconductors", "microelectronics", "integrated circuits", "chip design", "VLSI"]),
+    
+    # Generic/Legacy Topic Codes
+    "ET": ("Emerging Technologies", ["quantum computing", "quantum sensing", "advanced technology", "emerging tech"]),
+    "MD": ("Medical Devices", ["medical devices", "diagnostics", "healthcare technology", "clinical", "therapeutic"]),
     "PT": ("Physical Technologies", ["advanced materials", "nanotechnology", "manufacturing", "materials science"]),
-    "CT": ("Communications Technology", ["telecommunications", "wireless", "networking", "5G"]),
-    "IT": ("Information Technology", ["software", "cybersecurity", "data analytics", "cloud computing"]),
-    "MT": ("Manufacturing Technology", ["advanced manufacturing", "automation", "robotics", "3D printing"]),
-    "ST": ("Space Technology", ["aerospace", "satellite", "space systems", "propulsion"]),
+    "MT": ("Manufacturing Technology", ["advanced manufacturing", "automation", "robotics", "3D printing", "additive"]),
+    "ST": ("Space Technology", ["aerospace", "satellite", "space systems", "propulsion", "orbital"]),
 }
 
 # Agency-specific focus areas

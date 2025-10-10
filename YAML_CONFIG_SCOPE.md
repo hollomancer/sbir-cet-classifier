@@ -236,7 +236,7 @@ version: "1.0.0"
 description: Fallback enrichment mappings
 
 topic_domains:
-  # NSF SBIR topic codes
+  # NSF SBIR topic codes (most common)
   AI:
     name: Artificial Intelligence
     keywords:
@@ -244,6 +244,25 @@ topic_domains:
       - neural networks
       - AI
       - deep learning
+      - computer vision
+  
+  BC:
+    name: Biological and Chemical Technologies
+    keywords:
+      - biotechnology
+      - chemistry
+      - biochemistry
+      - molecular biology
+      - drug discovery
+  
+  BM:
+    name: Biomedical Technologies
+    keywords:
+      - medical devices
+      - diagnostics
+      - therapeutics
+      - healthcare
+      - clinical
   
   BT:
     name: Biotechnology
@@ -252,6 +271,51 @@ topic_domains:
       - gene editing
       - synthetic biology
       - biomedical
+      - genomics
+  
+  CT:
+    name: Communications Technology
+    keywords:
+      - telecommunications
+      - wireless
+      - networking
+      - 5G
+      - signal processing
+  
+  EA:
+    name: Environmental and Agricultural Technologies
+    keywords:
+      - environmental monitoring
+      - agriculture
+      - sustainability
+      - climate
+      - water
+  
+  EI:
+    name: Energy and Industrial Technologies
+    keywords:
+      - energy systems
+      - industrial automation
+      - manufacturing
+      - process control
+  
+  EL:
+    name: Electronics and Photonics
+    keywords:
+      - electronics
+      - photonics
+      - optics
+      - sensors
+      - imaging
+  
+  IT:
+    name: Information Technology
+    keywords:
+      - software
+      - cybersecurity
+      - data analytics
+      - cloud computing
+      - databases
   
   LC:
     name: Low Carbon Energy
@@ -260,8 +324,78 @@ topic_domains:
       - energy storage
       - sustainability
       - clean energy
+      - solar
   
-  # ... 7 more topic codes
+  MI:
+    name: Materials and Instrumentation
+    keywords:
+      - advanced materials
+      - instrumentation
+      - measurement
+      - testing
+      - characterization
+  
+  NM:
+    name: Nanotechnology and Advanced Materials
+    keywords:
+      - nanotechnology
+      - nanomaterials
+      - advanced materials
+      - composites
+      - coatings
+  
+  SE:
+    name: Semiconductors and Electronics
+    keywords:
+      - semiconductors
+      - microelectronics
+      - integrated circuits
+      - chip design
+      - VLSI
+  
+  # Generic/Legacy codes
+  ET:
+    name: Emerging Technologies
+    keywords:
+      - quantum computing
+      - quantum sensing
+      - advanced technology
+      - emerging tech
+  
+  MD:
+    name: Medical Devices
+    keywords:
+      - medical devices
+      - diagnostics
+      - healthcare technology
+      - clinical
+      - therapeutic
+  
+  PT:
+    name: Physical Technologies
+    keywords:
+      - advanced materials
+      - nanotechnology
+      - manufacturing
+      - materials science
+  
+  MT:
+    name: Manufacturing Technology
+    keywords:
+      - advanced manufacturing
+      - automation
+      - robotics
+      - 3D printing
+      - additive
+  
+  ST:
+    name: Space Technology
+    keywords:
+      - aerospace
+      - satellite
+      - space systems
+      - propulsion
+      - orbital
 
 agency_focus:
   NSF:
