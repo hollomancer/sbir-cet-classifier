@@ -62,14 +62,29 @@ curl "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=4
 
 ---
 
-### ❌ Blocked or Requires Authentication
-
 #### 3. NSF Award API
-**Status**: ❌ Requires authentication  
-**Endpoint**: `https://api.research.gov/awardapi-service/v1/awards.json`  
-**Error**: 403 Forbidden
+**Status**: ✅ **WORKS - No authentication required**  
+**Endpoint**: `https://www.research.gov/awardapi-service/v1/awards.json`  
+**Coverage**: NSF awards (includes SBIR Phase I/II from NSF)
 
-**See**: Previous testing in `API_DEBUG_REPORT.md`
+**Test**:
+```bash
+curl "https://www.research.gov/awardapi-service/v1/awards.json?keyword=artificial%20intelligence&rpp=2"
+# Returns: JSON with award data including abstracts, amounts, dates
+```
+
+**Key Fields Available**:
+- `title` - Award title
+- `abstractText` - Full abstract (when available)
+- `fundsObligatedAmt` - Award amount
+- `date` - Award date
+- `startDate` - Project start date
+- `awardeeName` - Institution name
+- `agency` - Always "NSF"
+
+**Note**: Previous documentation incorrectly stated this required authentication. The correct endpoint is `www.research.gov` (not `api.research.gov`).
+
+### ❌ Blocked or Requires Authentication
 
 ---
 
@@ -193,22 +208,30 @@ curl "https://catalog.data.gov/api/3/action/package_search?q=sbir&rows=1"
 ## Recommendations
 
 ### Immediate Actions
-**None**. NIH RePORTER is the only viable public API and is already integrated.
+**NSF Award API integration** - Now viable since no authentication is required.
 
-### API Key Strategy
+### Available Public APIs (No Authentication)
+
+1. **NIH RePORTER** (Priority: High) - ✅ Already integrated
+   - Coverage: ~15% of SBIR awards (NIH/NIAID/etc.)
+   - Quality: Excellent (full abstracts, detailed metadata)
+   - Status: Production-ready
+
+2. **NSF Award API** (Priority: High) - ✅ **Newly available**
+   - Coverage: ~10-15% of SBIR awards (NSF SBIR Phase I/II)
+   - Quality: Good (titles, abstracts when available, amounts)
+   - Endpoint: `https://www.research.gov/awardapi-service/v1/awards.json`
+   - **Action**: Implement integration similar to NIH
+
+### API Key Strategy (Optional)
 If willing to register for API keys (free, no cost):
 
-1. **NSF Award API** (Priority: High)
-   - Coverage: ~25% of SBIR awards
-   - Expected quality: Good (similar to NIH)
-   - Registration: https://api.research.gov/
-
-2. **SAM.gov Entity API** (Priority: Medium)
+1. **SAM.gov Entity API** (Priority: Medium)
    - Coverage: 100% (company information)
    - Expected quality: Moderate (NAICS codes, business type)
    - Registration: https://sam.gov/data-services/
 
-3. **Semantic Scholar** (Priority: Low)
+2. **Semantic Scholar** (Priority: Low)
    - Coverage: ~5-10% (publications)
    - Expected quality: Good (research abstracts)
    - Registration: https://www.semanticscholar.org/product/api
@@ -235,21 +258,26 @@ If willing to register for API keys (free, no cost):
 
 ## Conclusion
 
-**No additional public APIs are viable** for SBIR enrichment without authentication.
+**Two public APIs are now viable** for SBIR enrichment without authentication.
 
 ### Current State
-- ✅ NIH RePORTER: 15% coverage, excellent quality
+- ✅ NIH RePORTER: ~15% coverage, excellent quality
+- ✅ **NSF Award API: ~10-15% coverage, good quality** (newly discovered)
 - ✅ Fallback enrichment: 100% coverage, good quality
 
 ### Recommended Strategy
 1. **Keep NIH integration** - Production-ready, no auth required
-2. **Keep fallback enrichment** - Covers remaining 85% of awards
-3. **Request API keys** (optional) - NSF and SAM.gov if higher accuracy needed
-4. **Don't pursue** - PubMed, USA Spending, Data.gov (low value)
+2. **Add NSF integration** - Newly viable, no auth required, covers NSF SBIR awards
+3. **Keep fallback enrichment** - Covers remaining 70-75% of awards
+4. **Consider API keys** (optional) - SAM.gov if company data needed
+
+### Expected Coverage with NSF Integration
+- Current (NIH + fallback): ~15% real data + 85% synthetic
+- **With NSF (NIH + NSF + fallback): ~25-30% real data + 70-75% synthetic**
 
 ### Expected Accuracy
 - Current (NIH + fallback): 75-80%
-- With NSF API key: 80-85%
+- **With NSF integration: 78-83%**
 - With all API keys: 82-87%
 
 **The juice isn't worth the squeeze** for additional API integrations. NIH + fallback provides 90% of the benefit with minimal complexity.
