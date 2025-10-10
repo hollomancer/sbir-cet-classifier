@@ -136,6 +136,7 @@ See [PERFORMANCE_OPTIMIZATIONS.md](docs/PERFORMANCE_OPTIMIZATIONS.md) for detail
 
 Classification parameters and enrichment mappings are externalized to YAML files in the `config/` directory:
 
+- **`config/taxonomy.yaml`** — CET taxonomy with 21 technology areas, definitions, and keywords
 - **`config/classification.yaml`** — Model hyperparameters, stop words, classification bands
 - **`config/enrichment.yaml`** — Topic domain mappings, agency focus areas, phase keywords
 
@@ -144,14 +145,16 @@ Classification parameters and enrichment mappings are externalized to YAML files
 python validate_config.py
 ```
 
-**Example: Tuning classification bands**
+**Example: Adding a new CET category**
 ```yaml
-# config/classification.yaml
-scoring:
-  bands:
-    high:
-      min: 80  # Raise threshold for High classification
-      max: 100
+# config/taxonomy.yaml
+categories:
+  - id: new_technology
+    name: New Technology Area
+    definition: Description of the technology
+    keywords:
+      - keyword1
+      - keyword2
 ```
 
 See [config/README.md](config/README.md) for detailed configuration documentation.

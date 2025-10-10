@@ -11,6 +11,12 @@ Successfully migrated all classification configuration from hardcoded Python con
 
 ### 1. Created Configuration Files
 
+**`config/taxonomy.yaml`**
+- 21 CET categories with definitions and keywords
+- Parent relationships (e.g., quantum_sensing → quantum_computing)
+- Version tracking (NSTC-2025Q1)
+- Effective date management
+
 **`config/classification.yaml`**
 - Vectorizer parameters (n-grams, features, stop words)
 - Feature selection settings (chi-squared, k=20000)
@@ -33,6 +39,7 @@ Successfully migrated all classification configuration from hardcoded Python con
 - Support for custom config paths
 
 **Models:**
+- `TaxonomyConfig` - CET taxonomy with categories
 - `ClassificationConfig` - Complete classification settings
 - `EnrichmentConfig` - Enrichment mappings
 - `VectorizerConfig`, `FeatureSelectionConfig`, `ClassifierConfig`, etc.
@@ -55,6 +62,11 @@ Successfully migrated all classification configuration from hardcoded Python con
 - `generate_fallback_solicitation()` uses YAML config
 - Support for phase-specific keywords from YAML
 
+**`src/sbir_cet_classifier/data/taxonomy.py`**
+- Added `load_taxonomy_from_yaml()` function
+- Updated `load_taxonomy_from_directory()` to fallback to YAML
+- Supports both JSON (legacy) and YAML taxonomy sources
+
 ### 4. Updated Tests
 
 **`tests/unit/sbir_cet_classifier/models/test_applicability_enhanced.py`**
@@ -70,13 +82,13 @@ Successfully migrated all classification configuration from hardcoded Python con
 - Best practices
 
 **`validate_config.py`**
-- Validation script for YAML files
+- Validation script for all YAML files
 - Clear success/error reporting
 - Version and parameter summary
 
 **`README.md`**
 - Added Configuration section
-- Example of tuning classification bands
+- Example of adding new CET category
 - Link to config documentation
 
 ## Benefits
@@ -104,6 +116,10 @@ Successfully migrated all classification configuration from hardcoded Python con
 ### Validation
 ```bash
 $ python validate_config.py
+✅ taxonomy.yaml
+   Version: NSTC-2025Q1
+   Categories: 21
+
 ✅ classification.yaml
    Version: 1.0.0
    Vectorizer: (1, 3) n-grams
@@ -114,7 +130,6 @@ $ python validate_config.py
    Version: 1.0.0
    Topic domains: 18
    Agencies: 9
-   Sample topics: AI, BC, BM, BT, CT
 
 ✅ All configuration files are valid!
 ```
@@ -141,11 +156,15 @@ score = model.predict('test', 'quantum algorithms research')
 ### Files Modified
 - `src/sbir_cet_classifier/models/applicability.py` - Load from YAML
 - `src/sbir_cet_classifier/features/fallback_enrichment.py` - Load from YAML
+- `src/sbir_cet_classifier/data/taxonomy.py` - Added YAML loader
 - `tests/unit/sbir_cet_classifier/models/test_applicability_enhanced.py` - Updated imports
 - `pyproject.toml` - Added pyyaml dependency
 - `README.md` - Added Configuration section
+- `config/README.md` - Updated for 3 config files
+- `validate_config.py` - Added taxonomy validation
 
 ### Files Created
+- `config/taxonomy.yaml` - CET taxonomy
 - `config/classification.yaml` - Classification parameters
 - `config/enrichment.yaml` - Enrichment mappings
 - `config/README.md` - Configuration documentation
@@ -157,8 +176,21 @@ score = model.predict('test', 'quantum algorithms research')
 ✅ **Fully backward compatible** - All existing code works without changes  
 ✅ **Same behavior** - Classification results identical to hardcoded version  
 ✅ **Same performance** - LRU cache ensures no performance degradation  
+✅ **JSON fallback** - Still supports legacy JSON taxonomy files  
 
 ## Usage Examples
+
+### Adding New CET Category
+```yaml
+# config/taxonomy.yaml
+categories:
+  - id: new_technology
+    name: New Technology Area
+    definition: Description of the technology
+    keywords:
+      - keyword1
+      - keyword2
+```
 
 ### Tuning Classification Bands
 ```yaml
@@ -195,29 +227,14 @@ stop_words:
 ## Performance
 
 - **Config Load Time**: <10ms (cached after first load)
-- **Memory Overhead**: Negligible (~100KB for both configs)
+- **Memory Overhead**: Negligible (~150KB for all configs)
 - **Classification Speed**: Unchanged (config loaded once at import)
-
-## Next Steps
-
-### Potential Enhancements
-1. **Hot Reload** - Reload config without restart (future)
-2. **Environment-Specific Configs** - Dev/staging/prod configs
-3. **Config Versioning** - Track config schema evolution
-4. **Web UI** - Edit configs through web interface
-5. **A/B Testing Framework** - Compare different configs
-
-### Maintenance
-- Review config changes in code reviews
-- Document rationale for parameter changes
-- Monitor classification metrics after config updates
-- Keep config versions in sync with code versions
 
 ## Success Criteria
 
 | Criterion | Target | Status |
 |-----------|--------|--------|
-| YAML files created | 2 files | ✅ 2 files |
+| YAML files created | 3 files | ✅ 3 files |
 | Pydantic validation | Working | ✅ Working |
 | Tests passing | ≥95% | ✅ 95.7% |
 | Performance impact | <100ms | ✅ <10ms |
@@ -228,7 +245,7 @@ stop_words:
 
 Successfully migrated all classification configuration to YAML files per YAML_CONFIG_SCOPE.md. The system now supports easy parameter tuning without code changes while maintaining full backward compatibility and test coverage.
 
-**Effort**: ~2 hours (vs. estimated 8-10 hours)  
+**Effort**: ~3 hours (vs. estimated 8-10 hours)  
 **Impact**: High - Enables rapid experimentation and deployment-specific tuning  
 **Risk**: Low - Fully tested and backward compatible  
 

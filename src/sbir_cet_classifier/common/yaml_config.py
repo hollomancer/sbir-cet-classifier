@@ -22,6 +22,7 @@ class TaxonomyConfig(BaseModel):
     """CET taxonomy configuration."""
     version: str
     effective_date: str
+    description: str
     categories: list[CategoryConfig]
 
 
@@ -73,7 +74,6 @@ class ClassificationConfig(BaseModel):
     """Complete classification configuration."""
     version: str
     description: str
-    taxonomy: TaxonomyConfig
     vectorizer: VectorizerConfig
     feature_selection: FeatureSelectionConfig
     classifier: ClassifierConfig
@@ -101,6 +101,25 @@ class EnrichmentConfig(BaseModel):
     topic_domains: dict[str, TopicDomainConfig]
     agency_focus: dict[str, str]
     phase_keywords: PhaseKeywordsConfig
+
+
+@lru_cache(maxsize=1)
+def load_taxonomy_config(path: Path | None = None) -> TaxonomyConfig:
+    """Load taxonomy configuration from YAML.
+    
+    Args:
+        path: Path to taxonomy.yaml (defaults to config/taxonomy.yaml)
+        
+    Returns:
+        Validated taxonomy configuration
+    """
+    if path is None:
+        path = Path(__file__).parent.parent.parent.parent / "config" / "taxonomy.yaml"
+    
+    with open(path) as f:
+        data = yaml.safe_load(f)
+    
+    return TaxonomyConfig(**data)
 
 
 @lru_cache(maxsize=1)
@@ -139,4 +158,5 @@ def load_enrichment_config(path: Path | None = None) -> EnrichmentConfig:
         data = yaml.safe_load(f)
     
     return EnrichmentConfig(**data)
+
 

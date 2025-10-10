@@ -4,6 +4,7 @@
 from pathlib import Path
 
 from sbir_cet_classifier.common.yaml_config import (
+    load_taxonomy_config,
     load_classification_config,
     load_enrichment_config,
 )
@@ -13,10 +14,22 @@ def main():
     """Validate all configuration files."""
     print("Validating YAML configuration files...\n")
     
+    # Validate taxonomy config
+    try:
+        tax_config = load_taxonomy_config()
+        print("✅ taxonomy.yaml")
+        print(f"   Version: {tax_config.version}")
+        print(f"   Effective date: {tax_config.effective_date}")
+        print(f"   Categories: {len(tax_config.categories)}")
+        print(f"   Sample: {tax_config.categories[0].id} - {tax_config.categories[0].name}")
+    except Exception as e:
+        print(f"❌ taxonomy.yaml: {e}")
+        return 1
+    
     # Validate classification config
     try:
         clf_config = load_classification_config()
-        print("✅ classification.yaml")
+        print("\n✅ classification.yaml")
         print(f"   Version: {clf_config.version}")
         print(f"   Vectorizer: {clf_config.vectorizer.ngram_range} n-grams")
         print(f"   Stop words: {len(clf_config.stop_words)} terms")

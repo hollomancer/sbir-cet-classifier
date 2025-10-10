@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 
 from sbir_cet_classifier.common.schemas import CETArea
-from sbir_cet_classifier.common.yaml_config import load_classification_config
+from sbir_cet_classifier.common.yaml_config import load_taxonomy_config
 
 
 @dataclass(frozen=True)
@@ -27,24 +27,24 @@ def load_taxonomy_from_yaml() -> CETTaxonomy:
     """Load taxonomy from YAML configuration file.
     
     Returns:
-        CETTaxonomy loaded from config/classification.yaml
+        CETTaxonomy loaded from config/taxonomy.yaml
     """
-    config = load_classification_config()
-    effective_date = date.fromisoformat(config.taxonomy.effective_date)
+    config = load_taxonomy_config()
+    effective_date = date.fromisoformat(config.effective_date)
     entries = tuple(
         CETArea(
             cet_id=cat.id,
             name=cat.name,
             definition=cat.definition,
             parent_cet_id=cat.parent,
-            version=config.taxonomy.version,
+            version=config.version,
             effective_date=effective_date,
             status="active"
         )
-        for cat in config.taxonomy.categories
+        for cat in config.categories
     )
     return CETTaxonomy(
-        version=config.taxonomy.version,
+        version=config.version,
         effective_date=effective_date,
         entries=entries
     )

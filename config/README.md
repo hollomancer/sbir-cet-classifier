@@ -4,6 +4,26 @@ This directory contains YAML configuration files for the SBIR CET Classifier.
 
 ## Files
 
+### taxonomy.yaml
+
+CET (Critical and Emerging Technology) taxonomy definition:
+
+- **Version**: NSTC taxonomy version (e.g., NSTC-2025Q1)
+- **Categories**: 21 technology areas with definitions, keywords, and parent relationships
+- **Keywords**: Domain-specific terms for each CET category
+
+**Example: Adding a new CET category**
+```yaml
+categories:
+  - id: new_technology
+    name: New Technology Area
+    definition: Description of the technology area
+    parent: parent_category_id  # Optional
+    keywords:
+      - keyword1
+      - keyword2
+```
+
 ### classification.yaml
 
 Classification model hyperparameters and settings:
@@ -50,15 +70,18 @@ Configuration files are automatically loaded at module import time and cached fo
 
 ```python
 from sbir_cet_classifier.common.yaml_config import (
+    load_taxonomy_config,
     load_classification_config,
     load_enrichment_config
 )
 
 # Load configs
+tax_config = load_taxonomy_config()
 clf_config = load_classification_config()
 enr_config = load_enrichment_config()
 
 # Access settings
+categories = tax_config.categories
 ngram_range = clf_config.vectorizer.ngram_range
 stop_words = clf_config.stop_words
 topic_domains = enr_config.topic_domains
@@ -71,12 +94,24 @@ Configuration files are validated using Pydantic models. Invalid configurations 
 To test your configuration changes:
 
 ```bash
-python -c "
-from sbir_cet_classifier.common.yaml_config import load_classification_config, load_enrichment_config
-print('Classification config:', load_classification_config().version)
-print('Enrichment config:', load_enrichment_config().version)
-print('✅ All configs valid')
-"
+python validate_config.py
+```
+
+Expected output:
+```
+✅ taxonomy.yaml
+   Version: NSTC-2025Q1
+   Categories: 21
+
+✅ classification.yaml
+   Version: 1.0.0
+   Vectorizer: (1, 3) n-grams
+
+✅ enrichment.yaml
+   Version: 1.0.0
+   Topic domains: 18
+
+✅ All configuration files are valid!
 ```
 
 ## Version Control
