@@ -73,17 +73,17 @@ class TestPutAndGet:
         cache = SolicitationCache(temp_cache_path)
 
         cache.put(
-            "grants.gov",
+            "nih",
             "SOL-2024-001",
             "SBIR Phase I Research Program",
             ["AI", "robotics", "autonomy"],
         )
 
-        result = cache.get("grants.gov", "SOL-2024-001")
+        result = cache.get("nih", "SOL-2024-001")
 
         assert result is not None
         assert isinstance(result, CachedSolicitation)
-        assert result.api_source == "grants.gov"
+        assert result.api_source == "nih"
         assert result.solicitation_id == "SOL-2024-001"
         assert result.description == "SBIR Phase I Research Program"
         assert result.technical_keywords == ["AI", "robotics", "autonomy"]
@@ -95,7 +95,7 @@ class TestPutAndGet:
         """Should return None for nonexistent solicitation."""
         cache = SolicitationCache(temp_cache_path)
 
-        result = cache.get("grants.gov", "NONEXISTENT")
+        result = cache.get("nih", "NONEXISTENT")
 
         assert result is None
 
@@ -106,12 +106,12 @@ class TestPutAndGet:
         cache = SolicitationCache(temp_cache_path)
 
         # First insert
-        cache.put("grants.gov", "SOL-001", "Original description", ["keyword1"])
+        cache.put("nih", "SOL-001", "Original description", ["keyword1"])
 
         # Second insert with same key
-        cache.put("grants.gov", "SOL-001", "Updated description", ["keyword2"])
+        cache.put("nih", "SOL-001", "Updated description", ["keyword2"])
 
-        result = cache.get("grants.gov", "SOL-001")
+        result = cache.get("nih", "SOL-001")
 
         assert result is not None
         assert result.description == "Updated description"
@@ -123,9 +123,9 @@ class TestPutAndGet:
         """Should handle empty keyword list."""
         cache = SolicitationCache(temp_cache_path)
 
-        cache.put("grants.gov", "SOL-001", "Description", [])
+        cache.put("nih", "SOL-001", "Description", [])
 
-        result = cache.get("grants.gov", "SOL-001")
+        result = cache.get("nih", "SOL-001")
 
         assert result is not None
         assert result.technical_keywords == []
@@ -137,9 +137,9 @@ class TestPutAndGet:
         cache = SolicitationCache(temp_cache_path)
 
         description = "SBIR Phase I: R&D for AI/ML & IoT systems (2024)"
-        cache.put("grants.gov", "SOL-001", description, ["AI/ML"])
+        cache.put("nih", "SOL-001", description, ["AI/ML"])
 
-        result = cache.get("grants.gov", "SOL-001")
+        result = cache.get("nih", "SOL-001")
 
         assert result is not None
         assert result.description == description
@@ -155,10 +155,10 @@ class TestCacheByAPISource:
         """Should store same solicitation ID from different API sources separately."""
         cache = SolicitationCache(temp_cache_path)
 
-        cache.put("grants.gov", "12345", "Grants.gov description", ["keyword1"])
+        cache.put("nih", "12345", "Grants.gov description", ["keyword1"])
         cache.put("nih", "12345", "NIH description", ["keyword2"])
 
-        grants_result = cache.get("grants.gov", "12345")
+        grants_result = cache.get("nih", "12345")
         nih_result = cache.get("nih", "12345")
 
         assert grants_result is not None
@@ -178,18 +178,18 @@ class TestPurgeOperations:
         cache = SolicitationCache(temp_cache_path)
 
         # Add entries for multiple API sources
-        cache.put("grants.gov", "SOL-001", "Grants 1", ["kw1"])
-        cache.put("grants.gov", "SOL-002", "Grants 2", ["kw2"])
+        cache.put("nih", "SOL-001", "Grants 1", ["kw1"])
+        cache.put("nih", "SOL-002", "Grants 2", ["kw2"])
         cache.put("nih", "SOL-003", "NIH 1", ["kw3"])
 
         # Purge grants.gov entries
-        purged_count = cache.purge_by_api_source("grants.gov")
+        purged_count = cache.purge_by_api_source("nih")
 
         assert purged_count == 2
 
         # Verify grants.gov entries removed
-        assert cache.get("grants.gov", "SOL-001") is None
-        assert cache.get("grants.gov", "SOL-002") is None
+        assert cache.get("nih", "SOL-001") is None
+        assert cache.get("nih", "SOL-002") is None
 
         # Verify other sources still exist
         assert cache.get("nih", "SOL-003") is not None
@@ -201,7 +201,7 @@ class TestPurgeOperations:
         cache = SolicitationCache(temp_cache_path)
 
         # Add same solicitation ID across multiple sources
-        cache.put("grants.gov", "SOL-001", "Grants description", ["kw1"])
+        cache.put("nih", "SOL-001", "Grants description", ["kw1"])
         cache.put("nih", "SOL-001", "NIH description", ["kw2"])
         cache.put("nih", "SOL-002", "NIH description 2", ["kw3"])
 
@@ -211,7 +211,7 @@ class TestPurgeOperations:
         assert purged_count == 2
 
         # Verify SOL-001 removed from all sources
-        assert cache.get("grants.gov", "SOL-001") is None
+        assert cache.get("nih", "SOL-001") is None
         assert cache.get("nih", "SOL-001") is None
 
         # Verify SOL-002 still exists
@@ -229,11 +229,11 @@ class TestPurgeOperations:
 
         cache.connection.execute(
             "INSERT INTO solicitations VALUES (?, ?, ?, ?, ?)",
-            ("grants.gov", "OLD-001", "Old description", '["kw"]', old_time),
+            ("nih", "OLD-001", "Old description", '["kw"]', old_time),
         )
         cache.connection.execute(
             "INSERT INTO solicitations VALUES (?, ?, ?, ?, ?)",
-            ("grants.gov", "RECENT-001", "Recent description", '["kw"]', recent_time),
+            ("nih", "RECENT-001", "Recent description", '["kw"]', recent_time),
         )
         cache.connection.commit()
 
@@ -244,8 +244,8 @@ class TestPurgeOperations:
         assert purged_count == 1
 
         # Verify old entry removed, recent entry preserved
-        assert cache.get("grants.gov", "OLD-001") is None
-        assert cache.get("grants.gov", "RECENT-001") is not None
+        assert cache.get("nih", "OLD-001") is None
+        assert cache.get("nih", "RECENT-001") is not None
 
         cache.close()
 
@@ -258,11 +258,11 @@ class TestPurgeOperations:
 
         cache.connection.execute(
             "INSERT INTO solicitations VALUES (?, ?, ?, ?, ?)",
-            ("grants.gov", "OLD-001", "Old description", '["kw"]', old_time),
+            ("nih", "OLD-001", "Old description", '["kw"]', old_time),
         )
         cache.connection.execute(
             "INSERT INTO solicitations VALUES (?, ?, ?, ?, ?)",
-            ("grants.gov", "RECENT-001", "Recent description", '["kw"]', recent_time),
+            ("nih", "RECENT-001", "Recent description", '["kw"]', recent_time),
         )
         cache.connection.commit()
 
@@ -273,8 +273,8 @@ class TestPurgeOperations:
         assert purged_count == 1
 
         # Verify recent entry removed, old entry preserved
-        assert cache.get("grants.gov", "OLD-001") is not None
-        assert cache.get("grants.gov", "RECENT-001") is None
+        assert cache.get("nih", "OLD-001") is not None
+        assert cache.get("nih", "RECENT-001") is None
 
         cache.close()
 
@@ -319,14 +319,14 @@ class TestCacheStats:
         """Should return stats with entry counts."""
         cache = SolicitationCache(temp_cache_path)
 
-        cache.put("grants.gov", "SOL-001", "Description 1", ["kw1"])
-        cache.put("grants.gov", "SOL-002", "Description 2", ["kw2"])
+        cache.put("nih", "SOL-001", "Description 1", ["kw1"])
+        cache.put("nih", "SOL-002", "Description 2", ["kw2"])
         cache.put("nih", "SOL-003", "Description 3", ["kw3"])
 
         stats = cache.get_cache_stats()
 
         assert stats["total_entries"] == 3
-        assert stats["by_api_source"]["grants.gov"] == 2
+        assert stats["by_api_source"]["nih"] == 2
         assert stats["by_api_source"]["nih"] == 1
         assert stats["oldest_entry"] is not None
         assert stats["newest_entry"] is not None
@@ -341,12 +341,12 @@ class TestCachePersistence:
         """Should persist data across cache sessions."""
         # Session 1: Write data
         cache1 = SolicitationCache(temp_cache_path)
-        cache1.put("grants.gov", "SOL-001", "Persistent description", ["keyword"])
+        cache1.put("nih", "SOL-001", "Persistent description", ["keyword"])
         cache1.close()
 
         # Session 2: Read data
         cache2 = SolicitationCache(temp_cache_path)
-        result = cache2.get("grants.gov", "SOL-001")
+        result = cache2.get("nih", "SOL-001")
 
         assert result is not None
         assert result.description == "Persistent description"
@@ -358,12 +358,12 @@ class TestCachePersistence:
         """Should open existing database without errors."""
         # Create cache first time
         cache1 = SolicitationCache(temp_cache_path)
-        cache1.put("grants.gov", "SOL-001", "Description", ["kw"])
+        cache1.put("nih", "SOL-001", "Description", ["kw"])
         cache1.close()
 
         # Open same database again
         cache2 = SolicitationCache(temp_cache_path)
-        result = cache2.get("grants.gov", "SOL-001")
+        result = cache2.get("nih", "SOL-001")
 
         assert result is not None
 
@@ -377,11 +377,11 @@ class TestConcurrency:
         """Should handle multiple puts to same key (last write wins)."""
         cache = SolicitationCache(temp_cache_path)
 
-        cache.put("grants.gov", "SOL-001", "Version 1", ["kw1"])
-        cache.put("grants.gov", "SOL-001", "Version 2", ["kw2"])
-        cache.put("grants.gov", "SOL-001", "Version 3", ["kw3"])
+        cache.put("nih", "SOL-001", "Version 1", ["kw1"])
+        cache.put("nih", "SOL-001", "Version 2", ["kw2"])
+        cache.put("nih", "SOL-001", "Version 3", ["kw3"])
 
-        result = cache.get("grants.gov", "SOL-001")
+        result = cache.get("nih", "SOL-001")
 
         assert result is not None
         assert result.description == "Version 3"
@@ -400,11 +400,11 @@ class TestEdgeCases:
         # Manually insert malformed data
         cache.connection.execute(
             "INSERT INTO solicitations VALUES (?, ?, ?, ?, ?)",
-            ("grants.gov", "BAD-001", "Description", "not valid json", datetime.now(UTC).isoformat()),
+            ("nih", "BAD-001", "Description", "not valid json", datetime.now(UTC).isoformat()),
         )
         cache.connection.commit()
 
-        result = cache.get("grants.gov", "BAD-001")
+        result = cache.get("nih", "BAD-001")
 
         # Should return None gracefully
         assert result is None
@@ -417,9 +417,9 @@ class TestEdgeCases:
 
         long_description = "x" * 100000  # 100k characters
 
-        cache.put("grants.gov", "SOL-001", long_description, ["kw"])
+        cache.put("nih", "SOL-001", long_description, ["kw"])
 
-        result = cache.get("grants.gov", "SOL-001")
+        result = cache.get("nih", "SOL-001")
 
         assert result is not None
         assert len(result.description) == 100000
@@ -432,9 +432,9 @@ class TestEdgeCases:
 
         many_keywords = [f"keyword_{i}" for i in range(1000)]
 
-        cache.put("grants.gov", "SOL-001", "Description", many_keywords)
+        cache.put("nih", "SOL-001", "Description", many_keywords)
 
-        result = cache.get("grants.gov", "SOL-001")
+        result = cache.get("nih", "SOL-001")
 
         assert result is not None
         assert len(result.technical_keywords) == 1000

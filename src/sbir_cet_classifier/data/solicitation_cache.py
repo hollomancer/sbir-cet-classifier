@@ -1,7 +1,7 @@
 """SQLite-based solicitation cache for API enrichment.
 
 This module provides persistent caching of solicitation metadata retrieved
-from external APIs (Grants.gov, NIH). Solicitations are cached permanently
+from external APIs (NIH). Solicitations are cached permanently
 unless explicitly invalidated by operators.
 
 The cache is keyed by (API source, solicitation identifier) with indexed lookups
@@ -14,13 +14,13 @@ Typical usage:
     cache = SolicitationCache()
 
     # Check cache first
-    cached = cache.get("grants.gov", "SOL-2023-001")
+    cached = cache.get("nih", "PA-23-123")
     if cached:
         print(f"Cache hit: {cached.description}")
     else:
         # Fetch from API and store
         data = fetch_from_api(...)
-        cache.put("grants.gov", "SOL-2023-001", data)
+        cache.put("nih", "PA-23-123", data)
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ class CachedSolicitation:
     """Represents a cached solicitation entry."""
 
     api_source: str
-    """API source identifier (grants.gov, nih)."""
+    """API source identifier (nih)."""
 
     solicitation_id: str
     """Solicitation identifier used in the query."""
@@ -143,7 +143,7 @@ class SolicitationCache:
         """Retrieve solicitation from cache.
 
         Args:
-            api_source: API source identifier (grants.gov, nih)
+            api_source: API source identifier (nih)
             solicitation_id: Solicitation identifier
 
         Returns:
@@ -151,7 +151,7 @@ class SolicitationCache:
 
         Example:
             >>> cache = SolicitationCache()
-            >>> cached = cache.get("grants.gov", "SOL-2023-001")
+            >>> cached = cache.get("nih", "SOL-2023-001")
             >>> if cached:
             ...     print(f"Found: {cached.description}")
         """
@@ -207,7 +207,7 @@ class SolicitationCache:
         """Store solicitation in cache.
 
         Args:
-            api_source: API source identifier (grants.gov, nih)
+            api_source: API source identifier (nih)
             solicitation_id: Solicitation identifier
             description: Solicitation description text
             technical_keywords: Technical topic keywords
@@ -218,7 +218,7 @@ class SolicitationCache:
         Example:
             >>> cache = SolicitationCache()
             >>> cache.put(
-            ...     "grants.gov",
+            ...     "nih",
             ...     "SOL-2023-001",
             ...     "SBIR Phase I Solicitation",
             ...     ["AI", "ML", "robotics"]
@@ -261,14 +261,14 @@ class SolicitationCache:
         """Purge all cache entries for a specific API source.
 
         Args:
-            api_source: API source identifier to purge (grants.gov, nih)
+            api_source: API source identifier to purge (nih)
 
         Returns:
             Number of entries purged
 
         Example:
             >>> cache = SolicitationCache()
-            >>> count = cache.purge_by_api_source("grants.gov")
+            >>> count = cache.purge_by_api_source("nih")
             >>> print(f"Purged {count} Grants.gov solicitations")
         """
         try:

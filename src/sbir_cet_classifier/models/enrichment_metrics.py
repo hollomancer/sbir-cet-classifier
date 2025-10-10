@@ -10,7 +10,7 @@ Typical usage:
     from sbir_cet_classifier.models.enrichment_metrics import EnrichmentMetrics
 
     metrics = EnrichmentMetrics()
-    metrics.record_cache_hit("grants.gov")
+    metrics.record_cache_hit("nih")
     metrics.record_api_call("nih", latency_ms=150.5, success=True)
     metrics.flush()  # Write to artifacts/enrichment_runs.json
 """
@@ -36,7 +36,7 @@ class APISourceMetrics:
     """Per-API-source enrichment metrics."""
 
     api_source: str
-    """API source identifier (grants.gov, nih)."""
+    """API source identifier (nih)."""
 
     cache_hits: int = 0
     """Number of cache hits for this API source."""
@@ -211,7 +211,7 @@ class EnrichmentMetrics:
         """Record a cache hit for the specified API source.
 
         Args:
-            api_source: API source identifier (grants.gov, nih)
+            api_source: API source identifier (nih)
         """
         metrics = self._get_or_create_api_metrics(api_source)
         metrics.cache_hits += 1
@@ -225,7 +225,7 @@ class EnrichmentMetrics:
         """Record a cache miss for the specified API source.
 
         Args:
-            api_source: API source identifier (grants.gov, nih)
+            api_source: API source identifier (nih)
         """
         metrics = self._get_or_create_api_metrics(api_source)
         metrics.cache_misses += 1
@@ -245,7 +245,7 @@ class EnrichmentMetrics:
         """Record an API call with latency and outcome.
 
         Args:
-            api_source: API source identifier (grants.gov, nih)
+            api_source: API source identifier (nih)
             latency_ms: API call latency in milliseconds
             success: Whether API call succeeded (True) or failed (False)
         """

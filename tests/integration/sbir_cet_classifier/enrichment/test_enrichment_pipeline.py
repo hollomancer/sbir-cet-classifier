@@ -17,7 +17,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from sbir_cet_classifier.common.schemas import Award
-from sbir_cet_classifier.data.external.grants_gov import SolicitationData as GrantsSolicitation
 from sbir_cet_classifier.data.external.nih import SolicitationData as NIHSolicitation
 from sbir_cet_classifier.data.solicitation_cache import SolicitationCache
 from sbir_cet_classifier.features.batch_enrichment import BatchEnrichmentOptimizer

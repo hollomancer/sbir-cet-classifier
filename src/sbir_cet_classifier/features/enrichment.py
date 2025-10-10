@@ -1,7 +1,7 @@
 """Lazy enrichment orchestrator for solicitation metadata.
 
 This module coordinates on-demand enrichment of SBIR awards with solicitation
-metadata from external APIs (Grants.gov, NIH). Enrichment is triggered
+metadata from external APIs (NIH). Enrichment is triggered
 when awards are first accessed for classification, viewing, or export.
 
 The orchestrator checks the SQLite cache before querying APIs, handles missing
@@ -29,7 +29,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from sbir_cet_classifier.common.schemas import Award
-from sbir_cet_classifier.data.external.grants_gov import GrantsGovAPIError, GrantsGovClient
 from sbir_cet_classifier.data.external.nih import NIHAPIError, NIHClient
 from sbir_cet_classifier.data.solicitation_cache import SolicitationCache
 from sbir_cet_classifier.models.enrichment_metrics import EnrichmentMetrics
@@ -38,17 +37,7 @@ logger = logging.getLogger(__name__)
 
 # API source detection rules based on agency codes
 AGENCY_TO_API_SOURCE = {
-    "DOD": "grants.gov",  # Department of Defense typically uses Grants.gov
-    "DARPA": "grants.gov",
-    "NAVY": "grants.gov",
-    "ARMY": "grants.gov",
-    "AIR FORCE": "grants.gov",
     "NIH": "nih",  # National Institutes of Health has dedicated API
-    "NASA": "grants.gov",  # NASA typically uses Grants.gov
-    "DOE": "grants.gov",  # Department of Energy typically uses Grants.gov
-    "DHS": "grants.gov",  # Department of Homeland Security
-    "EPA": "grants.gov",  # Environmental Protection Agency
-    "USDA": "grants.gov",  # Department of Agriculture
 }
 
 
@@ -69,7 +58,7 @@ class EnrichedAward:
     """Solicitation technical keywords if enriched."""
 
     api_source: str | None = None
-    """API source used for enrichment (grants.gov, nih)."""
+    """API source used for enrichment (nih)."""
 
     retrieved_at: datetime | None = None
     """Timestamp when solicitation was retrieved."""
@@ -93,7 +82,6 @@ class EnrichmentOrchestrator:
     Attributes:
         cache: SQLite solicitation cache
         metrics: Enrichment telemetry tracker
-        grants_gov_client: Grants.gov API client
         nih_client: NIH API client
     """
 
@@ -113,7 +101,6 @@ class EnrichmentOrchestrator:
         self.metrics = metrics if metrics else EnrichmentMetrics()
 
         # Initialize API clients (lazy loading)
-        self.grants_gov_client: GrantsGovClient | None = None
         self.nih_client: NIHClient | None = None
 
         logger.info("Initialized enrichment orchestrator")
@@ -130,8 +117,6 @@ class EnrichmentOrchestrator:
         """Close all connections."""
         self.cache.close()
 
-        if self.grants_gov_client:
-            self.grants_gov_client.close()
         if self.nih_client:
             self.nih_client.close()
 
@@ -267,7 +252,7 @@ class EnrichmentOrchestrator:
             award: Award record
 
         Returns:
-            API source identifier (grants.gov, nih) or None
+            API source identifier (nih) or None
         """
         # Normalize agency code
         agency_upper = award.agency.upper().strip()
@@ -281,12 +266,12 @@ class EnrichmentOrchestrator:
             if known_agency in agency_upper or agency_upper in known_agency:
                 return api_source
 
-        # Default fallback to Grants.gov for unknown agencies
+        # No API available for this agency
         logger.debug(
-            "Unknown agency, defaulting to Grants.gov",
+            "No API available for agency",
             extra={"agency": award.agency},
         )
-        return "grants.gov"
+        return None
 
     def _extract_solicitation_id(self, award: Award) -> str | None:
         """Extract solicitation identifier from award record.
@@ -321,7 +306,7 @@ class EnrichmentOrchestrator:
         """Fetch solicitation from appropriate API.
 
         Args:
-            api_source: API source identifier (grants.gov, nih)
+            api_source: API source identifier (nih)
             solicitation_id: Solicitation identifier
             award: Award record (for additional context)
 
@@ -333,9 +318,7 @@ class EnrichmentOrchestrator:
         result = None
 
         try:
-            if api_source == "grants.gov":
-                result = self._fetch_from_grants_gov(solicitation_id)
-            elif api_source == "nih":
+            if api_source == "nih":
                 result = self._fetch_from_nih(solicitation_id)
             else:
                 logger.warning("Unknown API source", extra={"api_source": api_source})
