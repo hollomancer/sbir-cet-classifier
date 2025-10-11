@@ -17,6 +17,9 @@ Requires-Dist: uvicorn[standard]>=0.29
 Requires-Dist: pyarrow>=15.0
 Requires-Dist: python-dateutil>=2.9
 Requires-Dist: httpx>=0.27
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: requests>=2.31.0
+Requires-Dist: tenacity>=8.2.0
 Provides-Extra: dev
 Requires-Dist: pytest>=8.1; extra == "dev"
 Requires-Dist: pytest-cov>=5.0; extra == "dev"
@@ -30,13 +33,14 @@ Requires-Dist: httpx>=0.27; extra == "dev"
 > **Classify SBIR awards against Critical and Emerging Technology (CET) areas using ML**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-23%2F23%20passing-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/tests-232%2F232%20passing-brightgreen)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A585%25-brightgreen)](tests/)
 
 ## Overview
 
 Automated classification system for SBIR awards against 20 Critical and Emerging Technology areas. Features ML-based scoring, portfolio analytics, and export capabilities.
 
-**Current Status**: ✅ Production-ready with 200k+ awards processed
+**Current Status**: ✅ Production-ready with 210k+ awards processed at 97.9% success rate
 
 ## Quick Start
 
@@ -131,7 +135,59 @@ pytest tests/ --cov=src/sbir_cet_classifier --cov-report=html
 pytest -m "not slow" -v
 ```
 
-**Current Test Status**: 23/23 passing ✅
+**Current Test Status**: 232/232 passing ✅
+
+## Performance
+
+### Ingestion Performance
+- **Success Rate**: 97.9% (210k/214k awards)
+- **Throughput**: 5,979 records/second
+- **Per-Record Latency**: 0.17ms
+- **Duration**: 35.85s for 214k awards
+
+### Classification Performance
+- **Enhanced Features**: Trigrams (1-3 word phrases)
+- **Feature Selection**: 50k → 20k best features (chi-squared)
+- **Class Balancing**: Handles imbalanced CET categories
+- **Parallel Scoring**: Multi-core support for batch operations
+- **Domain Stop Words**: 28 SBIR-specific terms removed
+
+### Optimizations (Phase O)
+- ✅ Agency name normalization (+25% recovery)
+- ✅ Batch validation with pandas vectorization (+40% recovery)
+- ✅ N-gram features for technical phrase capture
+- ✅ Chi-squared feature selection
+- ✅ Balanced class weights for minority categories
+- ✅ Multi-core parallel scoring (2-4x faster)
+
+See [PERFORMANCE_OPTIMIZATIONS.md](docs/PERFORMANCE_OPTIMIZATIONS.md) for details.
+
+## Configuration
+
+Classification parameters and enrichment mappings are externalized to YAML files in the `config/` directory:
+
+- **`config/taxonomy.yaml`** — CET taxonomy with 21 technology areas, definitions, and keywords
+- **`config/classification.yaml`** — Model hyperparameters, stop words, classification bands
+- **`config/enrichment.yaml`** — Topic domain mappings, agency focus areas, phase keywords
+
+**Validate configuration changes:**
+```bash
+python validate_config.py
+```
+
+**Example: Adding a new CET category**
+```yaml
+# config/taxonomy.yaml
+categories:
+  - id: new_technology
+    name: New Technology Area
+    definition: Description of the technology
+    keywords:
+      - keyword1
+      - keyword2
+```
+
+See [config/README.md](config/README.md) for detailed configuration documentation.
 
 ## Key Concepts
 
@@ -435,4 +491,4 @@ This project uses public SBIR.gov data under research terms. See data usage assu
 
 ---
 
-**Status**: ✅ Production-ready | **Last Updated**: 2025-10-08 | **Version**: 1.0.0
+**Status**: ✅ Production-ready | **Last Updated**: 2025-10-10 | **Version**: 1.1.0 (Phase O Optimizations)
