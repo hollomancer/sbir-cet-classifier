@@ -90,7 +90,7 @@ class TestProgramOffice:
                 updated_at=datetime.now()
             )
         
-        assert "ensure this value is greater than or equal to 0" in str(exc_info.value)
+        assert "Input should be greater than or equal to 0" in str(exc_info.value)
 
     def test_program_office_negative_budget_validation(self):
         """Test validation of non-negative budget."""
@@ -109,7 +109,7 @@ class TestProgramOffice:
                 updated_at=datetime.now()
             )
         
-        assert "ensure this value is greater than or equal to 0" in str(exc_info.value)
+        assert "Input should be greater than or equal to 0" in str(exc_info.value)
 
     def test_program_office_url_validation(self):
         """Test URL validation."""

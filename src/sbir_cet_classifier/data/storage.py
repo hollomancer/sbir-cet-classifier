@@ -571,7 +571,11 @@ class SolicitationStorage:
     def __init__(self, file_path: Path):
         """Initialize with file path."""
         self.file_path = Path(file_path)
-        self.file_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.file_path.parent.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError):
+            # Let the error be handled when actually trying to save/load
+            pass
     
     def get_parquet_schema(self) -> pa.Schema:
         """Get PyArrow schema for solicitation data."""
@@ -661,8 +665,8 @@ class SolicitationStorage:
                     evaluation_criteria=row["evaluation_criteria"],
                     funding_range_min=Decimal(str(row["funding_range_min"])),
                     funding_range_max=Decimal(str(row["funding_range_max"])),
-                    proposal_deadline=row["proposal_deadline"].date() if pd.notna(row["proposal_deadline"]) else date.today(),
-                    award_start_date=row["award_start_date"].date() if pd.notna(row["award_start_date"]) else None,
+                    proposal_deadline=row["proposal_deadline"] if isinstance(row["proposal_deadline"], date) else (row["proposal_deadline"].date() if pd.notna(row["proposal_deadline"]) else date.today()),
+                    award_start_date=row["award_start_date"] if isinstance(row["award_start_date"], date) else (row["award_start_date"].date() if pd.notna(row["award_start_date"]) else None),
                     performance_period=int(row["performance_period"]),
                     keywords=json.loads(row["keywords"]) if row["keywords"] else [],
                     cet_relevance_scores=json.loads(row["cet_relevance_scores"]) if row["cet_relevance_scores"] else {},

@@ -6,16 +6,12 @@ from click.testing import CliRunner
 from pathlib import Path
 import json
 
-from sbir_cet_classifier.cli.commands import (
-    enrich_single,
-    enrich_batch,
-    enrich_status,
-    enrich_awardee,
-    enrich_program,
+from src.sbir_cet_classifier.cli.enrichment_commands import (
+    app,
     enrich_solicitation,
-    enrich_modifications,
+    enrich_batch_solicitations,
+    enrichment_status,
 )
-from sbir_cet_classifier.data.enrichment.status import StatusState, EnrichmentType
 
 
 class TestEnrichSingleCommand:

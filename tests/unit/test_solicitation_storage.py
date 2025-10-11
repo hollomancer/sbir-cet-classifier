@@ -270,13 +270,13 @@ class TestSolicitationStorage:
         assert "naïve" in loaded[0].keywords
         assert "Schrödinger" in loaded[0].keywords
 
-    def test_storage_error_handling(self, storage):
+    def test_storage_error_handling(self, storage, sample_solicitations):
         """Test storage error handling."""
         # Test with invalid path
         invalid_storage = SolicitationStorage(file_path="/invalid/path/solicitations.parquet")
         
         with pytest.raises(Exception):
-            invalid_storage.save_solicitations([])
+            invalid_storage.save_solicitations(sample_solicitations)
 
     def test_concurrent_access_safety(self, storage, sample_solicitations, temp_storage_path):
         """Test thread-safe storage operations."""

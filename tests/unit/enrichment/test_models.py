@@ -5,12 +5,10 @@ from datetime import datetime
 from decimal import Decimal
 from unittest.mock import Mock
 
-from sbir_cet_classifier.data.enrichment.models import (
+from src.sbir_cet_classifier.data.enrichment.models import (
     AwardeeProfile,
     AwardeeMatchResult,
     AwardeeEnrichmentService,
-    Solicitation,
-    SolicitationEnrichmentService,
 )
 
 
