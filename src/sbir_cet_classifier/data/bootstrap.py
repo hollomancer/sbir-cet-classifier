@@ -25,7 +25,6 @@ from pydantic import ValidationError
 
 from sbir_cet_classifier.common.config import AppConfig
 from sbir_cet_classifier.common.schemas import Award
-from sbir_cet_classifier.data.agency_mapping import normalize_agency_name
 from sbir_cet_classifier.data.batch_validation import (
     normalize_agencies_batch,
     optimize_dtypes,

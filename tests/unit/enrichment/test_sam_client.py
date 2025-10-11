@@ -1,12 +1,12 @@
 """Tests for SAM.gov API client."""
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 import requests
-from tenacity import RetryError
 
 from sbir_cet_classifier.common.config import EnrichmentConfig
-from sbir_cet_classifier.data.enrichment.sam_client import SAMClient, SAMAPIError
+from sbir_cet_classifier.data.enrichment.sam_client import SAMAPIError, SAMClient
 
 
 class TestSAMClient:

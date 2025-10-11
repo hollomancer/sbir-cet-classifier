@@ -1,8 +1,9 @@
 """SAM.gov API client for award data enrichment."""
 
-import requests
-from typing import Dict, Any, Optional
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from typing import Any
+
+import httpx
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ...common.config import EnrichmentConfig
 from .logging import enrichment_logger
@@ -11,7 +12,7 @@ from .logging import enrichment_logger
 class SAMAPIError(Exception):
     """Exception raised for SAM.gov API errors."""
     
-    def __init__(self, message: str, status_code: Optional[int] = None):
+    def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message)
         self.status_code = status_code
 
@@ -26,20 +27,21 @@ class SAMClient:
             config: Enrichment configuration with API credentials
         """
         self.config = config
-        self.session = requests.Session()
-        self.session.headers.update({
-            "X-API-Key": config.api_key,
-            "Accept": "application/json",
-            "User-Agent": "SBIR-CET-Classifier/1.0"
-        })
-        self.session.timeout = config.timeout
+        self.client = httpx.Client(
+            headers={
+                "X-API-Key": config.api_key,
+                "Accept": "application/json",
+                "User-Agent": "SBIR-CET-Classifier/1.0"
+            },
+            timeout=config.timeout
+        )
     
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type((requests.RequestException, requests.HTTPError))
+        retry=retry_if_exception_type((httpx.RequestError, httpx.HTTPStatusError))
     )
-    def _make_request(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _make_request(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         """Make a request to SAM.gov API with retry logic.
         
         Args:
@@ -55,7 +57,7 @@ class SAMClient:
         url = f"{self.config.base_url}/{endpoint.lstrip('/')}"
         
         try:
-            response = self.session.get(url, params=params)
+            response = self.client.get(url, params=params)
             
             if response.status_code == 404:
                 raise SAMAPIError("Award not found", status_code=404)
@@ -67,7 +69,7 @@ class SAMClient:
             response.raise_for_status()
             return response.json()
             
-        except requests.RequestException as e:
+        except httpx.RequestError as e:
             enrichment_logger.logger.error(f"SAM API request failed: {e}")
             raise SAMAPIError(f"Request failed: {e}")
         except Exception as e:
@@ -76,7 +78,7 @@ class SAMClient:
                     raise  # Let retry handle server errors
             raise SAMAPIError("Max retries exceeded")
     
-    def get_award(self, award_id: str) -> Dict[str, Any]:
+    def get_award(self, award_id: str) -> dict[str, Any]:
         """Get detailed award information by ID.
         
         Args:
@@ -91,11 +93,11 @@ class SAMClient:
         return self._make_request(f"awards/{award_id}")
     
     def search_awards(self, 
-                     award_number: Optional[str] = None,
-                     recipient_name: Optional[str] = None,
-                     recipient_uei: Optional[str] = None,
+                     award_number: str | None = None,
+                     recipient_name: str | None = None,
+                     recipient_uei: str | None = None,
                      limit: int = 100,
-                     offset: int = 0) -> Dict[str, Any]:
+                     offset: int = 0) -> dict[str, Any]:
         """Search for awards by criteria.
         
         Args:
@@ -122,7 +124,7 @@ class SAMClient:
         
         return self._make_request("awards", params=params)
     
-    def get_entity(self, uei_identifier: str) -> Dict[str, Any]:
+    def get_entity(self, uei_identifier: str) -> dict[str, Any]:
         """Get entity (awardee) information by UEI.
         
         Args:
@@ -138,10 +140,10 @@ class SAMClient:
         return self._make_request("entities", params=params)
     
     def search_opportunities(self,
-                           solicitation_number: Optional[str] = None,
-                           agency: Optional[str] = None,
-                           naics_code: Optional[str] = None,
-                           limit: int = 100) -> Dict[str, Any]:
+                           solicitation_number: str | None = None,
+                           agency: str | None = None,
+                           naics_code: str | None = None,
+                           limit: int = 100) -> dict[str, Any]:
         """Search for solicitation opportunities.
         
         Args:
@@ -163,3 +165,13 @@ class SAMClient:
             params["naicsCode"] = naics_code
         
         return self._make_request("opportunities", params=params)
+    
+    def close(self):
+        """Close the HTTP client."""
+        self.client.close()
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()

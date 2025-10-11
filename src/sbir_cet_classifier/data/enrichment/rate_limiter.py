@@ -3,7 +3,6 @@
 import time
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional
 
 
 class CircuitBreakerState(Enum):
@@ -24,7 +23,7 @@ class RateLimiter:
         """
         self.requests_per_minute = requests_per_minute
         self.min_interval = 60.0 / requests_per_minute  # Seconds between requests
-        self.last_request_time: Optional[float] = None
+        self.last_request_time: float | None = None
     
     def can_make_request(self) -> bool:
         """Check if a request can be made now.
@@ -69,7 +68,7 @@ class CircuitBreaker:
         self.recovery_timeout = recovery_timeout
         self.failure_count = 0
         self.state = CircuitBreakerState.CLOSED
-        self.last_failure_time: Optional[datetime] = None
+        self.last_failure_time: datetime | None = None
     
     def can_make_request(self) -> bool:
         """Check if a request can be made based on circuit state.

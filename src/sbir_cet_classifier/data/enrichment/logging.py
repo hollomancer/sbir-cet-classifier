@@ -2,7 +2,6 @@
 
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from ...common.config import load_config

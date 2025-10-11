@@ -1,6 +1,5 @@
 """Tests for agency name normalization."""
 
-import pytest
 
 from sbir_cet_classifier.data.agency_mapping import normalize_agency_name
 

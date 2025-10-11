@@ -1,12 +1,11 @@
 """Tests for enhanced applicability model with n-grams and feature selection."""
 
-import pytest
 
+from sbir_cet_classifier.common.yaml_config import load_classification_config
 from sbir_cet_classifier.models.applicability import (
     ApplicabilityModel,
     TrainingExample,
 )
-from sbir_cet_classifier.common.yaml_config import load_classification_config
 
 
 class TestEnhancedModel:

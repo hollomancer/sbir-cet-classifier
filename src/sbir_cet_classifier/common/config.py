@@ -76,18 +76,18 @@ def _resolve_path(env_var: str, fallback: Path) -> Path:
 
 def _load_enrichment_config() -> EnrichmentConfig | None:
     """Load enrichment configuration from environment variables."""
-    api_key = os.getenv("SAM_API_KEY")
+    api_key = os.getenv("SBIR_SAM_API_KEY")
     if not api_key:
         return None
     
     return EnrichmentConfig(
         api_key=api_key,
-        base_url=os.getenv("SAM_API_BASE_URL", "https://api.sam.gov/prod/federalregistry/v2"),
-        rate_limit=int(os.getenv("SAM_API_RATE_LIMIT", "100")),
-        timeout=int(os.getenv("SAM_API_TIMEOUT", "30")),
-        max_retries=int(os.getenv("SAM_API_MAX_RETRIES", "3")),
-        batch_size=int(os.getenv("SAM_API_BATCH_SIZE", "10")),
-        confidence_threshold=float(os.getenv("SAM_API_CONFIDENCE_THRESHOLD", "0.7")),
+        base_url=os.getenv("SBIR_SAM_API_BASE_URL", "https://api.sam.gov/prod/federalregistry/v2"),
+        rate_limit=int(os.getenv("SBIR_SAM_API_RATE_LIMIT", "100")),
+        timeout=int(os.getenv("SBIR_SAM_API_TIMEOUT", "30")),
+        max_retries=int(os.getenv("SBIR_SAM_API_MAX_RETRIES", "3")),
+        batch_size=int(os.getenv("SBIR_SAM_API_BATCH_SIZE", "10")),
+        confidence_threshold=float(os.getenv("SBIR_SAM_API_CONFIDENCE_THRESHOLD", "0.7")),
     )
 
 
@@ -96,12 +96,12 @@ def load_config() -> AppConfig:
     """Load and cache the application configuration."""
 
     storage = StoragePaths(
-        raw=_resolve_path("SBIR_RAW_DIR", _DEFAULT_RAW),
-        processed=_resolve_path("SBIR_PROCESSED_DIR", _DEFAULT_PROCESSED),
-        artifacts=_resolve_path("SBIR_ARTIFACT_DIR", _DEFAULT_ARTIFACTS),
+        raw=_resolve_path("SBIR_DATA_RAW_DIR", _DEFAULT_RAW),
+        processed=_resolve_path("SBIR_DATA_PROCESSED_DIR", _DEFAULT_PROCESSED),
+        artifacts=_resolve_path("SBIR_DATA_ARTIFACTS_DIR", _DEFAULT_ARTIFACTS),
     )
     enrichment = _load_enrichment_config()
     return AppConfig(storage=storage, enrichment=enrichment)
 
 
-__all__ = ["AppConfig", "StoragePaths", "EnrichmentConfig", "load_config"]
+__all__ = ["AppConfig", "EnrichmentConfig", "StoragePaths", "load_config"]

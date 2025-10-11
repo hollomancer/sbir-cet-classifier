@@ -1,11 +1,12 @@
 """Tests for rate limiting and circuit breaker functionality."""
 
-import pytest
 import time
-from unittest.mock import Mock, patch
-from datetime import datetime, timedelta
 
-from sbir_cet_classifier.data.enrichment.rate_limiter import RateLimiter, CircuitBreaker, CircuitBreakerState
+from sbir_cet_classifier.data.enrichment.rate_limiter import (
+    CircuitBreaker,
+    CircuitBreakerState,
+    RateLimiter,
+)
 
 
 class TestRateLimiter:

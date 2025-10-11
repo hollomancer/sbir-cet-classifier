@@ -1,7 +1,6 @@
 """Integration tests for export workflow."""
 
 from datetime import date, datetime
-from pathlib import Path
 
 import pandas as pd
 import pytest

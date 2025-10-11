@@ -3,10 +3,10 @@
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Any, List, Optional
+from typing import Any
 
-from .sam_client import SAMClient, SAMAPIError
 from .logging import enrichment_logger
+from .sam_client import SAMAPIError, SAMClient
 
 
 class EnrichmentType(Enum):
@@ -20,9 +20,9 @@ class EnrichmentType(Enum):
 class EnrichmentError(Exception):
     """Exception raised during enrichment operations."""
     
-    def __init__(self, message: str, award_id: Optional[str] = None, 
-                 enrichment_type: Optional[EnrichmentType] = None,
-                 context: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, award_id: str | None = None, 
+                 enrichment_type: EnrichmentType | None = None,
+                 context: dict[str, Any] | None = None):
         super().__init__(message)
         self.award_id = award_id
         self.enrichment_type = enrichment_type
@@ -37,8 +37,8 @@ class EnrichmentResult:
     success: bool
     confidence: float
     processing_time_ms: int
-    data: Optional[Dict[str, Any]] = None
-    error_message: Optional[str] = None
+    data: dict[str, Any] | None = None
+    error_message: str | None = None
 
 
 class EnrichmentService:
@@ -53,7 +53,7 @@ class EnrichmentService:
         self.sam_client = sam_client
     
     def enrich_award(self, award_id: str, 
-                    enrichment_types: List[EnrichmentType]) -> EnrichmentResult:
+                    enrichment_types: list[EnrichmentType]) -> EnrichmentResult:
         """Enrich a single award with specified enrichment types.
         
         Args:
@@ -109,8 +109,8 @@ class EnrichmentService:
                 processing_time_ms=processing_time
             )
     
-    def enrich_awards(self, award_ids: List[str], 
-                     enrichment_types: List[EnrichmentType]) -> List[EnrichmentResult]:
+    def enrich_awards(self, award_ids: list[str], 
+                     enrichment_types: list[EnrichmentType]) -> list[EnrichmentResult]:
         """Enrich multiple awards.
         
         Args:
@@ -128,7 +128,7 @@ class EnrichmentService:
         
         return results
     
-    def _enrich_awardee(self, award_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _enrich_awardee(self, award_data: dict[str, Any]) -> dict[str, Any]:
         """Enrich award with awardee information.
         
         Args:
@@ -158,7 +158,7 @@ class EnrichmentService:
         
         return awardee_data
     
-    def calculate_confidence(self, enrichment_data: Dict[str, Any]) -> float:
+    def calculate_confidence(self, enrichment_data: dict[str, Any]) -> float:
         """Calculate confidence score for enrichment data.
         
         Args:
@@ -184,7 +184,7 @@ class EnrichmentService:
         
         return min(confidence, 1.0)
     
-    def validate_enrichment_data(self, data: Dict[str, Any]) -> bool:
+    def validate_enrichment_data(self, data: dict[str, Any]) -> bool:
         """Validate enrichment data quality.
         
         Args:

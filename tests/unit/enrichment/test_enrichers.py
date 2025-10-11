@@ -1,14 +1,14 @@
 """Tests for base enrichment service interface."""
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, AsyncMock
-from datetime import datetime
 
 from sbir_cet_classifier.data.enrichment.enrichers import (
-    EnrichmentService, 
-    EnrichmentResult, 
+    EnrichmentError,
+    EnrichmentResult,
+    EnrichmentService,
     EnrichmentType,
-    EnrichmentError
 )
 
 

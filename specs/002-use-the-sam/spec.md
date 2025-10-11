@@ -84,7 +84,8 @@ The CET classification system can leverage detailed solicitation text and requir
 - **FR-003**: System MUST identify and retrieve related opportunities based on program office, topic areas, and solicitation relationships
 - **FR-004**: System MUST extract and store complete solicitation text and technical requirements for classification enhancement
 - **FR-005**: System MUST track and store award modifications, amendments, and lifecycle changes
-- **FR-006**: System MUST handle API authentication and rate limiting according to SAM.gov terms of service
+- **FR-006**: System MUST handle API authentication and rate limiting according to SAM.gov terms of service via externalized YAML configuration files
+- **FR-006a**: System MUST externalize all SAM.gov API parameters (endpoints, rate limits, timeout values, retry policies) to YAML configuration files per Constitution VI
 - **FR-007**: System MUST validate and reconcile data between existing awards and SAM.gov sources
 - **FR-008**: System MUST provide enrichment status tracking showing which awards have been successfully enriched
 - **FR-009**: System MUST incorporate enriched solicitation data into the existing CET classification pipeline
@@ -105,7 +106,7 @@ The CET classification system can leverage detailed solicitation text and requir
 
 - **SC-001**: Successfully enrich 95% of existing awards with at least one data type from SAM.gov API
 - **SC-002**: Retrieve complete awardee historical data for 90% of awards with identifiable awardees
-- **SC-003**: Improve CET classification accuracy by 10% through incorporation of solicitation text analysis
+- **SC-003**: Improve CET classification accuracy by 10% (from current baseline of 85.2% F1-score to ≥93.7% F1-score) through incorporation of solicitation text analysis, measured against existing 997 sample awards test set
 - **SC-004**: Complete bulk enrichment of existing 997 sample awards within 30 minutes
 - **SC-005**: Maintain enrichment pipeline performance of processing 100 awards per minute during normal operations
 - **SC-006**: Achieve 99% data consistency between enriched records and source SAM.gov data
@@ -119,6 +120,7 @@ The CET classification system can leverage detailed solicitation text and requir
 - Historical awardee data extends back far enough to provide meaningful context for existing awards
 - Agency program office information is current and maintained in SAM.gov systems
 - Award modifications and amendments are comprehensively tracked in SAM.gov database
+- Current CET classification system achieves 85.2% F1-score baseline accuracy on existing test dataset
 
 ## Dependencies
 
@@ -126,6 +128,7 @@ The CET classification system can leverage detailed solicitation text and requir
 - Existing SBIR award dataset with valid award identifiers
 - Current CET classification pipeline for integration of enriched data
 - Data storage capacity for additional enrichment data (estimated 5-10x current data volume)
+- YAML configuration files for SAM.gov API parameters and enrichment settings
 
 ## Out of Scope
 

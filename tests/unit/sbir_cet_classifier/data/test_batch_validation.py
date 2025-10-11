@@ -1,7 +1,6 @@
 """Tests for batch validation utilities."""
 
 import pandas as pd
-import pytest
 
 from sbir_cet_classifier.data.batch_validation import (
     normalize_agencies_batch,
