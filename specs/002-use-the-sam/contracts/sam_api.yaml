@@ -1,0 +1,429 @@
+openapi: 3.0.3
+info:
+  title: SAM.gov API Integration Contract
+  description: Contract specification for SAM.gov API integration in SBIR CET Classifier
+  version: 1.0.0
+  contact:
+    name: SBIR CET Classifier
+    
+servers:
+  - url: https://api.sam.gov/prod/federalregistry/v2
+    description: SAM.gov Production API
+    
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /awards:
+    get:
+      summary: Search for awards by criteria
+      description: Retrieve award information from SAM.gov database
+      parameters:
+        - name: awardNumber
+          in: query
+          description: Specific award number to search
+          schema:
+            type: string
+        - name: recipientName
+          in: query
+          description: Awardee organization name
+          schema:
+            type: string
+        - name: recipientUEI
+          in: query
+          description: Unique Entity Identifier
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwardSearchResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /awards/{awardId}:
+    get:
+      summary: Get detailed award information
+      description: Retrieve comprehensive award details including modifications
+      parameters:
+        - name: awardId
+          in: path
+          required: true
+          description: SAM.gov award identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Award details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwardDetail'
+        '404':
+          description: Award not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /entities:
+    get:
+      summary: Search for entity information
+      description: Retrieve awardee organization details and history
+      parameters:
+        - name: ueiSAM
+          in: query
+          description: Unique Entity Identifier
+          schema:
+            type: string
+        - name: entityName
+          in: query
+          description: Organization name
+          schema:
+            type: string
+        - name: cageCode
+          in: query
+          description: CAGE code
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Entity information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EntitySearchResponse'
+
+  /opportunities:
+    get:
+      summary: Search for solicitation opportunities
+      description: Retrieve solicitation text and requirements
+      parameters:
+        - name: solicitationNumber
+          in: query
+          description: Solicitation number
+          schema:
+            type: string
+        - name: agency
+          in: query
+          description: Agency code
+          schema:
+            type: string
+        - name: naicsCode
+          in: query
+          description: NAICS industry code
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Solicitation opportunities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpportunitySearchResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    AwardSearchResponse:
+      type: object
+      properties:
+        totalRecords:
+          type: integer
+          description: Total number of matching records
+        limit:
+          type: integer
+          description: Results limit applied
+        offset:
+          type: integer
+          description: Results offset applied
+        awards:
+          type: array
+          items:
+            $ref: '#/components/schemas/AwardSummary'
+
+    AwardSummary:
+      type: object
+      properties:
+        awardId:
+          type: string
+          description: SAM.gov award identifier
+        awardNumber:
+          type: string
+          description: Official award number
+        title:
+          type: string
+          description: Award title
+        recipientName:
+          type: string
+          description: Awardee organization name
+        recipientUEI:
+          type: string
+          description: Awardee UEI identifier
+        awardAmount:
+          type: number
+          format: decimal
+          description: Award amount in USD
+        awardDate:
+          type: string
+          format: date
+          description: Award date
+        agencyCode:
+          type: string
+          description: Awarding agency code
+        programOffice:
+          type: string
+          description: Program office name
+
+    AwardDetail:
+      allOf:
+        - $ref: '#/components/schemas/AwardSummary'
+        - type: object
+          properties:
+            description:
+              type: string
+              description: Detailed award description
+            performancePeriod:
+              type: object
+              properties:
+                startDate:
+                  type: string
+                  format: date
+                endDate:
+                  type: string
+                  format: date
+            modifications:
+              type: array
+              items:
+                $ref: '#/components/schemas/AwardModification'
+            relatedOpportunities:
+              type: array
+              items:
+                type: string
+                description: Related solicitation numbers
+
+    AwardModification:
+      type: object
+      properties:
+        modificationId:
+          type: string
+          description: Modification identifier
+        modificationNumber:
+          type: string
+          description: Sequential modification number
+        modificationDate:
+          type: string
+          format: date
+          description: Modification date
+        modificationType:
+          type: string
+          enum: [funding, scope, timeline, administrative]
+          description: Type of modification
+        description:
+          type: string
+          description: Modification description
+        fundingChange:
+          type: number
+          format: decimal
+          description: Change in funding amount
+        newEndDate:
+          type: string
+          format: date
+          description: Updated end date if applicable
+
+    EntitySearchResponse:
+      type: object
+      properties:
+        totalRecords:
+          type: integer
+        entities:
+          type: array
+          items:
+            $ref: '#/components/schemas/EntityDetail'
+
+    EntityDetail:
+      type: object
+      properties:
+        ueiSAM:
+          type: string
+          description: Unique Entity Identifier
+        entityName:
+          type: string
+          description: Official organization name
+        dunsNumber:
+          type: string
+          description: DUNS number (legacy)
+        cageCode:
+          type: string
+          description: CAGE code
+        entityType:
+          type: string
+          description: Organization type
+        businessTypes:
+          type: array
+          items:
+            type: string
+          description: Business classification types
+        primaryNaics:
+          type: string
+          description: Primary NAICS code
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Address'
+        awardHistory:
+          type: object
+          properties:
+            totalAwards:
+              type: integer
+            totalValue:
+              type: number
+              format: decimal
+            firstAwardDate:
+              type: string
+              format: date
+            lastAwardDate:
+              type: string
+              format: date
+
+    OpportunitySearchResponse:
+      type: object
+      properties:
+        totalRecords:
+          type: integer
+        opportunities:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpportunityDetail'
+
+    OpportunityDetail:
+      type: object
+      properties:
+        solicitationNumber:
+          type: string
+          description: Official solicitation number
+        title:
+          type: string
+          description: Solicitation title
+        agency:
+          type: string
+          description: Issuing agency
+        office:
+          type: string
+          description: Program office
+        type:
+          type: string
+          description: Solicitation type (SBIR, STTR, etc.)
+        description:
+          type: string
+          description: Full solicitation text
+        technicalRequirements:
+          type: string
+          description: Technical requirements section
+        evaluationCriteria:
+          type: string
+          description: Evaluation criteria
+        fundingRange:
+          type: object
+          properties:
+            minimum:
+              type: number
+              format: decimal
+            maximum:
+              type: number
+              format: decimal
+        deadlines:
+          type: object
+          properties:
+            proposalDeadline:
+              type: string
+              format: date-time
+            awardDate:
+              type: string
+              format: date
+        keywords:
+          type: array
+          items:
+            type: string
+          description: Technical keywords
+
+    Address:
+      type: object
+      properties:
+        addressType:
+          type: string
+          enum: [mailing, physical]
+        line1:
+          type: string
+        line2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zipCode:
+          type: string
+        country:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Error code
+            message:
+              type: string
+              description: Human-readable error message
+            details:
+              type: string
+              description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+        requestId:
+          type: string
+          description: Request identifier for tracking
