@@ -84,7 +84,7 @@ def sample_awards() -> list[Award]:
 def mock_api_responses() -> dict[str, object | None]:
     """Mock API responses for different solicitations."""
     return {
-        "AF241-001": GrantsSolicitation(
+        "AF241-001": NIHSolicitation(
             solicitation_id="AF241-001",
             description="SBIR Phase I: Artificial Intelligence for Defense Applications",
             technical_keywords=["artificial intelligence", "defense", "autonomy", "machine learning"],
@@ -112,7 +112,7 @@ class TestEnrichmentPipelineEndToEnd:
         """Test enriching single award with cache miss (API call required)."""
         award = sample_awards[0]  # DOD award
 
-        with patch("sbir_cet_classifier.features.enrichment.GrantsGovClient") as mock_client_class:
+        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_client_class:
             # Mock API client
             mock_client = MagicMock()
             mock_client.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
@@ -168,7 +168,7 @@ class TestEnrichmentPipelineEndToEnd:
         )
         cache.close()
 
-        with patch("sbir_cet_classifier.features.enrichment.GrantsGovClient") as mock_client_class:
+        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_client_class:
             # Mock API client (should NOT be called)
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
@@ -254,8 +254,8 @@ class TestEnrichmentPipelineEndToEnd:
             ),
         ])
 
-        with patch("sbir_cet_classifier.features.enrichment.GrantsGovClient") as mock_grants, \
-             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
+        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants, \
+             patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih:
 
             # Mock all API clients
             mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
@@ -333,7 +333,7 @@ class TestEnrichmentPipelineEndToEnd:
         """Test that enrichment fails gracefully when API unavailable."""
         award = sample_awards[0]  # DOD award
 
-        with patch("sbir_cet_classifier.features.enrichment.GrantsGovClient") as mock_client_class:
+        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_client_class:
             # Mock API to return None (not found / error)
             mock_client = MagicMock()
             mock_client.lookup_solicitation.return_value = None
@@ -368,8 +368,8 @@ class TestEnrichmentPipelineEndToEnd:
         mock_api_responses: dict,
     ) -> None:
         """Test enrichment across multiple agencies using different APIs."""
-        with patch("sbir_cet_classifier.features.enrichment.GrantsGovClient") as mock_grants, \
-             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
+        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants, \
+             patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih:
 
             # Mock all API clients
             mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
@@ -407,8 +407,8 @@ class TestEnrichmentPipelineEndToEnd:
         mock_api_responses: dict,
     ) -> None:
         """Test that enrichment metrics are properly tracked and persisted."""
-        with patch("sbir_cet_classifier.features.enrichment.GrantsGovClient") as mock_grants, \
-             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
+        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants, \
+             patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih:
 
             # Mock API clients with slight delays
             mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
@@ -536,8 +536,8 @@ class TestEnrichmentCacheOperations:
         mock_api_responses: dict,
     ) -> None:
         """Test cache statistics tracking."""
-        with patch("sbir_cet_classifier.features.enrichment.GrantsGovClient") as mock_grants, \
-             patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
+        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants, \
+             patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih:
 
             mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
             mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
