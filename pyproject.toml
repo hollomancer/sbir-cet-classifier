@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "SBIR award applicability assessment tooling"
 readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "MIT" }
 authors = [
   { name = "Conrad Hollomon" }
 ]

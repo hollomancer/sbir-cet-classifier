@@ -225,6 +225,8 @@ This is a personal research project. For collaboration:
 
 ## License
 
+MIT License - see [LICENSE](LICENSE) file for details.
+
 This project uses public SBIR.gov data under research terms. See data usage assumptions in [spec.md](specs/001-i-want-to/spec.md).
 
 ---
@@ -444,6 +446,8 @@ This is a personal research project. For collaboration:
 5. Follow ruff formatting: `ruff format src/ tests/`
 
 ## 📜 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
 
 This project uses public SBIR.gov data under research terms. See data usage assumptions in [spec.md](specs/001-i-want-to/spec.md).
 
