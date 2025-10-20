@@ -1,10 +1,7 @@
 """Integration tests for optimized bootstrap ingestion."""
 
-import tempfile
-from pathlib import Path
 
 import pandas as pd
-import pytest
 
 from sbir_cet_classifier.data.bootstrap import load_bootstrap_csv
 

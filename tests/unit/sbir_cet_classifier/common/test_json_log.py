@@ -3,8 +3,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from sbir_cet_classifier.common.json_log import JsonLogManager
 
 

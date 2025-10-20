@@ -1,154 +1,67 @@
 <!--
 Sync Impact Report:
-- Version change: 1.0.0 → 1.0.1 (PATCH: clarifications and wording refinements)
-- Modified principles: None (wording refinements only)
-- Added sections: None
-- Removed sections: None
-- Templates requiring updates:
-  ✅ plan-template.md — Constitution Check section already aligns with 5 principles
-  ✅ spec-template.md — Requirements sections already compatible with testing/quality principles
-  ✅ tasks-template.md — Task categorization already supports principle-driven work
-  ✅ No command files found in .specify/templates/commands/ (directory empty)
+- Version change: 1.0.0 → 1.1.0 (minor version - added new configuration principle)
+- Modified principles: Added VI. User-Configurable Parameters
+- Added sections: New principle for YAML configuration requirement
+- Removed sections: N/A
+- Templates requiring updates: 
+  ✅ plan-template.md (Constitution Check section already aligned)
+  ✅ spec-template.md (no constitution references, aligned with principles)
+  ✅ tasks-template.md (no constitution references, aligned with principles)
+  ✅ All other templates reviewed and aligned
 - Follow-up TODOs: None
-- Rationale: User input emphasizes "command line only - no UI" and "data ingestion, hygiene, enrichment and classification as fast and accurately as possible." Constitution already reflects these constraints (NFR-007 restricts to CLI, Principle IV defines performance targets). This patch update clarifies CLI-first orientation and reinforces performance accountability without changing core governance.
 -->
 
 # SBIR CET Classifier Constitution
 
 ## Core Principles
 
-### I. Code Quality First
+### I. Modular Architecture
+Every feature MUST be implemented as a self-contained module within the established package structure. Modules MUST be independently testable, documented with clear interfaces, and follow the existing src/sbir_cet_classifier/ organization. Cross-module dependencies MUST be explicit and minimal.
 
-Code quality is non-negotiable. Every feature MUST maintain the project's quality standards:
+### II. CLI-First Interface
+All functionality MUST be accessible via command-line interface using Typer. Commands MUST follow the pattern: input via arguments/stdin → processing → output to stdout/files. Both JSON and human-readable formats MUST be supported for data interchange.
 
-- **Single Python package structure** — All production code lives in `src/sbir_cet_classifier/` with domain-focused subpackages (data, features, models, evaluation, api, cli, common)
-- **Static typing enforced** — Use type hints throughout; validated by ruff type checker
-- **Ruff formatting and linting** — All code MUST pass `ruff format` and `ruff check` before merge
-- **Mirrored test hierarchy** — Tests organized under `tests/{unit,integration,contract}/sbir_cet_classifier/` matching src structure
-- **No exotic dependencies** — Prefer standard libraries (pandas, scikit-learn, spaCy) over niche packages
+### III. Test-Driven Development (NON-NEGOTIABLE)
+Tests MUST be written before implementation. The Red-Green-Refactor cycle is strictly enforced: write failing test → implement minimal code → refactor. All code MUST maintain ≥85% test coverage. Integration tests are required for data pipelines and ML model changes.
 
-**Rationale**: Quality debt compounds. Enforcing structure and tooling from day one prevents technical debt accumulation and ensures maintainability as the project scales.
+### IV. Performance-First Design
+All data processing MUST target production-scale performance: ≥5,000 records/second ingestion, ≤500ms median scoring latency for 100 awards, ≤2 hours processing for 200k+ awards. Performance regressions MUST be caught in CI/CD pipeline.
 
-### II. Testing Defines Delivery
+### V. Data Quality Assurance
+All data transformations MUST include validation, error handling, and quality metrics. Success rates ≥95% are required for production pipelines. Data inconsistencies MUST be logged with structured telemetry for debugging and monitoring.
 
-Testing is the definition of "done." Features are complete only when tests pass:
+### VI. User-Configurable Parameters
+All classification parameters, model hyperparameters, and processing settings MUST be externalized to YAML configuration files. Users MUST be able to modify classification behavior without code changes. Configuration validation MUST prevent invalid parameter combinations that could degrade system performance or accuracy.
 
-- **≥85% statement coverage** — Tracked via pytest-cov; enforced before merge
-- **Three-tier test strategy**:
-  - **Unit tests** — Fast, isolated component tests in `tests/unit/`
-  - **Contract tests** — API schema validation in `tests/contract/`
-  - **Integration tests** — End-to-end workflows in `tests/integration/`
-- **Fast test discipline** — Mark slow tests with `@pytest.mark.slow`; default runs exclude them
-- **Fixture-driven design** — Reusable test data under `tests/fixtures/`
+## Data Quality Standards
 
-**Rationale**: Tests provide executable specifications and regression protection. Without comprehensive tests, features cannot be trusted or safely refactored.
+### Schema Validation
+All data inputs and outputs MUST conform to defined Pydantic schemas. Schema changes MUST be backward compatible or include migration procedures. Parquet files MUST maintain consistent column types and naming conventions.
 
-### III. Consistent User Experience
+### ML Model Governance
+Model changes MUST include accuracy benchmarks against existing baselines. Classification accuracy regressions >2% require explicit justification. Model artifacts MUST be versioned and reproducible with documented hyperparameters.
 
-CLI and API surfaces MUST provide equivalent functionality with consistent schemas:
+### External API Integration
+Third-party API integrations MUST implement circuit breakers, exponential backoff, and rate limiting. API failures MUST degrade gracefully without corrupting existing data. All API responses MUST be validated against expected schemas.
 
-- **CLI-first design** — Primary interface is Typer-based CLI for analyst workflows; FastAPI service is internal-only
-- **Shared service layer** — Both CLI (Typer) and API (FastAPI) call the same domain services in `src/sbir_cet_classifier/features/`
-- **Pydantic schema contracts** — Domain models defined once in `src/sbir_cet_classifier/common/schemas.py`
-- **Filter parity** — Identical filter options (fiscal year, agency, CET area, phase, location) across interfaces
-- **Structured output** — CLI supports both human-readable (Rich) and JSON output; API returns JSON
+## Development Workflow
 
-**Rationale**: Users should not experience capability gaps based on interface choice. CLI-first design prioritizes analyst productivity for data ingestion, hygiene, enrichment, and classification workflows. Shared logic eliminates duplication and ensures behavioral consistency.
+### Code Quality Gates
+All code MUST pass ruff linting and formatting checks. Type hints are required for public interfaces. Documentation MUST be updated for user-facing changes. No code may be merged without passing all tests.
 
-### IV. Performance With Accountability
+### Feature Development
+New features MUST follow the specification-driven development process: spec.md → plan.md → implementation → testing. Breaking changes require version bumps and migration documentation. Feature flags MUST be used for experimental functionality.
 
-Performance targets are commitments backed by instrumentation. This project prioritizes speed and accuracy for data ingestion, hygiene, enrichment, and classification:
-
-- **Defined SLAs** — Every performance requirement MUST specify measurable criteria:
-  - Automated classification: ≥95% of awards
-  - Summary generation: ≤3 minutes
-  - Award drill-down: ≤5 minutes
-  - Export (50k awards): ≤10 minutes
-  - Scoring (100 awards): ≤500ms median, ≤750ms p95
-  - Ingestion (120k awards): ≤2 hours
-- **Telemetry artifacts** — Performance data written to `artifacts/`:
-  - `export_runs.json` — Export timing and status
-  - `scoring_runs.json` — Scoring latency distributions (p50/p95/p99)
-  - `refresh_runs.json` — Ingestion execution logs
-  - `enrichment_runs.json` — Enrichment cache hit rates and latency metrics
-- **Proactive monitoring** — Alert when p95 latencies exceed thresholds
-
-**Rationale**: "Fast enough" is subjective. Measurable targets and instrumentation enable objective performance validation and regression detection. This project's core mission—data ingestion, hygiene, enrichment, and classification—demands speed and accuracy; accountability comes from continuous measurement.
-
-### V. Reliable Data Stewardship
-
-Data integrity and governance are paramount:
-
-- **Immutable raw data** — Original sources (SBIR.gov ZIPs, awards CSV) never modified
-- **Versioned artifacts** — Taxonomy versions (`NSTC-{YYYY}Q{n}`), model coefficients, and feature vocabularies tracked with timestamps
-- **Partitioned storage** — Processed data partitioned by fiscal year for efficient backfill/reprocessing
-- **Data hygiene enforcement** — Validation at ingestion (schema compliance, date parsing, agency mapping) with per-record error isolation and logging
-- **Manual review governance** — Review queue with SLA tracking, escalation logic, and audit trails
-- **Controlled data exclusion** — Awards flagged `is_export_controlled` excluded from exports but preserved in aggregates
-
-**Rationale**: Analysts trust systems that preserve provenance and auditability. Immutability and versioning enable reproducible analysis and compliance validation. Data hygiene checks catch quality issues early and prevent downstream corruption.
-
-## Quality Standards
-
-### Documentation Requirements
-
-- **README.md** — Quick start, architecture overview, testing instructions
-- **specs/{feature}/spec.md** — Functional requirements, success criteria, assumptions
-- **specs/{feature}/plan.md** — Implementation plan with constitution compliance check
-- **specs/{feature}/tasks.md** — Task breakdown with phase grouping and dependencies
-- **specs/{feature}/data-model.md** — Entity schemas and validation rules
-- **specs/{feature}/quickstart.md** — Operational runbook for common workflows
-
-### Code Review Gates
-
-All pull requests MUST:
-
-1. Pass `ruff format --check` and `ruff check` (zero violations)
-2. Pass `pytest -m "not slow"` (all fast tests green)
-3. Maintain or improve coverage (≥85% statement coverage)
-4. Include tests for new functionality (unit + integration as appropriate)
-5. Update relevant documentation (spec, plan, quickstart) if behavior changes
-
-### Complexity Constraints
-
-- **No deep learning** — Stick to scikit-learn TF-IDF + logistic regression (interpretable, fast)
-- **No databases** — Use Parquet files for storage (simplicity, portability); SQLite only for caching (enrichment cache)
-- **Offline-first** — No authentication layers; CLI for analysts, internal-only API
-- **Single-package architecture** — Avoid microservices complexity
-- **CLI-driven workflows** — Command line is the primary analyst interface; API serves internal needs only
-
-**Rationale**: Complexity must be justified. The SBIR CET classification problem does not require sophisticated infrastructure; simple solutions reduce operational burden and align with the project's CLI-first, performance-focused mission.
+### Deployment Standards
+Production deployments MUST be reproducible with pinned dependencies. Configuration MUST be externalized via environment variables. Rollback procedures MUST be documented and tested.
 
 ## Governance
 
-### Constitution Authority
+This constitution supersedes all other development practices. Amendments require documentation of rationale, impact analysis, and team approval. All pull requests MUST verify constitutional compliance during review.
 
-This constitution supersedes all other development practices. When conflicts arise between this document and other guidance (README, PR templates, etc.), **the constitution wins**.
+Complexity violations MUST be explicitly justified with business rationale and simpler alternatives documented as rejected. The constitution guides architectural decisions but does not override critical business requirements with proper justification.
 
-### Amendment Process
+Runtime development guidance is maintained in AGENTS.md and project documentation. Constitutional violations in legacy code MUST be addressed during refactoring but do not block urgent fixes.
 
-Constitution changes require:
-
-1. **Documented justification** — Why is the change necessary? What problem does it solve?
-2. **Impact analysis** — Which existing code/tests/docs are affected?
-3. **Migration plan** — How will non-compliant code be brought into compliance?
-4. **Version bump** — Follow semantic versioning:
-   - **MAJOR**: Backward-incompatible principle changes (e.g., removing a core principle)
-   - **MINOR**: New principles or material expansions (e.g., adding a 6th principle)
-   - **PATCH**: Clarifications, wording fixes, non-semantic refinements
-
-### Compliance Verification
-
-- **Pre-merge checks** — CI MUST validate ruff, pytest, and coverage before allowing merge
-- **Plan phase gate** — Every feature plan includes a "Constitution Check" section validating alignment with all 5 principles
-- **Periodic audits** — Quarterly review of codebase against constitutional requirements
-
-### Enforcement
-
-Non-compliance is not acceptable:
-
-- **Blocking violations** — Code violating principles I-V cannot be merged
-- **Remediation timeline** — Existing violations identified in audits MUST be fixed within one sprint (2 weeks)
-- **Escalation** — Persistent violations require architecture review and potential principle amendment
-
-**Version**: 1.0.1 | **Ratified**: 2025-10-09 | **Last Amended**: 2025-10-10
+**Version**: 1.1.0 | **Ratified**: 2025-10-10 | **Last Amended**: 2025-10-10

@@ -1,0 +1,112 @@
+version: "1.0.0"
+description: SAM.gov API configuration and rate limiting settings
+
+api:
+  # SAM.gov API base URL
+  base_url: "https://api.sam.gov"
+  
+  # API version
+  version: "v1"
+  
+  # Authentication
+  auth:
+    # API key from environment variable SBIR_SAM_API_KEY
+    api_key_env: "SBIR_SAM_API_KEY"
+    
+  # Request timeouts (seconds)
+  timeouts:
+    connect: 10
+    read: 30
+    total: 60
+    
+  # Retry configuration
+  retry:
+    max_attempts: 3
+    backoff_factor: 2.0
+    status_codes: [429, 500, 502, 503, 504]
+    
+# Rate limiting configuration
+rate_limiting:
+  # Requests per minute (conservative estimate)
+  requests_per_minute: 100
+  
+  # Burst allowance
+  burst_size: 10
+  
+  # Circuit breaker settings
+  circuit_breaker:
+    failure_threshold: 5
+    recovery_timeout: 300  # 5 minutes
+    expected_exception: "requests.exceptions.RequestException"
+
+# Data enrichment settings
+enrichment:
+  # Batch processing
+  batch_size: 50
+  max_concurrent_requests: 5
+  
+  # Data quality thresholds
+  confidence_thresholds:
+    high: 0.9
+    medium: 0.7
+    low: 0.5
+    
+  # Matching criteria
+  matching:
+    # Award number exact match weight
+    award_number_weight: 1.0
+    
+    # UEI/DUNS identifier weight
+    identifier_weight: 0.9
+    
+    # Organization name fuzzy match weight
+    org_name_weight: 0.7
+    
+    # Minimum confidence for enrichment
+    min_confidence: 0.6
+
+# Endpoint-specific settings
+endpoints:
+  opportunities:
+    path: "/opportunities/v2/search"
+    default_params:
+      limit: 100
+      offset: 0
+      
+  awards:
+    path: "/awards/v2/search"
+    default_params:
+      limit: 100
+      offset: 0
+      
+  entities:
+    path: "/entity-information/v3/entities"
+    default_params:
+      limit: 100
+      offset: 0
+
+# Caching configuration
+caching:
+  # Enable response caching
+  enabled: true
+  
+  # Cache TTL (seconds)
+  ttl: 3600  # 1 hour
+  
+  # Cache size limits
+  max_entries: 10000
+  
+  # Cache file location
+  cache_file: "artifacts/sam_api_cache.db"
+
+# Logging configuration
+logging:
+  # Log level for SAM.gov API operations
+  level: "INFO"
+  
+  # Log API requests/responses
+  log_requests: false
+  log_responses: false
+  
+  # Performance metrics
+  log_performance: true

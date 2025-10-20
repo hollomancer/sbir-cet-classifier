@@ -8,6 +8,7 @@ import typer
 
 from sbir_cet_classifier.api.router import get_summary_service
 from sbir_cet_classifier.cli.awards import awards_app
+from sbir_cet_classifier.cli.enrichment_commands import app as enrichment_app
 from sbir_cet_classifier.cli.export import export_app
 from sbir_cet_classifier.common.config import load_config
 from sbir_cet_classifier.data.ingest import ingest_fiscal_year
@@ -16,6 +17,7 @@ from sbir_cet_classifier.features.summary import SummaryFilters
 app = typer.Typer(help="SBIR CET applicability tooling")
 app.add_typer(awards_app, name="awards")
 app.add_typer(export_app, name="export")
+app.add_typer(enrichment_app, name="enrich")
 
 
 @app.command()

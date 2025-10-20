@@ -1,0 +1,461 @@
+openapi: 3.0.3
+info:
+  title: Enrichment Service Internal Contract
+  description: Internal service contract for SBIR award enrichment pipeline
+  version: 1.0.0
+
+paths:
+  /enrich/award/{awardId}:
+    post:
+      summary: Enrich single award with SAM.gov data
+      description: Perform comprehensive enrichment of a single award
+      parameters:
+        - name: awardId
+          in: path
+          required: true
+          description: Internal award identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrichmentRequest'
+      responses:
+        '200':
+          description: Enrichment completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrichmentResult'
+        '202':
+          description: Enrichment accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrichmentStatus'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /enrich/batch:
+    post:
+      summary: Bulk enrichment of multiple awards
+      description: Process multiple awards for enrichment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchEnrichmentRequest'
+      responses:
+        '202':
+          description: Batch enrichment started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchEnrichmentStatus'
+
+  /enrich/status/{jobId}:
+    get:
+      summary: Get enrichment job status
+      description: Check status of enrichment job
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          description: Enrichment job identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrichmentJobStatus'
+
+  /validate/enrichment/{awardId}:
+    get:
+      summary: Validate enrichment data quality
+      description: Check data consistency and quality for enriched award
+      parameters:
+        - name: awardId
+          in: path
+          required: true
+          description: Award identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Validation results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationResult'
+
+components:
+  schemas:
+    EnrichmentRequest:
+      type: object
+      properties:
+        awardId:
+          type: string
+          description: Internal award identifier
+        enrichmentTypes:
+          type: array
+          items:
+            type: string
+            enum: [awardee, program_office, solicitation, modifications, all]
+          description: Types of enrichment to perform
+        forceRefresh:
+          type: boolean
+          default: false
+          description: Force re-enrichment even if data exists
+        confidenceThreshold:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.7
+          description: Minimum confidence score for accepting matches
+
+    EnrichmentResult:
+      type: object
+      properties:
+        awardId:
+          type: string
+          description: Award identifier
+        enrichmentTypes:
+          type: array
+          items:
+            type: string
+          description: Successfully completed enrichment types
+        overallConfidence:
+          type: number
+          format: float
+          description: Overall enrichment confidence score
+        processingTime:
+          type: integer
+          description: Processing time in milliseconds
+        dataQuality:
+          $ref: '#/components/schemas/DataQualityMetrics'
+        enrichedData:
+          type: object
+          properties:
+            awardeeProfile:
+              $ref: '#/components/schemas/AwardeeProfileData'
+            programOffice:
+              $ref: '#/components/schemas/ProgramOfficeData'
+            solicitation:
+              $ref: '#/components/schemas/SolicitationData'
+            modifications:
+              type: array
+              items:
+                $ref: '#/components/schemas/ModificationData'
+
+    EnrichmentStatus:
+      type: object
+      properties:
+        jobId:
+          type: string
+          description: Enrichment job identifier
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+          description: Current job status
+        progress:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Completion progress (0-1)
+        estimatedCompletion:
+          type: string
+          format: date-time
+          description: Estimated completion time
+
+    BatchEnrichmentRequest:
+      type: object
+      properties:
+        awardIds:
+          type: array
+          items:
+            type: string
+          description: List of award identifiers to enrich
+        enrichmentTypes:
+          type: array
+          items:
+            type: string
+            enum: [awardee, program_office, solicitation, modifications, all]
+        batchSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: Number of awards to process concurrently
+        maxRetries:
+          type: integer
+          minimum: 0
+          maximum: 5
+          default: 3
+          description: Maximum retry attempts for failed enrichments
+
+    BatchEnrichmentStatus:
+      type: object
+      properties:
+        batchId:
+          type: string
+          description: Batch job identifier
+        totalAwards:
+          type: integer
+          description: Total number of awards in batch
+        completed:
+          type: integer
+          description: Number of completed enrichments
+        failed:
+          type: integer
+          description: Number of failed enrichments
+        inProgress:
+          type: integer
+          description: Number of enrichments in progress
+        overallProgress:
+          type: number
+          format: float
+          description: Overall batch progress (0-1)
+        startTime:
+          type: string
+          format: date-time
+        estimatedCompletion:
+          type: string
+          format: date-time
+
+    EnrichmentJobStatus:
+      type: object
+      properties:
+        jobId:
+          type: string
+        awardId:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed, retrying]
+        currentStep:
+          type: string
+          description: Current processing step
+        progress:
+          type: number
+          format: float
+        errorMessage:
+          type: string
+          description: Error message if failed
+        retryCount:
+          type: integer
+          description: Number of retry attempts
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    ValidationResult:
+      type: object
+      properties:
+        awardId:
+          type: string
+        isValid:
+          type: boolean
+          description: Overall validation status
+        confidenceScore:
+          type: number
+          format: float
+          description: Data quality confidence score
+        validationChecks:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationCheck'
+        dataConsistency:
+          type: object
+          properties:
+            awardeeMatch:
+              type: boolean
+              description: Awardee data matches original award
+            fundingConsistency:
+              type: boolean
+              description: Funding amounts are consistent
+            dateConsistency:
+              type: boolean
+              description: Dates are logical and consistent
+        recommendations:
+          type: array
+          items:
+            type: string
+          description: Recommendations for data quality improvement
+
+    ValidationCheck:
+      type: object
+      properties:
+        checkName:
+          type: string
+          description: Name of validation check
+        passed:
+          type: boolean
+          description: Whether check passed
+        severity:
+          type: string
+          enum: [info, warning, error]
+          description: Issue severity level
+        message:
+          type: string
+          description: Validation message
+        details:
+          type: object
+          description: Additional check details
+
+    DataQualityMetrics:
+      type: object
+      properties:
+        completeness:
+          type: number
+          format: float
+          description: Data completeness score (0-1)
+        accuracy:
+          type: number
+          format: float
+          description: Data accuracy score (0-1)
+        consistency:
+          type: number
+          format: float
+          description: Data consistency score (0-1)
+        timeliness:
+          type: number
+          format: float
+          description: Data timeliness score (0-1)
+        missingFields:
+          type: array
+          items:
+            type: string
+          description: List of missing data fields
+        qualityIssues:
+          type: array
+          items:
+            type: string
+          description: Identified data quality issues
+
+    AwardeeProfileData:
+      type: object
+      properties:
+        profileId:
+          type: string
+        organizationName:
+          type: string
+        ueiIdentifier:
+          type: string
+        organizationType:
+          type: string
+        totalAwardsCount:
+          type: integer
+        totalAwardValue:
+          type: number
+          format: decimal
+        successRate:
+          type: number
+          format: float
+        averageAwardDuration:
+          type: integer
+        primaryNaicsCodes:
+          type: array
+          items:
+            type: string
+
+    ProgramOfficeData:
+      type: object
+      properties:
+        officeId:
+          type: string
+        agencyCode:
+          type: string
+        agencyName:
+          type: string
+        officeName:
+          type: string
+        officeDescription:
+          type: string
+        strategicFocusAreas:
+          type: array
+          items:
+            type: string
+        contactEmail:
+          type: string
+        contactPhone:
+          type: string
+
+    SolicitationData:
+      type: object
+      properties:
+        solicitationId:
+          type: string
+        solicitationNumber:
+          type: string
+        title:
+          type: string
+        fullText:
+          type: string
+        technicalRequirements:
+          type: string
+        evaluationCriteria:
+          type: string
+        keywords:
+          type: array
+          items:
+            type: string
+        cetRelevanceScores:
+          type: object
+          additionalProperties:
+            type: number
+            format: float
+
+    ModificationData:
+      type: object
+      properties:
+        modificationId:
+          type: string
+        modificationNumber:
+          type: string
+        modificationType:
+          type: string
+        modificationDate:
+          type: string
+          format: date
+        description:
+          type: string
+        fundingChange:
+          type: number
+          format: decimal
+        newEndDate:
+          type: string
+          format: date
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+        timestamp:
+          type: string
+          format: date-time

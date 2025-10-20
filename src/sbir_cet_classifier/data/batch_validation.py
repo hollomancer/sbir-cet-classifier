@@ -1,7 +1,7 @@
 """Batch validation utilities for high-performance ingestion."""
 
+
 import pandas as pd
-from datetime import datetime
 
 from sbir_cet_classifier.data.agency_mapping import normalize_agency_name
 

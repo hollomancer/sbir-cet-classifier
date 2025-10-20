@@ -85,7 +85,7 @@ class ApplicabilityModel:
         clf_cfg = _config.classifier
         if clf_cfg.class_weight == "balanced":
             class_weights = compute_class_weight("balanced", classes=classes, y=y)
-            class_weight_dict = dict(zip(classes, class_weights))
+            class_weight_dict = dict(zip(classes, class_weights, strict=False))
         else:
             class_weight_dict = None
         

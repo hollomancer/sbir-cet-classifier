@@ -1,7 +1,6 @@
 """Unit tests for performance monitoring utilities."""
 
 import time
-from io import StringIO
 from unittest.mock import patch
 
 import pytest
