@@ -8,9 +8,7 @@
 
 ## Overview
 
-Automated classification system for SBIR awards against 20 Critical and Emerging Technology areas. Features ML-based scoring, portfolio analytics, and export capabilities.
-
-**Current Status**: ✅ Production-ready with 210k+ awards processed at 97.9% success rate
+Automated classification system for SBIR awards against 20 Critical and Emerging Technology areas. Features ML-based scoring, portfolio analytics, and export capabilities. Not finished yet
 
 ## Quick Start
 
