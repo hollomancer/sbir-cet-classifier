@@ -342,17 +342,6 @@ class EnrichmentOrchestrator:
 
         return result
 
-    def _fetch_from_grants_gov(self, solicitation_id: str) -> object | None:
-        """Fetch solicitation from Grants.gov API."""
-        if not self.grants_gov_client:
-            self.grants_gov_client = GrantsGovClient()
-
-        try:
-            return self.grants_gov_client.lookup_solicitation(topic_code=solicitation_id)
-        except GrantsGovAPIError as e:
-            logger.warning("Grants.gov API error", extra={"error": str(e)})
-            return None
-
     def _fetch_from_nih(self, solicitation_id: str) -> object | None:
         """Fetch solicitation from NIH API."""
         if not self.nih_client:
