@@ -54,9 +54,11 @@ env/
 
 # Testing
 .pytest_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 .tox/
+artifacts/
 
 # Data directories (generated/processed data)
 data/raw/
