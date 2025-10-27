@@ -2,26 +2,26 @@ version: "1.0.0"
 description: Classification model hyperparameters
 
 vectorizer:
-  ngram_range: [1, 3]  # Unigrams, bigrams, trigrams
+  ngram_range: [1, 3] # Unigrams, bigrams, trigrams
   max_features: 50000
-  min_df: 2  # Ignore terms in <2 documents
-  max_df: 0.95  # Ignore terms in >95% of documents
+  min_df: 2 # Ignore terms in <2 documents
+  max_df: 0.95 # Ignore terms in >95% of documents
 
 feature_selection:
   enabled: true
   method: chi2
-  k: 20000  # Top 20k features
+  k: 20000 # Top 20k features
 
 classifier:
   max_iter: 500
   solver: lbfgs
-  n_jobs: -1  # Use all CPU cores
-  class_weight: balanced  # Handle imbalanced classes
+  n_jobs: -1 # Use all CPU cores
+  class_weight: balanced # Handle imbalanced classes
 
 calibration:
   enabled: true
   method: sigmoid
-  cv: 3  # 3-fold cross-validation
+  cv: 3 # 3-fold cross-validation
   min_samples_per_class: 3
 
 scoring:
@@ -38,7 +38,7 @@ scoring:
       min: 0
       max: 39
       label: Low
-  max_supporting: 3  # Number of supporting CET areas to return
+  max_supporting: 3 # Number of supporting CET areas to return
 
 stop_words:
   # Generic SBIR terms
@@ -72,3 +72,336 @@ stop_words:
   - proposed
   - develop
   - provide
+
+# -------------------------------------------------------------------------
+# Classification priors and CET keywords (moved from code into configuration)
+# -------------------------------------------------------------------------
+# Agency-level priors: boost scores for CETs when awards are funded by specific agencies
+agency_priors:
+  Department of Defense:
+    hypersonics: 15
+    autonomous_systems: 15
+    directed_energy: 15
+    advanced_materials: 10
+    cybersecurity: 10
+    semiconductors: 10
+    advanced_communications: 10
+  Department of Health and Human Services:
+    biotechnology: 20
+    medical_devices: 20
+    artificial_intelligence: 5
+  National Aeronautics and Space Administration:
+    space_technology: 25
+    advanced_materials: 15
+    autonomous_systems: 10
+    renewable_energy: 10
+  Department of Energy:
+    renewable_energy: 20
+    energy_storage: 20
+    quantum_computing: 15
+    advanced_materials: 10
+    semiconductors: 10
+  National Science Foundation:
+    _all_cets: 5
+  Department of Agriculture:
+    biotechnology: 15
+    environmental_tech: 15
+  Environmental Protection Agency:
+    environmental_tech: 25
+    renewable_energy: 15
+  Department of Commerce:
+    semiconductors: 15
+    advanced_communications: 15
+    quantum_computing: 10
+
+# Branch/sub-agency priors provide more specific boosts than agency-level priors
+branch_priors:
+  National Institutes of Health:
+    medical_devices: 25
+    biotechnology: 25
+    artificial_intelligence: 10
+  Air Force:
+    hypersonics: 20
+    space_technology: 15
+    autonomous_systems: 15
+    directed_energy: 10
+    advanced_materials: 10
+  Navy:
+    autonomous_systems: 15
+    advanced_materials: 15
+    directed_energy: 10
+    cybersecurity: 10
+  Army:
+    autonomous_systems: 15
+    cybersecurity: 15
+    advanced_materials: 10
+    medical_devices: 5
+  Missile Defense Agency:
+    hypersonics: 25
+    directed_energy: 20
+    space_technology: 15
+  Defense Advanced Research Projects Agency:
+    quantum_computing: 15
+    artificial_intelligence: 15
+    biotechnology: 15
+    autonomous_systems: 15
+    hypersonics: 15
+    directed_energy: 15
+  Defense Health Agency:
+    medical_devices: 25
+    biotechnology: 20
+
+# CET-specific keyword lists and context rules used by the rule-based scorer.
+# Each CET contains core, related and negative keyword lists that drive scoring.
+cet_keywords:
+  quantum_computing:
+    core:
+      - "quantum computing"
+      - "quantum computer"
+      - "quantum algorithm"
+      - "quantum processor"
+    related:
+      - "qubit"
+      - "quantum gate"
+      - "quantum circuit"
+      - "quantum software"
+    negative:
+      - "quantum mechanics"
+      - "quantum chemistry"
+      - "quantum field theory"
+      - "quantum dot"
+
+  quantum_sensing:
+    core:
+      - "quantum sensing"
+      - "quantum sensor"
+      - "quantum measurement"
+      - "quantum metrology"
+    related:
+      - "quantum detector"
+      - "atomic clock"
+      - "quantum magnetometer"
+    negative: []
+
+  artificial_intelligence:
+    core:
+      - "artificial intelligence research"
+      - "deep learning framework"
+      - "neural network architecture"
+      - "ai system"
+    related:
+      - "convolutional neural"
+      - "recurrent neural"
+      - "transformer model"
+      - "generative adversarial"
+    negative:
+      - "ai-powered diagnostic"
+      - "ai-based diagnosis"
+      - "ai medical imaging"
+      - "ai-optimized manufacturing"
+      - "ai process control"
+      - "using machine learning"
+      - "using ai"
+      - "leveraging ml"
+      - "ml-based analysis"
+      - "ai-assisted"
+      - "ai-enhanced"
+      - "ml-enabled"
+
+  biotechnology:
+    core:
+      - "biotechnology"
+      - "synthetic biology"
+      - "genetic engineering"
+      - "crispr"
+      - "gene therapy"
+    related:
+      - "biotech"
+      - "genomics"
+      - "biomanufacturing"
+      - "protein engineering"
+      - "gene editing"
+      - "bioreactor"
+    negative:
+      - "biomedical device"
+      - "medical diagnostic"
+
+  hypersonics:
+    core:
+      - "hypersonic flight"
+      - "hypersonic vehicle"
+      - "hypersonic weapon"
+      - "mach 5"
+    related:
+      - "scramjet"
+      - "ramjet"
+      - "high-speed flight"
+      - "supersonic combustion"
+    negative:
+      - "supersonic aircraft"
+      - "subsonic"
+
+  thermal_protection:
+    core:
+      - "thermal protection system"
+      - "heat shield"
+      - "tps"
+      - "re-entry thermal"
+    related:
+      - "ablative material"
+      - "thermal barrier"
+      - "high-temperature protection"
+    negative:
+      - "thermal management"
+      - "cooling system"
+      - "thermal insulation"
+
+  advanced_materials:
+    core:
+      - "metamaterial"
+      - "nanomaterial"
+      - "smart material"
+      - "advanced composite material"
+    related:
+      - "graphene"
+      - "carbon nanotube"
+      - "nanostructure"
+      - "functionally graded"
+      - "shape memory alloy"
+    negative:
+      - "standard composite"
+      - "conventional material"
+
+  cybersecurity:
+    core:
+      - "cybersecurity"
+      - "information security"
+      - "network security"
+      - "cyber defense"
+    related:
+      - "encryption"
+      - "cryptography"
+      - "intrusion detection"
+      - "penetration testing"
+      - "vulnerability assessment"
+    negative:
+      - "physical security"
+      - "security system"
+
+  autonomous_systems:
+    core:
+      - "autonomous system"
+      - "autonomous vehicle"
+      - "self-driving"
+      - "autonomous navigation"
+    related:
+      - "unmanned aerial"
+      - "uav"
+      - "drone"
+      - "autonomous robot"
+      - "autonomous control"
+    negative:
+      - "remote control"
+      - "teleoperated"
+      - "manual control"
+      - "automated"
+
+  semiconductors:
+    core:
+      - "semiconductor manufacturing"
+      - "microelectronics"
+      - "integrated circuit"
+      - "chip fabrication"
+    related:
+      - "cmos"
+      - "transistor"
+      - "wafer"
+      - "asic"
+      - "fpga"
+      - "semiconductor device"
+    negative:
+      - "using semiconductor"
+      - "semiconductor-based sensor"
+
+  space_technology:
+    core:
+      - "spacecraft"
+      - "satellite system"
+      - "space mission"
+      - "orbital platform"
+    related:
+      - "space propulsion"
+      - "launch vehicle"
+      - "orbital mechanics"
+      - "space environment"
+    negative:
+      - "cyberspace"
+      - "workspace"
+      - "aerospace material"
+      - "space-based sensor"
+
+  energy_storage:
+    core:
+      - "energy storage system"
+      - "battery technology"
+      - "electrochemical storage"
+      - "grid storage"
+    related:
+      - "lithium-ion battery"
+      - "solid-state battery"
+      - "supercapacitor"
+      - "energy storage device"
+    negative:
+      - "data storage"
+      - "battery-powered"
+      - "using battery"
+
+  renewable_energy:
+    core:
+      - "renewable energy"
+      - "solar energy system"
+      - "wind energy system"
+      - "photovoltaic system"
+    related:
+      - "solar panel"
+      - "solar cell"
+      - "wind turbine"
+      - "renewable power"
+      - "clean energy"
+    negative:
+      - "solar radiation"
+      - "wind tunnel"
+      - "solar heating"
+
+  medical_devices:
+    core:
+      - "medical device"
+      - "diagnostic device"
+      - "therapeutic device"
+      - "medical imaging device"
+    related:
+      - "clinical diagnostic"
+      - "patient monitoring"
+      - "surgical instrument"
+      - "prosthetic"
+      - "implantable device"
+    negative:
+      - "medical research"
+      - "drug development"
+      - "pharmaceutical"
+
+# Context rules: boost specific CETs when keyword combinations are present.
+# Each entry is a list of (required_keywords, boost_points)
+context_rules:
+  medical_devices:
+    - [["ai", "diagnostic"], 20]
+    - [["ai", "medical"], 20]
+    - [["machine learning", "clinical"], 20]
+    - [["neural network", "patient"], 20]
+  advanced_manufacturing:
+    - [["ai", "manufacturing"], 20]
+    - [["machine learning", "production"], 20]
+    - [["ai", "process control"], 20]
+  autonomous_systems:
+    - [["ai", "autonomous"], 15]
+    - [["machine learning", "robot"], 15]
