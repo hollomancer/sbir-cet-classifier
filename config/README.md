@@ -26,24 +26,93 @@ categories:
 
 ### classification.yaml
 
-Classification model hyperparameters and settings:
+Classification model parameters and rule-based scoring data. This file is designed so non-developers can make safe edits. Use two spaces for indentation and keep keys exactly as shown.
 
-- **Vectorizer**: TF-IDF configuration (n-grams, feature limits, stop words)
-- **Feature Selection**: Chi-squared feature selection settings
-- **Classifier**: Logistic regression parameters
-- **Calibration**: Probability calibration settings
-- **Scoring**: Classification bands (High/Medium/Low) and thresholds
-- **Stop Words**: Domain-specific terms to filter from text
+Structure:
 
-**Example: Changing classification bands**
+- version: Schema version string (e.g., "1.0.0")
+- vectorizer: TF-IDF settings
+  - ngram_range: [min, max] n-gram sizes
+  - max_features: integer feature cap
+  - min_df: ignore terms appearing in fewer than N documents
+  - max_df: ignore terms appearing in more than X% of documents (0-1)
+- feature_selection: chi2 settings
+  - enabled: true/false
+  - method: chi2
+  - k: number of top features to keep
+- classifier: logistic regression settings
+  - max_iter, solver, n_jobs, class_weight
+- calibration: probability calibration
+  - enabled, method, cv, min_samples_per_class
+- scoring: band thresholds and options
+  - bands: high/medium/low each with min, max, label (0-100)
+  - max_supporting: number of secondary CETs to return
+- stop_words: list of generic terms to ignore
+- agency_priors: per-agency score boosts by CET id
+- branch_priors: per-branch (sub-agency) score boosts by CET id
+- cet_keywords: for each CET id, lists of core, related, negative phrases
+- context_rules: CET-specific keyword combinations that add a boost
+
+Safe editing guidelines:
+
+- Do not rename top-level keys.
+- CET ids are lowercase with underscores (e.g., artificial_intelligence).
+- Keep numbers as integers; typical boost range is 0-25.
+- Put multi-word phrases in quotes: "quantum computing".
+- Use dashes for lists; align with two-space indentation.
+- Prefer small, incremental changes; validate after each change.
+
+Common edits and examples:
+
+1) Change classification bands
 ```yaml
 scoring:
   bands:
     high:
-      min: 80  # Changed from 70
+      min: 80
       max: 100
       label: High
+    medium:
+      min: 50
+      max: 79
+      label: Medium
+    low:
+      min: 0
+      max: 49
+      label: Low
 ```
+
+2) Add or adjust agency priors (boosts applied when an award is from that agency)
+```yaml
+agency_priors:
+  National Institutes of Health:
+    medical_devices: 25
+    biotechnology: 20
+  National Science Foundation:
+    _all_cets: 5   # Small global boost across all CETs
+```
+
+3) Edit CET keywords (core = strongest signals; negative = exclude contexts)
+```yaml
+cet_keywords:
+  quantum_computing:
+    core:
+      - "quantum computing"
+      - "quantum algorithm"
+    related:
+      - "qubit"
+    negative:
+      - "quantum chemistry"
+```
+
+4) Add a context rule (adds points when all required keywords occur together)
+```yaml
+context_rules:
+  medical_devices:
+    - [["ai", "diagnostic"], 20]
+```
+
+After any change, run the validation command shown below to ensure the file is still valid.
 
 ### enrichment.yaml
 
@@ -107,7 +176,7 @@ Configuration files are validated using Pydantic models. Invalid configurations 
 To test your configuration changes:
 
 ```bash
-python validate_config.py
+python -m sbir_cet_classifier.cli.app config validate
 ```
 
 Expected output:
@@ -135,7 +204,7 @@ Expected output:
 
 ## Best Practices
 
-1. **Test changes**: Run validation script after editing
+1. **Test changes**: Run validation command after editing (`python -m sbir_cet_classifier.cli.app config validate`)
 2. **Document rationale**: Add comments explaining parameter choices
 3. **Incremental changes**: Change one parameter at a time
 4. **Backup**: Keep previous versions for rollback

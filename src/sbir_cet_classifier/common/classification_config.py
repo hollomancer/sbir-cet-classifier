@@ -94,13 +94,13 @@ class ClassificationRules(BaseModel):
                     continue
                 # Each rule in YAML is expected to be a 2-element list: [ [kw1, kw2], boost ]
                 for rule in rules:
-                    if isinstance(rule, (list, tuple)) and len(rule) >= 2:
+                    if isinstance(rule, list | tuple) and len(rule) >= 2:
                         req = rule[0]
                         boost = rule[1]
                         # Ensure required keywords is a list of strings
                         if isinstance(req, str):
                             req_list = [req]
-                        elif isinstance(req, (list, tuple)):
+                        elif isinstance(req, list | tuple):
                             req_list = [str(x) for x in req]
                         else:
                             req_list = []
