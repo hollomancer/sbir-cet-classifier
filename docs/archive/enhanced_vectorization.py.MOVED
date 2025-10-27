@@ -1,0 +1,42 @@
+This file intentionally left as a tombstone: enhanced_vectorization.py has been archived.
+
+Summary
+- The experimental implementations in models/enhanced_vectorization.py have been archived and are no longer part of the supported API.
+- Use the canonical, config-backed vectorizer in:
+  - src/sbir_cet_classifier/models/vectorizers.py -> MultiSourceTextVectorizer
+- CET keyword and rule logic is centralized in:
+  - src/sbir_cet_classifier/models/cet_relevance_scorer.py (CET relevance features)
+  - src/sbir_cet_classifier/models/rules_scorer.py (explainable rule-based CET scores)
+
+Rationale
+- The archived module duplicated functionality and drifted from the package’s canonical components.
+- Consolidation reduces maintenance overhead and keeps behavior consistent with YAML-backed configuration.
+
+What changed
+- Removed classes:
+  - CETAwareTfidfVectorizer
+  - SolicitationEnhancedTfidfVectorizer
+  - WeightedTextCombiner
+- Canonical replacement:
+  - MultiSourceTextVectorizer in src/sbir_cet_classifier/models/vectorizers.py
+
+How to migrate imports
+- Before:
+  from src.sbir_cet_classifier.models.enhanced_vectorization import CETAwareTfidfVectorizer
+  from src.sbir_cet_classifier.models.enhanced_vectorization import SolicitationEnhancedTfidfVectorizer
+
+- After:
+  from src.sbir_cet_classifier.models.vectorizers import MultiSourceTextVectorizer
+
+Test updates
+- tests/unit/test_enhanced_vectorization.py should no longer import from models/enhanced_vectorization.
+- If you need to retain test coverage for multi-source text features, replace references to CETAwareTfidfVectorizer and SolicitationEnhancedTfidfVectorizer with MultiSourceTextVectorizer.
+- Consider renaming the test file to tests/unit/test_vectorizers.py to reflect the canonical class.
+
+Notes
+- If you previously relied on “CET keyword boosting” inside a TF-IDF vectorizer, prefer:
+  - Adding explicit engineered features via the CET relevance scorer, or
+  - Combining ML probability with the rule-based score (see models/rules_scorer.py and CLI flags for hybrid scoring).
+- All keyword lists, priors, and context rules are defined in config/classification.yaml and validated by Pydantic models.
+
+This .MOVED notice exists to prevent reintroduction of the deprecated implementations and to guide migration to the canonical components.

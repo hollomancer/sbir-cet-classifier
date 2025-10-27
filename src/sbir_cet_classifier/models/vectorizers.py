@@ -208,6 +208,16 @@ class MultiSourceTextVectorizer:
             raise ValueError("Vectorizer must be fitted before getting feature names")
         return list(self._feature_names_)
 
+    @property
+    def feature_names_(self) -> List[str]:
+        """Compat property mirroring sklearn-style attribute naming.
+
+        Returns combined, prefixed feature names after fit().
+        """
+        if not self.is_fitted_:
+            raise ValueError("Vectorizer must be fitted before getting feature names")
+        return list(self._feature_names_)
+
     # Internal helpers
 
     def _split_documents(

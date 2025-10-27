@@ -89,12 +89,26 @@ def classify(
     save_outputs: bool = typer.Option(
         True, "--save/--no-save", help="Save assessment outputs to processed storage"
     ),
+    rule_score: bool = typer.Option(
+        False, "--rule-score/--no-rule-score", help="Include rule-based score column"
+    ),
+    hybrid_score: bool = typer.Option(
+        False, "--hybrid-score/--no-hybrid-score", help="Include hybrid blended score"
+    ),
+    hybrid_weight: float = typer.Option(
+        0.5, "--hybrid-weight", help="Hybrid weight for rule score (0..1). 0=ML only, 1=rule only"
+    ),
 ) -> None:
     """Run the classification experiment (baseline vs enriched) on a local awards file.
 
     This command calls `sbir_cet_classifier.data.classification.classify_with_enrichment`
     and optionally persists the baseline/enriched assessment DataFrames to the
     configured processed storage location.
+
+    Options:
+    - --rule-score: include a rule_score column derived from RuleBasedScorer
+    - --hybrid-score: include a hybrid_score that blends ML and rule scores
+    - --hybrid-weight: weight for the rule component in the hybrid (0..1)
     """
     from pathlib import Path
     import pandas as pd
@@ -111,7 +125,13 @@ def classify(
         typer.echo(f"Path not found: {awards_path_p}")
         raise typer.Exit(code=1)
 
-    result = classify_with_enrichment(awards_path_p, sample_size=sample_size)
+    result = classify_with_enrichment(
+        awards_path_p,
+        sample_size=sample_size,
+        include_rule_score=rule_score,
+        include_hybrid_score=hybrid_score,
+        hybrid_weight=hybrid_weight,
+    )
     metrics = result.get("metrics") or {}
     typer.echo("Classification complete. Metrics:")
     typer.echo(json.dumps(metrics, indent=2, default=str))
@@ -167,6 +187,28 @@ def classify(
                 except Exception:
                     git_commit = "unknown"
 
+                # Compute optional rule/hybrid row counts
+                baseline_rule_score_rows = (
+                    int(baseline_df["rule_score"].notna().sum())
+                    if (baseline_df is not None and "rule_score" in baseline_df.columns)
+                    else 0
+                )
+                enriched_rule_score_rows = (
+                    int(enriched_df["rule_score"].notna().sum())
+                    if (enriched_df is not None and "rule_score" in enriched_df.columns)
+                    else 0
+                )
+                baseline_hybrid_score_rows = (
+                    int(baseline_df["hybrid_score"].notna().sum())
+                    if (baseline_df is not None and "hybrid_score" in baseline_df.columns)
+                    else 0
+                )
+                enriched_hybrid_score_rows = (
+                    int(enriched_df["hybrid_score"].notna().sum())
+                    if (enriched_df is not None and "hybrid_score" in enriched_df.columns)
+                    else 0
+                )
+
                 manifest = {
                     "command": "classify",
                     "awards_path": str(awards_path_p),
@@ -177,6 +219,13 @@ def classify(
                     "artifacts_dir": str(output_dir),
                     "baseline_rows": int(len(baseline_df)) if baseline_df is not None else 0,
                     "enriched_rows": int(len(enriched_df)) if enriched_df is not None else 0,
+                    "rule_score_enabled": bool(rule_score),
+                    "hybrid_score_enabled": bool(hybrid_score),
+                    "hybrid_weight": float(hybrid_weight),
+                    "baseline_rule_score_rows": baseline_rule_score_rows,
+                    "enriched_rule_score_rows": enriched_rule_score_rows,
+                    "baseline_hybrid_score_rows": baseline_hybrid_score_rows,
+                    "enriched_hybrid_score_rows": enriched_hybrid_score_rows,
                     "metrics": metrics,
                 }
                 manifest_path = output_dir / "manifest.json"
