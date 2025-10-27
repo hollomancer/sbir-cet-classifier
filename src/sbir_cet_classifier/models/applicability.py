@@ -46,7 +46,11 @@ def band_for_score(score: float) -> str:
 
 
 class ApplicabilityModel:
-    """Wrapper around TF-IDF + calibrated logistic regression with optimizations."""
+    """Wrapper around TF-IDF + calibrated logistic regression with optimizations.
+
+    When calibration is enabled, the same base estimator instance is passed to
+    CalibratedClassifierCV (instead of instantiating a new one).
+    """
 
     def __init__(self) -> None:
         # Load config from YAML
@@ -70,16 +74,16 @@ class ApplicabilityModel:
         texts = [example.text for example in examples]
         cet_labels = [example.primary_cet_id for example in examples]
         y = self._label_encoder.fit_transform(cet_labels)
-        
+
         # TF-IDF vectorization
         X = self._vectorizer.fit_transform(texts)
-        
+
         # Feature selection (if enabled)
         if self._feature_selector:
             X_selected = self._feature_selector.fit_transform(X, y)
         else:
             X_selected = X
-        
+
         # Compute class weights for imbalanced data
         classes = np.unique(y)
         clf_cfg = _config.classifier
@@ -88,7 +92,7 @@ class ApplicabilityModel:
             class_weight_dict = dict(zip(classes, class_weights, strict=False))
         else:
             class_weight_dict = None
-        
+
         # Train base classifier
         base_classifier = LogisticRegression(
             max_iter=clf_cfg.max_iter,
@@ -96,25 +100,25 @@ class ApplicabilityModel:
             solver=clf_cfg.solver,
             n_jobs=clf_cfg.n_jobs,
         )
-        base_classifier.fit(X_selected, y)
-
         # Calibrate if enabled and enough samples per class
         cal_cfg = _config.calibration
         class_counts = np.bincount(y)
-        if cal_cfg.enabled and class_counts.size >= 2 and class_counts.min() >= cal_cfg.min_samples_per_class:
+        if (
+            cal_cfg.enabled
+            and class_counts.size >= 2
+            and class_counts.min() >= cal_cfg.min_samples_per_class
+        ):
+            # Reuse the same base estimator instance for calibration to avoid redundant instantiation
             calibrated = CalibratedClassifierCV(
-                LogisticRegression(
-                    max_iter=clf_cfg.max_iter,
-                    class_weight=class_weight_dict,
-                    solver=clf_cfg.solver,
-                    n_jobs=clf_cfg.n_jobs,
-                ),
+                estimator=base_classifier,
                 cv=cal_cfg.cv,
             )
             calibrated.fit(X_selected, y)
             self._classifier = calibrated
             self._is_calibrated = True
         else:
+            # Fit the base classifier directly when calibration is disabled or not applicable
+            base_classifier.fit(X_selected, y)
             self._classifier = base_classifier
             self._is_calibrated = False
         self._is_fitted = True
@@ -125,21 +129,21 @@ class ApplicabilityModel:
             raise RuntimeError("Model must be fitted before prediction")
         if self._classifier is None:  # pragma: no cover - defensive
             raise RuntimeError("Classifier unavailable; call fit first")
-        
+
         # Apply same transformations as training
         X = self._vectorizer.transform([text])
         if self._feature_selector:
             X_selected = self._feature_selector.transform(X)
         else:
             X_selected = X
-        
+
         probs = self._classifier.predict_proba(X_selected)[0]  # type: ignore[call-arg]
         labels = self._label_encoder.inverse_transform(np.arange(len(probs)))
         ranked = sorted(zip(labels, probs, strict=False), key=lambda pair: pair[1], reverse=True)
         primary_cet_id, probability = ranked[0]
         score = float(probability * 100)
         max_supporting = _config.scoring.max_supporting
-        supporting = [(cet, float(p * 100)) for cet, p in ranked[1:max_supporting+1]]
+        supporting = [(cet, float(p * 100)) for cet, p in ranked[1 : max_supporting + 1]]
         return ApplicabilityScore(
             award_id=award_id,
             primary_cet_id=primary_cet_id,
@@ -164,10 +168,12 @@ class ApplicabilityModel:
         results: list[ApplicabilityScore] = []
         max_supporting = _config.scoring.max_supporting
         for award_id, prob_vector in zip(award_ids, probs, strict=False):
-            ranked = sorted(zip(labels, prob_vector, strict=False), key=lambda pair: pair[1], reverse=True)
+            ranked = sorted(
+                zip(labels, prob_vector, strict=False), key=lambda pair: pair[1], reverse=True
+            )
             primary_cet_id, probability = ranked[0]
             score = float(probability * 100)
-            supporting = [(cet, float(p * 100)) for cet, p in ranked[1:max_supporting+1]]
+            supporting = [(cet, float(p * 100)) for cet, p in ranked[1 : max_supporting + 1]]
             results.append(
                 ApplicabilityScore(
                     award_id=award_id,

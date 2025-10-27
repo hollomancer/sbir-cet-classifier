@@ -15,7 +15,7 @@ a predictable structure suitable for the rule-based scorer.
 
 from __future__ import annotations
 
-from functools import lru_cache
+import os
 from pathlib import Path
 from typing import Any
 
@@ -146,28 +146,40 @@ class ClassificationRules(BaseModel):
 # ----------------------------
 # Loader
 # ----------------------------
-@lru_cache(maxsize=1)
 def load_classification_rules(path: Path | None = None) -> ClassificationRules:
     """
     Load and validate classification rule configuration.
 
     Args:
         path: explicit path to a classification YAML file. If None, the default
-              config path is used: <repo-root>/config/classification.yaml
+              config path is resolved from SBIR_CONFIG_DIR (if set), otherwise
+              <repo-root>/config/classification.yaml
 
     Returns:
         ClassificationRules object with normalized priors, keywords and rules.
     """
+    # Resolve default path (environment override first)
     if path is None:
-        # Default follows the same layout used elsewhere in the project:
-        # src/sbir_cet_classifier/common/... -> go up to repo root then config/
-        path = Path(__file__).parent.parent.parent.parent / "config" / "classification.yaml"
+        env_dir = os.getenv("SBIR_CONFIG_DIR")
+        if env_dir:
+            path = Path(env_dir) / "classification.yaml"
+        else:
+            # Default follows the same layout used elsewhere in the project:
+            # src/sbir_cet_classifier/common/... -> go up to repo root then config/
+            path = Path(__file__).parent.parent.parent.parent / "config" / "classification.yaml"
 
-    path = Path(path)
-    if not path.exists():
-        raise FileNotFoundError(f"Classification config not found at: {path}")
+    resolved_path = Path(path).resolve()
 
-    with path.open("r", encoding="utf-8") as fh:
+    # Cache results per resolved path to allow multiple configs in one process
+    cache = getattr(load_classification_rules, "_cache", {})
+    key = str(resolved_path)
+    if key in cache:
+        return cache[key]
+
+    if not resolved_path.exists():
+        raise FileNotFoundError(f"Classification config not found at: {resolved_path}")
+
+    with resolved_path.open("r", encoding="utf-8") as fh:
         data = yaml.safe_load(fh) or {}
 
     # Build a payload containing only the keys we care about. This avoids errors
@@ -180,7 +192,10 @@ def load_classification_rules(path: Path | None = None) -> ClassificationRules:
         "context_rules": data.get("context_rules", {}),
     }
 
-    return ClassificationRules(**payload)
+    rules = ClassificationRules(**payload)
+    cache[key] = rules
+    setattr(load_classification_rules, "_cache", cache)
+    return rules
 
 
 # ----------------------------

@@ -336,61 +336,32 @@ class TechnicalKeywordExtractor:
 
 
 class CETRelevanceScorer:
-    """Calculate CET relevance scores for solicitation text."""
+    """Calculate CET relevance scores for solicitation text.
+
+    TODO(consolidation): This class duplicates CET scoring functionality found elsewhere
+    (e.g., sbir_cet_classifier/models/cet_relevance_scorer.py). Consider consolidating
+    to a single, YAML-config-backed scorer and deprecating one of these implementations.
+    """
 
     def __init__(self):
-        """Initialize with CET category definitions."""
-        self.cet_categories = {
-            "quantum_computing": {
-                "keywords": [
-                    "quantum",
-                    "qubit",
-                    "superposition",
-                    "entanglement",
-                    "quantum algorithm",
-                ],
-                "weight": 1.0,
-            },
-            "artificial_intelligence": {
-                "keywords": [
-                    "ai",
-                    "artificial intelligence",
-                    "machine learning",
-                    "neural network",
-                    "deep learning",
-                ],
-                "weight": 1.0,
-            },
-            "cybersecurity": {
-                "keywords": ["cybersecurity", "encryption", "cryptography", "security", "cyber"],
-                "weight": 1.0,
-            },
-            "advanced_materials": {
-                "keywords": ["materials", "composites", "nanomaterials", "metamaterials"],
-                "weight": 1.0,
-            },
-            "nanotechnology": {
-                "keywords": ["nanotechnology", "nanoscale", "nanoparticles", "nanofabrication"],
-                "weight": 1.0,
-            },
-            "biotechnology": {
-                "keywords": [
-                    "biotechnology",
-                    "bioengineering",
-                    "synthetic biology",
-                    "bioinformatics",
-                ],
-                "weight": 1.0,
-            },
-            "autonomous_systems": {
-                "keywords": ["autonomous", "robotics", "unmanned", "self-driving", "robot"],
-                "weight": 1.0,
-            },
-            "semiconductors": {
-                "keywords": ["semiconductor", "microelectronics", "integrated circuit", "chip"],
-                "weight": 1.0,
-            },
-        }
+        """Initialize with CET category definitions from YAML-backed configuration."""
+        try:
+            from sbir_cet_classifier.common.classification_config import get_cet_keywords_map
+
+            self.cet_categories = {}
+            keyword_models = get_cet_keywords_map()
+            for cet_id, buckets in keyword_models.items():
+                core = getattr(buckets, "core", []) or []
+                related = getattr(buckets, "related", []) or []
+                # Lowercase and flatten keywords; ignore empty entries
+                keywords = [str(kw).lower() for kw in list(core) + list(related) if kw]
+                self.cet_categories[cet_id] = {
+                    "keywords": keywords,
+                    "weight": 1.0,
+                }
+        except Exception:
+            # Fallback to empty mapping if configuration is not available
+            self.cet_categories = {}
 
     def calculate_relevance_scores(self, text: str) -> Dict[str, float]:
         """Calculate relevance scores for all CET categories."""

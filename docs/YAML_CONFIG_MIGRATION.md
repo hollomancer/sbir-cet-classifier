@@ -81,8 +81,8 @@ Successfully migrated all classification configuration from hardcoded Python con
 - Validation instructions
 - Best practices
 
-**`validate_config.py`**
-- Validation script for all YAML files
+**CLI: `python -m sbir_cet_classifier.cli.app config validate`**
+- Validates all YAML files
 - Clear success/error reporting
 - Version and parameter summary
 
@@ -115,7 +115,7 @@ Successfully migrated all classification configuration from hardcoded Python con
 
 ### Validation
 ```bash
-$ python validate_config.py
+$ python -m sbir_cet_classifier.cli.app config validate
 ✅ taxonomy.yaml
    Version: NSTC-2025Q1
    Categories: 21
@@ -169,7 +169,7 @@ score = model.predict('test', 'quantum algorithms research')
 - `config/enrichment.yaml` - Enrichment mappings
 - `config/README.md` - Configuration documentation
 - `src/sbir_cet_classifier/common/yaml_config.py` - Config loader
-- `validate_config.py` - Validation script
+- CLI validation command: `python -m sbir_cet_classifier.cli.app config validate` (replaces standalone validate_config.py)
 - `docs/YAML_CONFIG_MIGRATION.md` - This document
 
 ### Backward Compatibility

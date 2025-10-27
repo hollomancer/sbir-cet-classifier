@@ -19,6 +19,7 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+src/sbir_cet_classifier.egg-info/
 *.egg
 .eggs/
 pip-wheel-metadata/

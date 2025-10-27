@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 class CategoryConfig(BaseModel):
     """CET category configuration."""
+
     id: str
     name: str
     definition: str
@@ -20,6 +21,7 @@ class CategoryConfig(BaseModel):
 
 class TaxonomyConfig(BaseModel):
     """CET taxonomy configuration."""
+
     version: str
     effective_date: str
     description: str
@@ -28,6 +30,7 @@ class TaxonomyConfig(BaseModel):
 
 class VectorizerConfig(BaseModel):
     """TF-IDF vectorizer configuration."""
+
     ngram_range: tuple[int, int]
     max_features: int
     min_df: int
@@ -36,6 +39,7 @@ class VectorizerConfig(BaseModel):
 
 class FeatureSelectionConfig(BaseModel):
     """Feature selection configuration."""
+
     enabled: bool
     method: str
     k: int
@@ -43,6 +47,7 @@ class FeatureSelectionConfig(BaseModel):
 
 class ClassifierConfig(BaseModel):
     """Logistic regression classifier configuration."""
+
     max_iter: int
     solver: str
     n_jobs: int
@@ -51,6 +56,7 @@ class ClassifierConfig(BaseModel):
 
 class CalibrationConfig(BaseModel):
     """Calibration configuration."""
+
     enabled: bool
     method: str
     cv: int
@@ -59,6 +65,7 @@ class CalibrationConfig(BaseModel):
 
 class BandConfig(BaseModel):
     """Classification band configuration."""
+
     min: int
     max: int
     label: str
@@ -66,12 +73,14 @@ class BandConfig(BaseModel):
 
 class ScoringConfig(BaseModel):
     """Scoring configuration."""
+
     bands: dict[str, BandConfig]
     max_supporting: int
 
 
 class ClassificationConfig(BaseModel):
     """Complete classification configuration."""
+
     version: str
     description: str
     vectorizer: VectorizerConfig
@@ -84,12 +93,14 @@ class ClassificationConfig(BaseModel):
 
 class TopicDomainConfig(BaseModel):
     """Topic domain configuration."""
+
     name: str
     keywords: list[str]
 
 
 class NIHMatcherConfig(BaseModel):
     """NIH matcher configuration."""
+
     amount_tolerance_min: float = Field(ge=0.0, le=1.0)
     amount_tolerance_max: float = Field(ge=1.0, le=2.0)
     similarity_threshold: float = Field(ge=0.0, le=1.0)
@@ -101,12 +112,14 @@ class NIHMatcherConfig(BaseModel):
 
 class PhaseKeywordsConfig(BaseModel):
     """Phase-specific keywords."""
+
     phase_i: list[str]
     phase_ii: list[str]
 
 
 class EnrichmentConfig(BaseModel):
     """Complete enrichment configuration."""
+
     version: str
     description: str
     nih_matcher: NIHMatcherConfig
@@ -115,60 +128,106 @@ class EnrichmentConfig(BaseModel):
     phase_keywords: PhaseKeywordsConfig
 
 
-@lru_cache(maxsize=1)
 def load_taxonomy_config(path: Path | None = None) -> TaxonomyConfig:
     """Load taxonomy configuration from YAML.
-    
+
     Args:
-        path: Path to taxonomy.yaml (defaults to config/taxonomy.yaml)
-        
+        path: Path to taxonomy.yaml (defaults to SBIR_CONFIG_DIR/taxonomy.yaml if set,
+              otherwise config/taxonomy.yaml)
+
     Returns:
         Validated taxonomy configuration
     """
+    import os
+
     if path is None:
-        path = Path(__file__).parent.parent.parent.parent / "config" / "taxonomy.yaml"
-    
-    with open(path) as f:
+        env_dir = os.getenv("SBIR_CONFIG_DIR")
+        if env_dir:
+            path = Path(env_dir) / "taxonomy.yaml"
+        else:
+            path = Path(__file__).parent.parent.parent.parent / "config" / "taxonomy.yaml"
+
+    resolved = Path(path).resolve()
+    key = str(resolved)
+
+    cache = getattr(load_taxonomy_config, "_cache", {})
+    if key in cache:
+        return cache[key]
+
+    with resolved.open() as f:
         data = yaml.safe_load(f)
-    
-    return TaxonomyConfig(**data)
+
+    cfg = TaxonomyConfig(**data)
+    cache[key] = cfg
+    setattr(load_taxonomy_config, "_cache", cache)
+    return cfg
 
 
-@lru_cache(maxsize=1)
 def load_classification_config(path: Path | None = None) -> ClassificationConfig:
     """Load classification configuration from YAML.
-    
+
     Args:
-        path: Path to classification.yaml (defaults to config/classification.yaml)
-        
+        path: Path to classification.yaml (defaults to SBIR_CONFIG_DIR/classification.yaml if set,
+              otherwise config/classification.yaml)
+
     Returns:
         Validated classification configuration
     """
+    import os
+
     if path is None:
-        path = Path(__file__).parent.parent.parent.parent / "config" / "classification.yaml"
-    
-    with open(path) as f:
+        env_dir = os.getenv("SBIR_CONFIG_DIR")
+        if env_dir:
+            path = Path(env_dir) / "classification.yaml"
+        else:
+            path = Path(__file__).parent.parent.parent.parent / "config" / "classification.yaml"
+
+    resolved = Path(path).resolve()
+    key = str(resolved)
+
+    cache = getattr(load_classification_config, "_cache", {})
+    if key in cache:
+        return cache[key]
+
+    with resolved.open() as f:
         data = yaml.safe_load(f)
-    
-    return ClassificationConfig(**data)
+
+    cfg = ClassificationConfig(**data)
+    cache[key] = cfg
+    setattr(load_classification_config, "_cache", cache)
+    return cfg
 
 
-@lru_cache(maxsize=1)
 def load_enrichment_config(path: Path | None = None) -> EnrichmentConfig:
     """Load enrichment configuration from YAML.
-    
+
     Args:
-        path: Path to enrichment.yaml (defaults to config/enrichment.yaml)
-        
+        path: Path to enrichment.yaml (defaults to SBIR_CONFIG_DIR/enrichment.yaml if set,
+              otherwise config/enrichment.yaml)
+
     Returns:
         Validated enrichment configuration
     """
+    import os
+
     if path is None:
-        path = Path(__file__).parent.parent.parent.parent / "config" / "enrichment.yaml"
-    
-    with open(path) as f:
+        env_dir = os.getenv("SBIR_CONFIG_DIR")
+        if env_dir:
+            path = Path(env_dir) / "enrichment.yaml"
+        else:
+            path = Path(__file__).parent.parent.parent.parent / "config" / "enrichment.yaml"
+
+    resolved = Path(path).resolve()
+    key = str(resolved)
+
+    cache = getattr(load_enrichment_config, "_cache", {})
+    if key in cache:
+        return cache[key]
+
+    with resolved.open() as f:
         data = yaml.safe_load(f)
-    
-    return EnrichmentConfig(**data)
 
-
+    cfg = EnrichmentConfig(**data)
+    cache[key] = cfg
+    setattr(load_enrichment_config, "_cache", cache)
+    return cfg

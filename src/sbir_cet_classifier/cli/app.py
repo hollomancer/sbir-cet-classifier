@@ -124,7 +124,7 @@ def classify(
             # crude detection: look for 4-digit year
             import re
 
-            m = re.search(r"(20\\d{2})", name)
+            m = re.search(r"(20\d{2})", name)
             if m:
                 fiscal_year = int(m.group(1))
             # Persist DataFrames to artifacts/classifications/<partition>/
@@ -132,6 +132,7 @@ def classify(
 
             baseline_df = result.get("baseline")
             enriched_df = result.get("enriched")
+            # Write assessment outputs
             if baseline_df is not None and not baseline_df.empty:
                 write_partition(
                     baseline_df,
@@ -146,7 +147,43 @@ def classify(
                     fiscal_year,
                     filename="assessments_enriched.parquet",
                 )
-            typer.echo(f"Saved assessment outputs to {artifacts_root}/{fiscal_year}/")
+            # Write a manifest with run metadata alongside outputs
+            try:
+                from datetime import datetime, timezone
+                import subprocess
+
+                output_dir = artifacts_root / str(fiscal_year)
+                metrics = result.get("metrics") or {}
+                # Try to capture current git commit; fall back to 'unknown'
+                try:
+                    git_commit = subprocess.run(
+                        ["git", "rev-parse", "HEAD"],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    ).stdout.strip()
+                except Exception:
+                    git_commit = "unknown"
+
+                manifest = {
+                    "command": "classify",
+                    "awards_path": str(awards_path_p),
+                    "sample_size": int(sample_size),
+                    "save_outputs": bool(save_outputs),
+                    "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                    "git_commit": git_commit,
+                    "artifacts_dir": str(output_dir),
+                    "baseline_rows": int(len(baseline_df)) if baseline_df is not None else 0,
+                    "enriched_rows": int(len(enriched_df)) if enriched_df is not None else 0,
+                    "metrics": metrics,
+                }
+                manifest_path = output_dir / "manifest.json"
+                with manifest_path.open("w", encoding="utf-8") as fh:
+                    json.dump(manifest, fh, indent=2)
+                typer.echo(f"Saved assessment outputs and manifest to {output_dir}/")
+            except Exception as exc:
+                typer.echo(f"Could not write manifest: {exc}")
+                typer.echo(f"Saved assessment outputs to {artifacts_root}/{fiscal_year}/")
         except Exception as exc:
             typer.echo(f"Could not save outputs: {exc}")
 
