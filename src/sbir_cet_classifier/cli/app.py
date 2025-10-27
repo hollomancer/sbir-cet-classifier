@@ -76,6 +76,75 @@ def ingest(
     )
 
 
+@app.command("classify")
+def classify(
+    awards_path: str = typer.Option(
+        ..., "--awards-path", "-p", help="Path to awards CSV for classification"
+    ),
+    sample_size: int = typer.Option(
+        100, "--sample-size", "-n", help="Maximum number of awards to use"
+    ),
+    save_outputs: bool = typer.Option(
+        True, "--save/--no-save", help="Save assessment outputs to processed storage"
+    ),
+) -> None:
+    """Run the classification experiment (baseline vs enriched) on a local awards file.
+
+    This command calls `sbir_cet_classifier.data.classification.classify_with_enrichment`
+    and optionally persists the baseline/enriched assessment DataFrames to the
+    configured processed storage location.
+    """
+    from pathlib import Path
+    import pandas as pd
+
+    typer.echo(f"Running classification on {awards_path} (sample_size={sample_size})")
+    try:
+        from sbir_cet_classifier.data.classification import classify_with_enrichment
+    except Exception as exc:  # pragma: no cover - defensive
+        typer.echo(f"Classifier unavailable: {exc}")
+        raise typer.Exit(code=1) from exc
+
+    awards_path_p = Path(awards_path)
+    if not awards_path_p.exists():
+        typer.echo(f"Path not found: {awards_path_p}")
+        raise typer.Exit(code=1)
+
+    result = classify_with_enrichment(awards_path_p, sample_size=sample_size)
+    metrics = result.get("metrics") or {}
+    typer.echo("Classification complete. Metrics:")
+    typer.echo(json.dumps(metrics, indent=2, default=str))
+
+    if save_outputs:
+        try:
+            config = load_config()
+            processed_dir = config.storage.processed
+            # Determine a partition name (use year if detectable, otherwise 'manual')
+            fiscal_year = "manual"
+            name = awards_path_p.name.lower()
+            # crude detection: look for 4-digit year
+            import re
+
+            m = re.search(r"(20\\d{2})", name)
+            if m:
+                fiscal_year = int(m.group(1))
+            # Persist DataFrames to processed/<partition>/
+            from sbir_cet_classifier.data.store import write_partition
+
+            baseline_df = result.get("baseline")
+            enriched_df = result.get("enriched")
+            if baseline_df is not None and not baseline_df.empty:
+                write_partition(
+                    baseline_df, processed_dir, fiscal_year, filename="assessments_baseline.parquet"
+                )
+            if enriched_df is not None and not enriched_df.empty:
+                write_partition(
+                    enriched_df, processed_dir, fiscal_year, filename="assessments_enriched.parquet"
+                )
+            typer.echo(f"Saved assessment outputs to {processed_dir}/{fiscal_year}/")
+        except Exception as exc:
+            typer.echo(f"Could not save outputs: {exc}")
+
+
 @app.command()
 def summary(
     fiscal_year_start: int = typer.Argument(...),

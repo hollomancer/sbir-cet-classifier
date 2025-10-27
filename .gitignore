@@ -52,3 +52,4 @@ htmlcov/
 *.sublime-workspace
 *.swp
 *.swo
+.DS_Store
