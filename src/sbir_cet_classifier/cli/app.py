@@ -10,6 +10,7 @@ from sbir_cet_classifier.api.router import get_summary_service
 from sbir_cet_classifier.cli.awards import awards_app
 from sbir_cet_classifier.cli.enrichment_commands import app as enrichment_app
 from sbir_cet_classifier.cli.export import export_app
+from sbir_cet_classifier.cli.config import app as config_app
 from sbir_cet_classifier.common.config import load_config
 from sbir_cet_classifier.data.ingest import ingest_fiscal_year
 from sbir_cet_classifier.features.summary import SummaryFilters
@@ -18,6 +19,7 @@ app = typer.Typer(help="SBIR CET applicability tooling")
 app.add_typer(awards_app, name="awards")
 app.add_typer(export_app, name="export")
 app.add_typer(enrichment_app, name="enrich")
+app.add_typer(config_app, name="config")
 
 
 @app.command()
@@ -32,7 +34,10 @@ def refresh(
     config = load_config()
     typer.echo(f"Using storage directories: {config.storage}")
     for fiscal_year in range(fiscal_year_start, fiscal_year_end + 1):
-        url = source_url or f"https://www.sbir.gov/sites/default/files/sbir_awards_FY{fiscal_year}.zip"
+        url = (
+            source_url
+            or f"https://www.sbir.gov/sites/default/files/sbir_awards_FY{fiscal_year}.zip"
+        )
         typer.echo(f"Ingesting fiscal year {fiscal_year} from {url}")
         result = ingest_fiscal_year(fiscal_year, url, config=config)
         typer.echo(
@@ -44,6 +49,31 @@ def refresh(
         typer.echo("Incremental refresh complete")
     else:
         typer.echo("Full refresh complete")
+
+
+@app.command("ingest")
+def ingest(
+    fiscal_year: int = typer.Argument(..., help="Fiscal year to ingest."),
+    source_url: str | None = typer.Option(None, help="Override SBIR.gov archive URL."),
+) -> None:
+    """Ingest a single fiscal year (wrapper around ingest_fiscal_year).
+
+    This command provides a lightweight compatibility wrapper similar to the
+    previous top-level `ingest_awards.py` script but delegates to the
+    package ingestion utility `ingest_fiscal_year`.
+    """
+    config = load_config()
+    typer.echo(f"Using storage directories: {config.storage}")
+
+    url = source_url or f"https://www.sbir.gov/sites/default/files/sbir_awards_FY{fiscal_year}.zip"
+    typer.echo(f"Ingesting fiscal year {fiscal_year} from {url}")
+
+    result = ingest_fiscal_year(fiscal_year, url, config=config)
+    typer.echo(
+        f"Processed fiscal year {result.fiscal_year}: "
+        f"{result.records_ingested} records, "
+        f"archive={result.raw_archive.name}"
+    )
 
 
 @app.command()
@@ -73,8 +103,6 @@ def summary(
     typer.echo(json.dumps(result, indent=2))
 
 
-
-
 @app.command("review-queue")
 def review_queue(  # pragma: no cover - thin wrapper
     list_pending: bool = typer.Option(False, "--list", help="List pending items."),
@@ -88,8 +116,6 @@ def review_queue(  # pragma: no cover - thin wrapper
         typer.echo(f"Escalating queue item {escalate} (implementation pending)")
     else:
         typer.echo("Use --list or --escalate to interact with the review queue.")
-
-
 
 
 def main() -> None:  # pragma: no cover

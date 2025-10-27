@@ -1,76 +1,55 @@
-# Environment variables
+# Environment / secrets
 .env
 .env.local
+.env.*.local
 
-# Award data CSV files - should never be checked in
+# Raw input data - never commit raw datasets
 award_data*.csv
+data/raw/
+data/*.csv
 
-# Python
+# Python artifacts
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Packaging / build
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
 *.egg
+.eggs/
+pip-wheel-metadata/
+wheels/
+sdist/
 MANIFEST
-
-# Virtual environments
-venv/
-.venv/
-ENV/
-env/
-
-# IDE - VSCode
-.vscode/
-# IDE - JetBrains
-.idea/
-# IDE - Vim
-*.swp
-*.swo
-*~
-
-# AI Assistant Tools
-.claude/
-.codex/
-.gemini/
-.amazonq/
-.github/prompts/
-
-# Testing
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-.tox/
 artifacts/
 
-# Data directories (generated/processed data)
-data/raw/
-data/processed/*.parquet
-artifacts/*.jsonl
-artifacts/*.json
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+venv.bak/
 
-# Specification/Planning tools
-.specify/
-!.specify/memory/
-!.specify/memory/constitution.md
+# Cache / test outputs
+.pytest_cache/
+.coverage
+coverage.json
+htmlcov/
+.tox/
+.cache/
+.mypy_cache/
+.ruff_cache/
 
-# Misc
-.DS_Store
-*.log
+# IDE / editor settings
+.vscode/
+.vscode/settings.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*
