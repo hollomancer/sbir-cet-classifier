@@ -142,7 +142,7 @@ Classification parameters are externalized to YAML files in the `config/` direct
 
 **Validate configuration changes:**
 ```bash
-python validate_config.py
+python -m sbir_cet_classifier.cli.app config validate
 ```
 
 ## CET Taxonomy
@@ -311,3 +311,4 @@ For detailed documentation see:
 - **DEVELOPMENT.md** - Development setup, testing, and contribution guidelines
 - **STATUS.md** - Project status, task completion, and release readiness
 - **config/README.md** - Configuration file documentation
+- **docs/CONFIG.md** - Editing classification.yaml safely and validation steps
