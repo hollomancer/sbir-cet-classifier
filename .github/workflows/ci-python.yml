@@ -1,0 +1,177 @@
+name: CI - Python (3.11)
+
+# CI workflow for running tests and dev checks on Python 3.11.
+# This workflow:
+#  - runs unit tests with pytest
+#  - installs development extras (assumes `pip install -e .[dev]` is supported)
+#  - runs linters/type checks (ruff, mypy) when available
+#  - caches pip to speed up repeated runs
+#
+# Local developer setup (quick reference):
+#  1. Use Python 3.11 (pyenv / system / Docker)
+#     python -m venv .venv
+#     source .venv/bin/activate
+#  2. Install the package in editable mode with dev extras:
+#     pip install -e .[dev]
+#  3. Run linters and tests:
+#     ruff check .
+#     mypy src tests
+#     pytest tests/ -v
+#
+# If your environment does not support `.[dev]` extras, install tools manually:
+#     pip install -r requirements-dev.txt
+#
+# The CI job below mirrors these steps on GitHub Actions.
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ci-python-3.11
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: 1
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          check-latest: true
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-cache-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
+          restore-keys: |
+            pip-cache-${{ matrix.python-version }}-
+
+      - name: Upgrade pip and install build tools
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+
+      - name: Install project + dev dependencies
+        # Try to install editable dev extras; if project does not expose extras,
+        # fall back to requirements-dev.txt or requirements.txt if present.
+        run: |
+          set -e
+          if python -c "import importlib, pkgutil, sys; print('ok')" >/dev/null 2>&1; then
+            true
+          fi
+          if grep -q "\[dev\]" pyproject.toml 2>/dev/null || python - <<'PY' 2>/dev/null
+try:
+    import tomllib, sys, pathlib
+    p = pathlib.Path('pyproject.toml')
+    if p.exists():
+        data = tomllib.loads(p.read_text())
+        if 'project' in data and 'optional-dependencies' in data['project'] and 'dev' in data['project']['optional-dependencies']:
+            print('has_dev')
+except Exception:
+    pass
+PY
+          then
+            pip install -e ".[dev]"
+          elif [ -f requirements-dev.txt ]; then
+            pip install -r requirements-dev.txt
+          elif [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            echo "No dev requirements found; installing minimal test deps"
+            pip install pytest
+          fi
+
+      - name: Show Python / Pip versions
+        run: |
+          python --version
+          pip --version
+          pip list --format=columns
+
+      - name: Lint: ruff (if installed)
+        continue-on-error: true
+        run: |
+          if command -v ruff >/dev/null 2>&1; then
+            echo "Running ruff check..."
+            ruff check .
+          else
+            echo "ruff not installed; skipping"
+          fi
+
+      - name: Type check: mypy (if installed)
+        continue-on-error: true
+        run: |
+          if command -v mypy >/dev/null 2>&1; then
+            echo "Running mypy..."
+            mypy src tests || true
+          else
+            echo "mypy not installed; skipping"
+          fi
+
+      - name: Run tests
+        env:
+          PYTEST_ADDOPTS: "-q --maxfail=1"
+        run: |
+          pytest tests/ -q
+
+      - name: Upload test results (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-logs
+          path: |
+            .pytest_cache
+            htmlcov || true
+
+  dev-instructions:
+    # A lightweight job that prints developer setup instructions to the job log.
+    # Handy for contributors who open an initial PR and want a one-click dev guide.
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'dev') || github.actor == 'dependabot[bot]'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Print local development instructions
+        run: |
+          cat <<'DOC'
+          Local development quickstart (recommended):
+          1. Install Python 3.11 (pyenv is handy)
+             - pyenv install 3.11.x
+             - pyenv local 3.11.x
+          2. Create a virtualenv:
+             python -m venv .venv
+             source .venv/bin/activate
+          3. Install editable package with dev extras:
+             pip install -e .[dev]
+          4. Run linters and tests:
+             ruff check .
+             mypy src tests
+             pytest tests/ -v
+          Notes:
+            - If the project uses pyproject.toml with [project.optional-dependencies], prefer `pip install -e ".[dev]"`
+            - If you don't have dev extras available, try `pip install -r requirements-dev.txt`
+          DOC
