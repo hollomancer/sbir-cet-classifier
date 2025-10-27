@@ -12,6 +12,9 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from scipy.sparse import hstack, csr_matrix
+from sbir_cet_classifier.models.vectorizers import (
+    MultiSourceTextVectorizer as CanonicalMultiSourceTextVectorizer,
+)
 
 
 class MultiSourceTextVectorizer:
@@ -140,18 +143,20 @@ class EnhancedCETClassifier:
 
         # Initialize components
         if include_solicitation_text:
-            self.vectorizer_ = MultiSourceTextVectorizer(
+            self.vectorizer_ = CanonicalMultiSourceTextVectorizer(
                 abstract_weight=abstract_weight,
                 keywords_weight=keywords_weight,
                 solicitation_weight=solicitation_weight,
+                include_solicitation=True,
                 max_features=10000,
                 ngram_range=(1, 2),
             )
         else:
-            self.vectorizer_ = MultiSourceTextVectorizer(
+            self.vectorizer_ = CanonicalMultiSourceTextVectorizer(
                 abstract_weight=abstract_weight,
                 keywords_weight=keywords_weight,
                 solicitation_weight=0.0,
+                include_solicitation=False,
                 max_features=10000,
                 ngram_range=(1, 2),
             )
