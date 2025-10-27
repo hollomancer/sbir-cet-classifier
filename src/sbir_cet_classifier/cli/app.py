@@ -117,7 +117,7 @@ def classify(
     if save_outputs:
         try:
             config = load_config()
-            processed_dir = config.storage.processed
+            artifacts_root = config.storage.artifacts / "classifications"
             # Determine a partition name (use year if detectable, otherwise 'manual')
             fiscal_year = "manual"
             name = awards_path_p.name.lower()
@@ -127,20 +127,26 @@ def classify(
             m = re.search(r"(20\\d{2})", name)
             if m:
                 fiscal_year = int(m.group(1))
-            # Persist DataFrames to processed/<partition>/
+            # Persist DataFrames to artifacts/classifications/<partition>/
             from sbir_cet_classifier.data.store import write_partition
 
             baseline_df = result.get("baseline")
             enriched_df = result.get("enriched")
             if baseline_df is not None and not baseline_df.empty:
                 write_partition(
-                    baseline_df, processed_dir, fiscal_year, filename="assessments_baseline.parquet"
+                    baseline_df,
+                    artifacts_root,
+                    fiscal_year,
+                    filename="assessments_baseline.parquet",
                 )
             if enriched_df is not None and not enriched_df.empty:
                 write_partition(
-                    enriched_df, processed_dir, fiscal_year, filename="assessments_enriched.parquet"
+                    enriched_df,
+                    artifacts_root,
+                    fiscal_year,
+                    filename="assessments_enriched.parquet",
                 )
-            typer.echo(f"Saved assessment outputs to {processed_dir}/{fiscal_year}/")
+            typer.echo(f"Saved assessment outputs to {artifacts_root}/{fiscal_year}/")
         except Exception as exc:
             typer.echo(f"Could not save outputs: {exc}")
 
