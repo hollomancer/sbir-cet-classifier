@@ -1,4 +1,4 @@
-"""Integration tests using the award_data-3.csv complete data dump.
+"""Integration tests using the award_data.csv complete data dump.
 
 This test module uses the full SBIR awards CSV file to verify:
 - CSV parsing and data validation
@@ -18,12 +18,12 @@ import pytest
 from sbir_cet_classifier.common.schemas import Award
 
 # Path to the test CSV file (relative to project root)
-CSV_FILE_PATH = Path(__file__).parent.parent.parent.parent.parent / "award_data-3.csv"
+CSV_FILE_PATH = Path(__file__).parent.parent.parent.parent.parent / "award_data.csv"
 
 
 @pytest.fixture(scope="module")
 def award_dataframe():
-    """Load a sample from the award_data-3.csv file as a pandas DataFrame.
+    """Load a sample from the award_data.csv file as a pandas DataFrame.
 
     Only reads the first 500 rows to keep tests fast.
     """
@@ -63,7 +63,7 @@ def award_dataframe():
 
 
 def test_csv_file_exists():
-    """Verify the award_data-3.csv file exists."""
+    """Verify the award_data.csv file exists."""
     if not CSV_FILE_PATH.exists():
         pytest.skip(f"Test CSV file not found at {CSV_FILE_PATH}")
     # File exists if we reach here (skip would have been triggered otherwise)
@@ -182,7 +182,7 @@ def test_award_schema_validation_sample(award_dataframe):
                 award_date=row["award_date"].date()
                 if pd.notna(row["award_date"])
                 else datetime(2020, 1, 1).date(),
-                source_version="award_data-3.csv",
+                source_version="award_data.csv",
                 ingested_at=ingested_at,
             )
             valid_count += 1
