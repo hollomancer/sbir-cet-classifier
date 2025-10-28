@@ -84,6 +84,7 @@ def test_cli_summary_matches_api_filters(tmp_path):
         app,
         [
             "summary",
+            "show",
             "2023",
             "2023",
             "--agency",
