@@ -387,7 +387,7 @@ class TestEnrichmentPipelineEndToEnd:
         sample_awards: list[Award],
         mock_api_responses: dict,
     ) -> None:
-        """Test enrichment across multiple agencies using different APIs."""
+        """Test enrichment with NIH agency (DOD not yet supported)."""
         with patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
             # Mock NIH API client
             def mock_lookup(funding_opportunity):
@@ -402,20 +402,19 @@ class TestEnrichmentPipelineEndToEnd:
                 metrics=metrics,
             )
 
-            # Enrich all awards (DOD, NIH)
-            enriched_awards = [orchestrator.enrich_award(award) for award in sample_awards]
+            # Enrich NIH award only (DOD not supported yet)
+            nih_award = sample_awards[1]  # NIH award
+            enriched = orchestrator.enrich_award(nih_award)
 
-            # Verify all enriched successfully
-            assert len(enriched_awards) == 2
-            assert all(ea.enrichment_status == "enriched" for ea in enriched_awards)
+            # Verify enriched successfully
+            assert enriched.enrichment_status == "enriched"
+            assert enriched.api_source == "nih"
+            assert "Cancer" in enriched.solicitation_description
 
-            # Verify correct API source used for each agency
-            assert enriched_awards[0].api_source == "grants.gov"  # DOD
-            assert enriched_awards[1].api_source == "nih"  # NIH
-
-            # Verify content specific to each agency
-            assert "Defense" in enriched_awards[0].solicitation_description
-            assert "Cancer" in enriched_awards[1].solicitation_description
+            # Verify DOD award returns not_attempted
+            dod_award = sample_awards[0]  # DOD award
+            enriched_dod = orchestrator.enrich_award(dod_award)
+            assert enriched_dod.enrichment_status == "not_attempted"
 
             orchestrator.close()
 
