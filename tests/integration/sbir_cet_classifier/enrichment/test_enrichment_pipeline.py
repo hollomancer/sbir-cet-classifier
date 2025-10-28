@@ -117,7 +117,7 @@ class TestEnrichmentPipelineEndToEnd:
         """Test enriching single award with cache miss (API call required)."""
         award = sample_awards[1]  # NIH award (DOD not yet supported)
 
-        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_client_class:
+        with patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_client_class:
             # Mock API client
             mock_client = MagicMock()
             mock_client.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
