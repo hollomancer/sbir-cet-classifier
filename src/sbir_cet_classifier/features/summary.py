@@ -56,7 +56,9 @@ class CETSummary:
             "share_of_obligated": round(self.share_of_obligated, 2),
             "top_award": {
                 "award_id": self.top_award_id,
-                "score": round(self.top_award_score, 2) if self.top_award_score is not None else None,
+                "score": round(self.top_award_score, 2)
+                if self.top_award_score is not None
+                else None,
             },
             "classification_breakdown": self.classification_breakdown,
         }
@@ -114,16 +116,16 @@ class SummaryService:
         taxonomy: Sequence[dict],
     ) -> SummaryService:
         award_df = pd.DataFrame(list(awards))
-        assessment_df = pd.DataFrame([
-            assessment.model_dump()
-            for assessment in assessments
-        ])
+        assessment_df = pd.DataFrame([assessment.model_dump() for assessment in assessments])
         taxonomy_df = pd.DataFrame(list(taxonomy))
         return cls(award_df, assessment_df, taxonomy_df)
 
     def _apply_filters(self, filters: SummaryFilters) -> pd.DataFrame:
         df = self._awards.copy()
-        df = df[(df["fiscal_year"] >= filters.fiscal_year_start) & (df["fiscal_year"] <= filters.fiscal_year_end)]
+        df = df[
+            (df["fiscal_year"] >= filters.fiscal_year_start)
+            & (df["fiscal_year"] <= filters.fiscal_year_end)
+        ]
         if filters.agencies:
             df = df[df["agency"].isin(filters.agencies)]
         if filters.phases:
@@ -145,11 +147,15 @@ class SummaryService:
 
         assessments_df = self._assessments
         if not assessments_df.empty:
-            latest_assessments = assessments_df.sort_values("assessed_at").drop_duplicates("award_id", keep="last")
+            latest_assessments = assessments_df.sort_values("assessed_at").drop_duplicates(
+                "award_id", keep="last"
+            )
         else:
             latest_assessments = assessments_df
 
-        merged = awards_df.merge(latest_assessments, on="award_id", how="left", suffixes=("_award", "_assessment"))
+        merged = awards_df.merge(
+            latest_assessments, on="award_id", how="left", suffixes=("_award", "_assessment")
+        )
 
         if filters.cet_areas:
             merged = merged[merged["primary_cet_id"].isin(filters.cet_areas)]
@@ -167,9 +173,15 @@ class SummaryService:
         classified = merged[merged["primary_cet_id"].notna()]
         percent_classified = (len(classified) / total_awards * 100) if total_awards else 0.0
 
-        taxonomy_map = self._taxonomy.set_index("cet_id")["name"].to_dict() if not self._taxonomy.empty else {}
+        taxonomy_map = (
+            self._taxonomy.set_index("cet_id")["name"].to_dict() if not self._taxonomy.empty else {}
+        )
         summaries: list[CETSummary] = []
-        taxonomy_version = classified["taxonomy_version"].mode().iat[0] if not classified.empty and "taxonomy_version" in classified else None
+        taxonomy_version = (
+            classified["taxonomy_version"].mode().iat[0]
+            if not classified.empty and "taxonomy_version" in classified
+            else None
+        )
 
         grouped = classified.groupby("primary_cet_id")
         for cet_id, group in grouped:
@@ -182,11 +194,14 @@ class SummaryService:
             for band in ("High", "Medium", "Low"):
                 breakdown.setdefault(band, 0)
 
-            group_sorted = group.sort_values([
-                "score",
-                "award_amount",
-                "award_date",
-            ], ascending=[False, False, False])
+            group_sorted = group.sort_values(
+                [
+                    "score",
+                    "award_amount",
+                    "award_date",
+                ],
+                ascending=[False, False, False],
+            )
             top_row = group_sorted.iloc[0]
             summaries.append(
                 CETSummary(
@@ -197,7 +212,9 @@ class SummaryService:
                     share_of_awards=share_awards,
                     share_of_obligated=share_obligated,
                     top_award_id=top_row["award_id"],
-                    top_award_score=float(top_row["score"]) if pd.notna(top_row.get("score")) else None,
+                    top_award_score=float(top_row["score"])
+                    if pd.notna(top_row.get("score"))
+                    else None,
                     classification_breakdown=breakdown,
                 )
             )
@@ -219,24 +236,28 @@ class SummaryService:
 
 def empty_service() -> SummaryService:
     return SummaryService(
-        awards=pd.DataFrame(columns=[
-            "award_id",
-            "agency",
-            "phase",
-            "firm_state",
-            "award_amount",
-            "award_date",
-            "fiscal_year",
-        ]),
-        assessments=pd.DataFrame(columns=[
-            "award_id",
-            "primary_cet_id",
-            "score",
-            "classification",
-            "generation_method",
-            "taxonomy_version",
-            "assessed_at",
-        ]),
+        awards=pd.DataFrame(
+            columns=[
+                "award_id",
+                "agency",
+                "phase",
+                "firm_state",
+                "award_amount",
+                "award_date",
+                "fiscal_year",
+            ]
+        ),
+        assessments=pd.DataFrame(
+            columns=[
+                "award_id",
+                "primary_cet_id",
+                "score",
+                "classification",
+                "generation_method",
+                "taxonomy_version",
+                "assessed_at",
+            ]
+        ),
         taxonomy=pd.DataFrame(columns=["cet_id", "name"]),
     )
 

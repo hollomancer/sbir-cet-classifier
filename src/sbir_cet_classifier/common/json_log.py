@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 
 class JsonLogManager:
@@ -50,7 +50,7 @@ class JsonLogManager:
         # Ensure directory exists
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def append(self, entry: dict[str, Any]) -> None:
+    def append(self, entry: Dict[str, Any]) -> None:
         """Append an entry to the log file.
 
         If the file doesn't exist, it will be created with the initial structure.
@@ -67,7 +67,7 @@ class JsonLogManager:
         data[self.key].append(entry)
         self.log_path.write_text(json.dumps(data, indent=2))
 
-    def get_all(self) -> list[dict[str, Any]]:
+    def get_all(self) -> List[Dict[str, Any]]:
         """Get all log entries.
 
         Returns:
@@ -79,7 +79,7 @@ class JsonLogManager:
         data = json.loads(self.log_path.read_text())
         return data.get(self.key, [])
 
-    def get_latest(self) -> dict[str, Any] | None:
+    def get_latest(self) -> Optional[Dict[str, Any]]:
         """Get the most recent log entry.
 
         Returns:

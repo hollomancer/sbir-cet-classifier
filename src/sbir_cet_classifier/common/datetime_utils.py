@@ -1,6 +1,9 @@
 """Datetime utilities for consistent timezone handling across the application."""
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+# Python 3.9 compatibility: provide UTC alias (datetime.UTC added in Python 3.11)
+UTC = timezone.utc
 
 
 def utc_now() -> datetime:

@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
+from sbir_cet_classifier.common.datetime_utils import UTC
 from pathlib import Path
 from typing import Any
 
@@ -35,20 +36,60 @@ logger = logging.getLogger(__name__)
 
 # US State name to 2-character code mapping
 US_STATE_CODES = {
-    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
-    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
-    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
-    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
-    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
-    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
-    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
-    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
-    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
-    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
-    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
-    "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV",
-    "wisconsin": "WI", "wyoming": "WY", "district of columbia": "DC",
-    "puerto rico": "PR", "guam": "GU", "virgin islands": "VI",
+    "alabama": "AL",
+    "alaska": "AK",
+    "arizona": "AZ",
+    "arkansas": "AR",
+    "california": "CA",
+    "colorado": "CO",
+    "connecticut": "CT",
+    "delaware": "DE",
+    "florida": "FL",
+    "georgia": "GA",
+    "hawaii": "HI",
+    "idaho": "ID",
+    "illinois": "IL",
+    "indiana": "IN",
+    "iowa": "IA",
+    "kansas": "KS",
+    "kentucky": "KY",
+    "louisiana": "LA",
+    "maine": "ME",
+    "maryland": "MD",
+    "massachusetts": "MA",
+    "michigan": "MI",
+    "minnesota": "MN",
+    "mississippi": "MS",
+    "missouri": "MO",
+    "montana": "MT",
+    "nebraska": "NE",
+    "nevada": "NV",
+    "new hampshire": "NH",
+    "new jersey": "NJ",
+    "new mexico": "NM",
+    "new york": "NY",
+    "north carolina": "NC",
+    "north dakota": "ND",
+    "ohio": "OH",
+    "oklahoma": "OK",
+    "oregon": "OR",
+    "pennsylvania": "PA",
+    "rhode island": "RI",
+    "south carolina": "SC",
+    "south dakota": "SD",
+    "tennessee": "TN",
+    "texas": "TX",
+    "utah": "UT",
+    "vermont": "VT",
+    "virginia": "VA",
+    "washington": "WA",
+    "west virginia": "WV",
+    "wisconsin": "WI",
+    "wyoming": "WY",
+    "district of columbia": "DC",
+    "puerto rico": "PR",
+    "guam": "GU",
+    "virgin islands": "VI",
 }
 
 # Minimum required columns for bootstrap CSV (matches FR-008 specification)
@@ -281,13 +322,13 @@ def _convert_to_awards(df: pd.DataFrame, ingested_at: datetime) -> tuple[list[Aw
     """
     # Optimize dtypes for performance
     df = optimize_dtypes(df)
-    
+
     # Normalize agency names in batch
     df = normalize_agencies_batch(df)
-    
+
     # Pre-validate in batch (fast pandas operations)
     valid_df, invalid_df = prevalidate_batch(df)
-    
+
     logger.info(
         "Batch pre-validation complete",
         extra={
@@ -296,7 +337,7 @@ def _convert_to_awards(df: pd.DataFrame, ingested_at: datetime) -> tuple[list[Aw
             "invalid_rows": len(invalid_df),
         },
     )
-    
+
     # Convert valid records to Award objects
     awards: list[Award] = []
     skipped = len(invalid_df)
@@ -331,9 +372,15 @@ def _prepare_award_dict(row: pd.Series, ingested_at: datetime) -> dict[str, Any]
         Dictionary suitable for Award model construction
     """
     award_dict: dict[str, Any] = {
-        "award_id": row["award_id"].strip() if isinstance(row["award_id"], str) else str(row["award_id"]),
-        "agency": row["agency"] if isinstance(row["agency"], str) else str(row["agency"]),  # Already normalized
-        "abstract": row["abstract"].strip() if ("abstract" in row.index and row["abstract"] and pd.notna(row["abstract"])) else None,
+        "award_id": row["award_id"].strip()
+        if isinstance(row["award_id"], str)
+        else str(row["award_id"]),
+        "agency": row["agency"]
+        if isinstance(row["agency"], str)
+        else str(row["agency"]),  # Already normalized
+        "abstract": row["abstract"].strip()
+        if ("abstract" in row.index and row["abstract"] and pd.notna(row["abstract"]))
+        else None,
         "award_amount": _parse_amount(row["award_amount"]),
         "ingested_at": ingested_at,
         "source_version": "bootstrap_csv",  # Mark as bootstrap ingestion per FR-008
@@ -474,7 +521,7 @@ def _parse_amount(amount_str: str | int | float) -> float:
     # Handle numeric types directly
     if isinstance(amount_str, (int, float)):
         return float(amount_str)
-    
+
     # Strip currency symbols, commas, whitespace
     cleaned = amount_str.replace("$", "").replace(",", "").strip()
     try:

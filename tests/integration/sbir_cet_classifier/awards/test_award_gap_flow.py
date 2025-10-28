@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime
+from sbir_cet_classifier.common.datetime_utils import UTC
 from uuid import uuid4
 
 import pytest
@@ -114,7 +115,9 @@ def _build_awards_service():
             "status": "pending",
             "assigned_to": None,
             "opened_at": datetime(2024, 2, 5, tzinfo=UTC),
-            "due_by": datetime(2026, 3, 31, tzinfo=UTC).date(),  # Future date to avoid auto-escalation
+            "due_by": datetime(
+                2026, 3, 31, tzinfo=UTC
+            ).date(),  # Future date to avoid auto-escalation
             "resolved_at": None,
             "resolution_notes": None,
         }
@@ -138,6 +141,7 @@ def integration_context(monkeypatch):
     service = _build_awards_service()
     # Use the configure function to properly set up the service
     from sbir_cet_classifier.api import router as router_module
+
     router_module.configure_awards_service(service)
 
     app = FastAPI()

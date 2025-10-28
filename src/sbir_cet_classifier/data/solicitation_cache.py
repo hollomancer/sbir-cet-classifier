@@ -29,7 +29,8 @@ import json
 import logging
 import sqlite3
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+from sbir_cet_classifier.common.datetime_utils import UTC
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -193,7 +194,11 @@ class SolicitationCache:
         except (sqlite3.Error, json.JSONDecodeError, ValueError) as e:
             logger.warning(
                 "Failed to retrieve from cache",
-                extra={"api_source": api_source, "solicitation_id": solicitation_id, "error": str(e)},
+                extra={
+                    "api_source": api_source,
+                    "solicitation_id": solicitation_id,
+                    "error": str(e),
+                },
             )
             return None
 
@@ -253,7 +258,11 @@ class SolicitationCache:
         except sqlite3.Error as e:
             logger.error(
                 "Failed to store solicitation in cache",
-                extra={"api_source": api_source, "solicitation_id": solicitation_id, "error": str(e)},
+                extra={
+                    "api_source": api_source,
+                    "solicitation_id": solicitation_id,
+                    "error": str(e),
+                },
             )
             raise
 

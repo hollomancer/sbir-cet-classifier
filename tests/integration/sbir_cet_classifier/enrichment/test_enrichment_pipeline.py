@@ -10,7 +10,8 @@ Tests end-to-end enrichment workflow:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
+from sbir_cet_classifier.common.datetime_utils import UTC
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 

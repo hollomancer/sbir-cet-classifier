@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+from sbir_cet_classifier.common.datetime_utils import UTC
 from pathlib import Path
 
 from sbir_cet_classifier.common.config import AppConfig, load_config

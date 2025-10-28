@@ -20,7 +20,8 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
+from sbir_cet_classifier.common.datetime_utils import UTC
 from pathlib import Path
 
 import numpy as np
@@ -141,9 +142,7 @@ class EnrichmentRun:
             "started_at": self.started_at.isoformat(),
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "duration_seconds": (
-                (self.completed_at - self.started_at).total_seconds()
-                if self.completed_at
-                else None
+                (self.completed_at - self.started_at).total_seconds() if self.completed_at else None
             ),
             "total_awards_processed": self.total_awards_processed,
             "awards_enriched": self.awards_enriched,

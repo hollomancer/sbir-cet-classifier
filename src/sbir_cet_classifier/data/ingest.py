@@ -6,7 +6,8 @@ import json
 import zipfile
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+from sbir_cet_classifier.common.datetime_utils import UTC
 from pathlib import Path
 
 import httpx
@@ -97,7 +98,9 @@ def _normalise_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     return renamed
 
 
-def _records_from_dataframe(df: pd.DataFrame, source_version: str, ingested_at: datetime) -> list[Award]:
+def _records_from_dataframe(
+    df: pd.DataFrame, source_version: str, ingested_at: datetime
+) -> list[Award]:
     records: list[Award] = []
     for row in df.to_dict(orient="records"):
         award_date = row["award_date"]
@@ -114,7 +117,9 @@ def _records_from_dataframe(df: pd.DataFrame, source_version: str, ingested_at: 
                 firm_city=row["firm_city"],
                 firm_state=row["firm_state"],
                 award_amount=float(row["award_amount"] or 0),
-                award_date=award_date.date() if hasattr(award_date, "date") else datetime.strptime(str(award_date), "%Y").date(),
+                award_date=award_date.date()
+                if hasattr(award_date, "date")
+                else datetime.strptime(str(award_date), "%Y").date(),
                 source_version=source_version,
                 ingested_at=ingested_at,
             )
@@ -154,7 +159,9 @@ def ingest_fiscal_year(
     normalised = _normalise_dataframe(df)
 
     ingested_at = datetime.now(UTC)
-    records = _records_from_dataframe(normalised, source_version=raw_zip.name, ingested_at=ingested_at)
+    records = _records_from_dataframe(
+        normalised, source_version=raw_zip.name, ingested_at=ingested_at
+    )
 
     write_partition(normalised, processed_dir, fiscal_year, filename=PROCESSED_FILENAME)
     _write_metadata(

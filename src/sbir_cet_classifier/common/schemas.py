@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Literal, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
@@ -14,9 +14,9 @@ class Award(BaseModel):
 
     award_id: str = Field(min_length=1)
     agency: str = Field(min_length=1, max_length=32)
-    sub_agency: str | None = Field(default=None, max_length=64)
+    sub_agency: Optional[str] = Field(default=None, max_length=64)
     topic_code: str = Field(min_length=1, max_length=64)
-    abstract: str | None = None
+    abstract: Optional[str] = None
     keywords: list[str] = Field(default_factory=list)
     phase: Literal["I", "II", "III", "Other"]
     firm_name: str = Field(min_length=1)
@@ -27,13 +27,13 @@ class Award(BaseModel):
     is_export_controlled: bool = False
     source_version: str = Field(min_length=1)
     ingested_at: datetime
-    program: str | None = None
-    solicitation_id: str | None = None
-    solicitation_year: int | None = None
+    program: Optional[str] = None
+    solicitation_id: Optional[str] = None
+    solicitation_year: Optional[int] = None
 
     @field_validator("keywords", mode="before")
     @classmethod
-    def _normalise_keywords(cls, value: list[str] | str | None) -> list[str]:
+    def _normalise_keywords(cls, value: Union[list[str], str, None]) -> list[str]:
         if value is None:
             return []
         if isinstance(value, str):
@@ -49,10 +49,10 @@ class CETArea(BaseModel):
     cet_id: str = Field(min_length=1)
     name: str = Field(min_length=1)
     definition: str
-    parent_cet_id: str | None = None
+    parent_cet_id: Optional[str] = None
     version: str = Field(min_length=1)
     effective_date: date
-    retired_date: date | None = None
+    retired_date: Optional[date] = None
     status: Literal["active", "retired"] = "active"
 
     @model_validator(mode="after")
@@ -91,7 +91,7 @@ class ApplicabilityAssessment(BaseModel):
     evidence_statements: list[EvidenceStatement] = Field(default_factory=list, max_length=3)
     generation_method: Literal["automated", "manual_review"]
     assessed_at: datetime
-    reviewer_notes: str | None = None
+    reviewer_notes: Optional[str] = None
 
     @model_validator(mode="after")
     def _validate_supporting(self) -> ApplicabilityAssessment:
@@ -111,11 +111,11 @@ class ReviewQueueItem(BaseModel):
     award_id: str
     reason: Literal["missing_text", "low_confidence", "controlled_data", "conflict"]
     status: Literal["pending", "in_review", "resolved", "escalated"] = "pending"
-    assigned_to: str | None = None
+    assigned_to: Optional[str] = None
     opened_at: datetime
     due_by: date
-    resolved_at: datetime | None = None
-    resolution_notes: str | None = None
+    resolved_at: Optional[datetime] = None
+    resolution_notes: Optional[str] = None
 
     @model_validator(mode="after")
     def _validate_dates(self) -> ReviewQueueItem:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from sbir_cet_classifier.common.datetime_utils import UTC
 from uuid import uuid4
 
 from typer.testing import CliRunner

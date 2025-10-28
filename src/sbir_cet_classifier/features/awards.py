@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
 import pandas as pd
 
-from sbir_cet_classifier.common.datetime_utils import utc_now
+from sbir_cet_classifier.common.datetime_utils import UTC, utc_now
 from sbir_cet_classifier.common.serialization import SerializableDataclass
 from sbir_cet_classifier.features.gaps import GapAnalytics, GapInsight
 
@@ -52,7 +52,6 @@ class AwardListItem(SerializableDataclass):
     primary_cet: CetRef
     supporting_cet: list[CetRef]
     evidence: list[dict]
-
 
 
 @dataclass(frozen=True)
@@ -107,13 +106,11 @@ class AssessmentRecord(SerializableDataclass):
     reviewer_notes: str | None
 
 
-
 @dataclass(frozen=True)
 class AwardDetail(SerializableDataclass):
     award: AwardCore
     assessments: list[AssessmentRecord]
     review_queue: ReviewQueueSnapshot | None
-
 
 
 @dataclass(frozen=True)
@@ -159,11 +156,13 @@ class AwardsService:
         self._assessments = assessments
         self._taxonomy = taxonomy
         self._review_queue = review_queue
-        
+
         # Pre-compute commonly used lookups
-        self._taxonomy_map = taxonomy.set_index("cet_id")["name"].to_dict() if not taxonomy.empty else {}
+        self._taxonomy_map = (
+            taxonomy.set_index("cet_id")["name"].to_dict() if not taxonomy.empty else {}
+        )
         self._gap_analytics = GapAnalytics(target_shares or {})
-        
+
         # Lazy initialization flags
         self._processed_awards = None
         self._processed_assessments = None
@@ -208,7 +207,7 @@ class AwardsService:
                 df["keywords"] = [[] for _ in range(len(df))]
             self._processed_awards = df
         return self._processed_awards
-    
+
     def _get_processed_assessments(self) -> pd.DataFrame:
         """Lazy processing of assessments data."""
         if self._processed_assessments is None:
@@ -217,7 +216,7 @@ class AwardsService:
                 df["assessed_at"] = pd.to_datetime(df["assessed_at"], errors="coerce", utc=True)
             self._processed_assessments = df
         return self._processed_assessments
-    
+
     def _get_processed_review_queue(self) -> pd.DataFrame:
         """Lazy processing of review queue data."""
         if self._processed_review_queue is None:
@@ -249,23 +248,23 @@ class AwardsService:
         review_queue = self._get_processed_review_queue()
         if review_queue.empty:
             return {}
-        
+
         snapshots: dict[str, ReviewQueueSnapshot] = {}
         now = utc_now()
         today = now.date()
-        
+
         for _, row in review_queue.iterrows():
             status = row.get("status")
             if status == "resolved":
                 continue
-                
+
             due_by = row.get("due_by")
             if due_by and status in {"pending", "in_review"} and due_by < today:
                 status = "escalated"
-                
+
             opened_at = row.get("opened_at")
             resolved_at = row.get("resolved_at")
-            
+
             snapshot = ReviewQueueSnapshot(
                 queue_id=str(row.get("queue_id")),
                 award_id=row.get("award_id"),
@@ -282,46 +281,46 @@ class AwardsService:
 
     def _apply_filters(self, filters: AwardsFilters) -> pd.DataFrame:
         awards = self._get_processed_awards()
-        
+
         # Build filter mask efficiently
-        mask = (
-            (awards["fiscal_year"] >= filters.fiscal_year_start) &
-            (awards["fiscal_year"] <= filters.fiscal_year_end)
+        mask = (awards["fiscal_year"] >= filters.fiscal_year_start) & (
+            awards["fiscal_year"] <= filters.fiscal_year_end
         )
-        
+
         if filters.agencies:
             mask &= awards["agency"].isin(filters.agencies)
         if filters.phases:
             mask &= awards["phase"].isin(filters.phases)
         if filters.location_states:
             mask &= awards["firm_state"].isin(filters.location_states)
-        
+
         df = awards[mask].copy()
-        
+
         latest = self._latest_assessments()
         merged = df.merge(latest, on="award_id", how="left", suffixes=("", "_assessment"))
-        
+
         if filters.cet_areas:
             merged = merged[merged["primary_cet_id"].isin(filters.cet_areas)]
-        
+
         # Vectorized score conversion
         merged["score"] = pd.to_numeric(merged.get("score", -1), errors="coerce").fillna(-1)
-        
+
         # Pre-compute review queue map once
         review_map = self._review_queue_map()
         merged["review_queue"] = merged["award_id"].map(review_map)
-        
+
         # Vectorized data_incomplete computation
         has_text = (
-            merged["abstract"].notna() & 
-            (merged["abstract"].str.strip() != "") &
-            merged["keywords"].notna()
+            merged["abstract"].notna()
+            & (merged["abstract"].str.strip() != "")
+            & merged["keywords"].notna()
         )
         queue_pending = merged["review_queue"].apply(
-            lambda x: isinstance(x, ReviewQueueSnapshot) and x.status in {"pending", "in_review", "escalated"}
+            lambda x: isinstance(x, ReviewQueueSnapshot)
+            and x.status in {"pending", "in_review", "escalated"}
         )
         merged["data_incomplete"] = ~has_text | queue_pending
-        
+
         return merged
 
     @staticmethod
@@ -331,10 +330,11 @@ class AwardsService:
         has_text = bool(abstract and abstract.strip()) and bool(keywords)
         queue: ReviewQueueSnapshot | None = row.get("review_queue")
         # Check if queue is actually a ReviewQueueSnapshot, not NaN (float)
-        queue_pending = (
-            isinstance(queue, ReviewQueueSnapshot)
-            and queue.status in {"pending", "in_review", "escalated"}
-        )
+        queue_pending = isinstance(queue, ReviewQueueSnapshot) and queue.status in {
+            "pending",
+            "in_review",
+            "escalated",
+        }
         return (not has_text) or queue_pending
 
     def _build_cet_ref(self, cet_id: str | None, taxonomy_version: str | None) -> CetRef:
@@ -343,12 +343,16 @@ class AwardsService:
         name = self._taxonomy_map.get(cet_id, cet_id)
         return CetRef(cet_id=cet_id, name=name, taxonomy_version=taxonomy_version)
 
-    def _build_supporting_refs(self, supporting_ids: Iterable[str], taxonomy_version: str | None) -> list[CetRef]:
+    def _build_supporting_refs(
+        self, supporting_ids: Iterable[str], taxonomy_version: str | None
+    ) -> list[CetRef]:
         return [self._build_cet_ref(cet_id, taxonomy_version) for cet_id in supporting_ids]
 
     def _build_award_item(self, row) -> AwardListItem:
         primary_ref = self._build_cet_ref(row.get("primary_cet_id"), row.get("taxonomy_version"))
-        supporting = self._build_supporting_refs(row.get("supporting_cet_ids") or [], row.get("taxonomy_version"))
+        supporting = self._build_supporting_refs(
+            row.get("supporting_cet_ids") or [], row.get("taxonomy_version")
+        )
         evidence = row.get("evidence_statements") or []
         return AwardListItem(
             award_id=row["award_id"],
@@ -387,9 +391,13 @@ class AwardsService:
         for _, row in subset.iterrows():
             taxonomy_version = row.get("taxonomy_version")
             primary_ref = self._build_cet_ref(row.get("primary_cet_id"), taxonomy_version)
-            supporting_refs = self._build_supporting_refs(row.get("supporting_cet_ids") or [], taxonomy_version)
+            supporting_refs = self._build_supporting_refs(
+                row.get("supporting_cet_ids") or [], taxonomy_version
+            )
             assessed_at = row.get("assessed_at")
-            assessed_dt = assessed_at.to_pydatetime().astimezone(UTC) if pd.notna(assessed_at) else None
+            assessed_dt = (
+                assessed_at.to_pydatetime().astimezone(UTC) if pd.notna(assessed_at) else None
+            )
             records.append(
                 AssessmentRecord(
                     assessment_id=row.get("assessment_id"),
@@ -409,7 +417,9 @@ class AwardsService:
     def list_awards(self, filters: AwardsFilters) -> AwardListResponse:
         filtered = self._apply_filters(filters)
         if filtered.empty:
-            pagination = Pagination(page=filters.page, page_size=filters.page_size, total_pages=0, total_records=0)
+            pagination = Pagination(
+                page=filters.page, page_size=filters.page_size, total_pages=0, total_records=0
+            )
             return AwardListResponse(pagination=pagination, awards=[])
 
         total_records = len(filtered)
@@ -467,7 +477,9 @@ class AwardsService:
             raise KeyError(cet_id)
 
         total_awards = len(filtered)
-        taxonomy_version = filtered["taxonomy_version"].mode().iat[0] if "taxonomy_version" in filtered else None
+        taxonomy_version = (
+            filtered["taxonomy_version"].mode().iat[0] if "taxonomy_version" in filtered else None
+        )
         centroid = filtered[filtered["primary_cet_id"] == cet_id]
         if centroid.empty:
             raise KeyError(cet_id)
@@ -498,7 +510,9 @@ class AwardsService:
         gaps: list[GapInsight] = [
             self._gap_analytics.share_gap(cet_id=cet_id, share_percent=share),
         ]
-        manual_gap = self._gap_analytics.manual_review_gap(cet_id=cet_id, pending_reviews=pending_reviews)
+        manual_gap = self._gap_analytics.manual_review_gap(
+            cet_id=cet_id, pending_reviews=pending_reviews
+        )
         if manual_gap:
             gaps.append(manual_gap)
 
@@ -512,7 +526,11 @@ class AwardsService:
             applicability_breakdown=breakdown,
         )
         detail = CetDetail(
-            cet=CetRef(cet_id=cet_id, name=self._taxonomy_map.get(cet_id, cet_id), taxonomy_version=taxonomy_version),
+            cet=CetRef(
+                cet_id=cet_id,
+                name=self._taxonomy_map.get(cet_id, cet_id),
+                taxonomy_version=taxonomy_version,
+            ),
             summary=summary,
             representative_awards=representative_awards,
             gaps=gaps,
