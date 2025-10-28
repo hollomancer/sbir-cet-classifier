@@ -348,9 +348,9 @@ class TestEnrichmentPipelineEndToEnd:
         sample_awards: list[Award],
     ) -> None:
         """Test that enrichment fails gracefully when API unavailable."""
-        award = sample_awards[0]  # DOD award
+        award = sample_awards[1]  # NIH award (DOD not yet supported)
 
-        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_client_class:
+        with patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_client_class:
             # Mock API to return None (not found / error)
             mock_client = MagicMock()
             mock_client.lookup_solicitation.return_value = None
@@ -388,15 +388,12 @@ class TestEnrichmentPipelineEndToEnd:
         mock_api_responses: dict,
     ) -> None:
         """Test enrichment across multiple agencies using different APIs."""
-        with (
-            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants,
-            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih,
-        ):
-            # Mock all API clients
-            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses[
-                "AF241-001"
-            ]
-            mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
+        with patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
+            # Mock NIH API client
+            def mock_lookup(funding_opportunity):
+                return mock_api_responses.get(funding_opportunity)
+
+            mock_nih.return_value.lookup_solicitation.side_effect = mock_lookup
 
             # Create orchestrator
             metrics = EnrichmentMetrics(artifacts_dir=temp_artifacts_dir)
@@ -430,15 +427,12 @@ class TestEnrichmentPipelineEndToEnd:
         mock_api_responses: dict,
     ) -> None:
         """Test that enrichment metrics are properly tracked and persisted."""
-        with (
-            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants,
-            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih,
-        ):
-            # Mock API clients with slight delays
-            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses[
-                "AF241-001"
-            ]
-            mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
+        with patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
+            # Mock NIH API client
+            def mock_lookup(funding_opportunity):
+                return mock_api_responses.get(funding_opportunity)
+
+            mock_nih.return_value.lookup_solicitation.side_effect = mock_lookup
 
             # Create orchestrator
             metrics = EnrichmentMetrics(artifacts_dir=temp_artifacts_dir)
@@ -489,7 +483,7 @@ class TestEnrichmentPipelineEndToEnd:
         """Test handling of awards without solicitation identifiers."""
         award = Award(
             award_id="NO-SOL-001",
-            agency="DOD",
+            agency="NIH",
             topic_code="UNKNOWN",  # No valid solicitation ID
             abstract="Research project without topic code",
             keywords=["research"],
@@ -532,7 +526,7 @@ class TestEnrichmentCacheOperations:
         mock_api_responses: dict,
     ) -> None:
         """Test that cache persists across orchestrator sessions."""
-        sol_data = mock_api_responses["AF241-001"]
+        sol_data = mock_api_responses["PA-23-123"]
 
         # Session 1: Populate cache
         cache1 = SolicitationCache(temp_cache_path)
@@ -562,14 +556,12 @@ class TestEnrichmentCacheOperations:
         mock_api_responses: dict,
     ) -> None:
         """Test cache statistics tracking."""
-        with (
-            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants,
-            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih,
-        ):
-            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses[
-                "AF241-001"
-            ]
-            mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
+        with patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
+
+            def mock_lookup(funding_opportunity):
+                return mock_api_responses.get(funding_opportunity)
+
+            mock_nih.return_value.lookup_solicitation.side_effect = mock_lookup
 
             metrics = EnrichmentMetrics(artifacts_dir=temp_artifacts_dir)
             orchestrator = EnrichmentOrchestrator(
