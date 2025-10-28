@@ -76,6 +76,19 @@ class ApplicabilityModel:
         y = self._label_encoder.fit_transform(cet_labels)
 
         # TF-IDF vectorization
+        # Adjust vectorizer thresholds for small training sets to avoid min_df/max_df conflicts
+        n_docs = max(1, len(texts))
+        min_df_cfg = _config.vectorizer.min_df
+        max_df_cfg = _config.vectorizer.max_df
+        # Ensure min_df does not exceed number of documents
+        adjusted_min_df = min(min_df_cfg, n_docs)
+        # Ensure max_df corresponds to at least adjusted_min_df documents
+        if max_df_cfg <= 1.0:
+            min_fraction = adjusted_min_df / n_docs
+            adjusted_max_df = min(1.0, max(max_df_cfg, min_fraction))
+        else:
+            adjusted_max_df = float(max(max_df_cfg, float(adjusted_min_df)))
+        self._vectorizer.set_params(min_df=adjusted_min_df, max_df=adjusted_max_df)
         X = self._vectorizer.fit_transform(texts)
 
         # Feature selection (if enabled)
