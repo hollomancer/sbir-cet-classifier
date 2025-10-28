@@ -406,24 +406,24 @@ class TechnicalKeywordExtractor:
         }
 
         phrases: set[str] = set()
+        leading_stops = {"and", "or", "the", "a", "an"}
+        trailing_tails = {"algorithms", "methods", "techniques"}
         for phrase in candidates:
-            last = phrase.split()[-1]
-            # Keep if the phrase ends with a technical head or common technical suffix
+            words = phrase.split()
+            # Trim leading stopwords/conjunctions
+            while words and words[0] in leading_stops:
+                words = words[1:]
+            if len(words) < 2:
+                continue
+            # Trim trailing generic tails for longer phrases
+            if len(words) >= 3 and words[-1] in trailing_tails:
+                words = words[:-1]
+            last = words[-1]
+            # Keep if ends with a technical head or common technical suffix
             if last in tech_heads or re.search(r"(ing|tion|s)$", last):
-                phrases.add(phrase)
+                phrases.add(" ".join(words))
 
-        # Prefer shorter core phrase when both "X Y" and "X Y Z" exist and share the same head
-        reduced: set[str] = set()
-        for p in phrases:
-            parts = p.split()
-            if len(parts) == 3:
-                two_word = " ".join(parts[:2])
-                if two_word in phrases:
-                    reduced.add(two_word)
-                    continue
-            reduced.add(p)
-
-        return sorted(reduced)
+        return sorted(phrases)
 
     def filter_domain_specific_terms(self, terms: List[str]) -> List[str]:
         """Filter out non-technical terms."""
