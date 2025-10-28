@@ -567,9 +567,9 @@ class TestEnrichmentCacheOperations:
                 metrics=metrics,
             )
 
-            # Enrich all awards
-            for award in sample_awards:
-                orchestrator.enrich_award(award)
+            # Enrich only NIH award (DOD not supported)
+            nih_award = sample_awards[1]
+            orchestrator.enrich_award(nih_award)
 
             orchestrator.close()
 
@@ -577,8 +577,7 @@ class TestEnrichmentCacheOperations:
             cache = SolicitationCache(temp_cache_path)
             stats = cache.get_cache_stats()
 
-            assert stats["total_entries"] == 2
-            assert stats["by_api_source"]["grants.gov"] == 1
+            assert stats["total_entries"] == 1
             assert stats["by_api_source"]["nih"] == 1
 
             cache.close()
