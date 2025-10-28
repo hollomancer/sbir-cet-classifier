@@ -197,8 +197,8 @@ class TestConfidenceScorer:
         # Medium confidence threshold
         medium_confidence_factors = {
             MatchFactor.NAME_EXACT: True,
-            MatchFactor.NAME_SIMILARITY: 0.7,
-            MatchFactor.ADDRESS_SIMILARITY: 0.6,
+            MatchFactor.AWARD_NUMBER_EXACT: True,
+            MatchFactor.ADDRESS_SIMILARITY: 0.2,
         }
 
         score = scorer.calculate_score(medium_confidence_factors)
