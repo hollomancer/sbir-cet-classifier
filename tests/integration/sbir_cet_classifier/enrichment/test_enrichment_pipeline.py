@@ -160,11 +160,11 @@ class TestEnrichmentPipelineEndToEnd:
         mock_api_responses: dict,
     ) -> None:
         """Test enriching single award with cache hit (no API call)."""
-        award = sample_awards[0]  # DOD award
+        award = sample_awards[1]  # NIH award (DOD not yet supported)
 
         # Pre-populate cache
         cache = SolicitationCache(temp_cache_path)
-        sol_data = mock_api_responses["AF241-001"]
+        sol_data = mock_api_responses["PA-23-123"]
         cache.put(
             sol_data.api_source,
             sol_data.solicitation_id,
@@ -173,7 +173,7 @@ class TestEnrichmentPipelineEndToEnd:
         )
         cache.close()
 
-        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_client_class:
+        with patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_client_class:
             # Mock API client (should NOT be called)
             mock_client = MagicMock()
             mock_client_class.return_value = mock_client
@@ -191,7 +191,7 @@ class TestEnrichmentPipelineEndToEnd:
             # Verify enrichment succeeded from cache
             assert enriched.enrichment_status == "enriched"
             assert enriched.solicitation_description is not None
-            assert "Artificial Intelligence for Defense" in enriched.solicitation_description
+            assert "Cancer Immunotherapy Research" in enriched.solicitation_description
 
             # Verify API was NOT called (cache hit)
             mock_client.lookup_solicitation.assert_not_called()
