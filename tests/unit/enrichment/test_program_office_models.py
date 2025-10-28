@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 from pydantic import ValidationError
 
-from src.sbir_cet_classifier.data.enrichment.models import ProgramOffice
+from sbir_cet_classifier.data.enrichment.models import ProgramOffice
 
 
 class TestProgramOffice:
@@ -27,9 +27,9 @@ class TestProgramOffice:
             active_solicitations_count=25,
             total_awards_managed=1500,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         assert office.office_id == "ONR-001"
         assert office.agency_code == "DON"
         assert office.annual_budget == Decimal("2500000000.00")
@@ -47,9 +47,9 @@ class TestProgramOffice:
             active_solicitations_count=15,
             total_awards_managed=800,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         assert office.contact_email is None
         assert office.contact_phone is None
         assert office.website_url is None
@@ -69,9 +69,9 @@ class TestProgramOffice:
                 active_solicitations_count=1,
                 total_awards_managed=1,
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
-        
+
         assert "value is not a valid email address" in str(exc_info.value)
 
     def test_program_office_negative_counts_validation(self):
@@ -87,9 +87,9 @@ class TestProgramOffice:
                 active_solicitations_count=-1,  # Invalid: negative
                 total_awards_managed=1,
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
-        
+
         assert "Input should be greater than or equal to 0" in str(exc_info.value)
 
     def test_program_office_negative_budget_validation(self):
@@ -106,9 +106,9 @@ class TestProgramOffice:
                 active_solicitations_count=1,
                 total_awards_managed=1,
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
-        
+
         assert "Input should be greater than or equal to 0" in str(exc_info.value)
 
     def test_program_office_url_validation(self):
@@ -125,15 +125,15 @@ class TestProgramOffice:
             active_solicitations_count=1,
             total_awards_managed=1,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         assert office.website_url == "https://www.example.com"
 
     def test_program_office_strategic_focus_areas_list(self):
         """Test strategic focus areas as list."""
         focus_areas = ["quantum computing", "AI", "cybersecurity", "materials science"]
-        
+
         office = ProgramOffice(
             office_id="TEST-001",
             agency_code="TEST",
@@ -144,9 +144,9 @@ class TestProgramOffice:
             active_solicitations_count=1,
             total_awards_managed=1,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         assert office.strategic_focus_areas == focus_areas
         assert len(office.strategic_focus_areas) == 4
 
@@ -164,11 +164,11 @@ class TestProgramOffice:
             active_solicitations_count=20,
             total_awards_managed=1000,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         data = office.model_dump()
-        
+
         assert data["office_id"] == "ONR-001"
         assert data["agency_code"] == "DON"
         assert data["strategic_focus_areas"] == ["quantum", "AI"]
@@ -186,9 +186,9 @@ class TestProgramOffice:
             active_solicitations_count=0,
             total_awards_managed=0,
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         assert office.strategic_focus_areas == []
         assert len(office.strategic_focus_areas) == 0
 
@@ -205,9 +205,9 @@ class TestProgramOffice:
             total_awards_managed=10000,
             strategic_focus_areas=["emerging technologies"],
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         assert office.annual_budget == Decimal("10000000000.00")
         assert office.active_solicitations_count == 500
         assert office.total_awards_managed == 10000
@@ -219,9 +219,9 @@ class TestProgramOffice:
             "(703) 696-5031",
             "703.696.5031",
             "7036965031",
-            "+1-703-696-5031"
+            "+1-703-696-5031",
         ]
-        
+
         for phone in valid_phones:
             office = ProgramOffice(
                 office_id="TEST-001",
@@ -234,7 +234,7 @@ class TestProgramOffice:
                 active_solicitations_count=1,
                 total_awards_managed=1,
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
-            
+
             assert office.contact_phone == phone
