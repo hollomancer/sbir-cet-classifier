@@ -275,7 +275,7 @@ class TestCETRelevanceScorer:
         assert top_categories[1] == ("artificial_intelligence", 0.85)
         assert top_categories[2] == ("cybersecurity", 0.75)
 
-    @patch('src.sbir_cet_classifier.data.enrichment.text_processing.spacy')
+    @patch('sbir_cet_classifier.data.enrichment.text_processing.spacy')
     def test_extract_entities_with_spacy(self, mock_spacy, scorer):
         """Test entity extraction using spaCy."""
         mock_nlp = Mock()

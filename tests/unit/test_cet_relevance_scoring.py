@@ -239,7 +239,7 @@ class TestCETRelevanceScorer:
             assert abs(scores1[category] - scores2[category]) < 0.01
             assert abs(scores1[category] - scores3[category]) < 0.01
 
-    @patch('src.sbir_cet_classifier.models.cet_relevance_scorer.TfidfVectorizer')
+    @patch('sbir_cet_classifier.models.cet_relevance_scorer.TfidfVectorizer')
     def test_vectorizer_error_handling(self, mock_vectorizer, scorer):
         """Test error handling in semantic scoring."""
         # Mock vectorizer to raise exception
