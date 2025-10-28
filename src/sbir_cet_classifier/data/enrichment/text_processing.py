@@ -381,21 +381,49 @@ class TechnicalKeywordExtractor:
         if not text:
             return []
 
-        # Use regex to find technical phrases (2-4 words with technical terms)
-        technical_phrase_pattern = (
-            r"\b(?:[A-Za-z]+\s+){0,2}(?:" + "|".join(self.technical_terms) + r")\b"
-        )
+        # Normalize to lowercase for consistent matching
+        text_lower = text.lower()
 
-        phrases = re.findall(technical_phrase_pattern, text, re.IGNORECASE)
+        # Find 2-4 word candidate phrases composed of alphabetic tokens
+        candidates = re.findall(r"\b[a-z]+(?:\s+[a-z]+){1,3}\b", text_lower)
 
-        # Clean and filter phrases
-        cleaned_phrases = []
-        for phrase in phrases:
-            phrase = phrase.strip()
-            if len(phrase.split()) >= 2 and len(phrase) > 5:
-                cleaned_phrases.append(phrase.lower())
+        # Technical heads commonly used in STEM phrases
+        tech_heads = {
+            "networks",
+            "architectures",
+            "learning",
+            "fabrication",
+            "correction",
+            "algorithms",
+            "methods",
+            "techniques",
+            "systems",
+            "processing",
+            "detection",
+            "sensing",
+            "communication",
+            "computing",
+        }
 
-        return sorted(list(set(cleaned_phrases)))
+        phrases: set[str] = set()
+        for phrase in candidates:
+            last = phrase.split()[-1]
+            # Keep if the phrase ends with a technical head or common technical suffix
+            if last in tech_heads or re.search(r"(ing|tion|s)$", last):
+                phrases.add(phrase)
+
+        # Prefer shorter core phrase when both "X Y" and "X Y Z" exist and share the same head
+        reduced: set[str] = set()
+        for p in phrases:
+            parts = p.split()
+            if len(parts) == 3:
+                two_word = " ".join(parts[:2])
+                if two_word in phrases:
+                    reduced.add(two_word)
+                    continue
+            reduced.add(p)
+
+        return sorted(reduced)
 
     def filter_domain_specific_terms(self, terms: List[str]) -> List[str]:
         """Filter out non-technical terms."""
