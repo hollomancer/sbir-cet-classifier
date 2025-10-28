@@ -68,9 +68,9 @@ class CETRelevanceScorer:
         combined_scores = {}
         for category, config in self.cet_categories.items():
             base_score = (
-                0.5 * keyword_scores.get(category, 0.0)
-                + 0.3 * semantic_scores.get(category, 0.0)
-                + 0.2 * phrase_scores.get(category, 0.0)
+                0.65 * keyword_scores.get(category, 0.0)
+                + 0.2 * semantic_scores.get(category, 0.0)
+                + 0.15 * phrase_scores.get(category, 0.0)
             )
 
             # Synergy: boost when multiple keywords and/or multi-word phrases present
@@ -82,9 +82,9 @@ class CETRelevanceScorer:
 
             synergy = 0.0
             if present >= 2:
-                synergy += 0.15  # multiple category keywords found
+                synergy += 0.25  # multiple category keywords found
             if present_multi >= 1:
-                synergy += 0.05  # at least one multi-word keyword/phrase present
+                synergy += 0.10  # at least one multi-word keyword/phrase present
 
             combined_scores[category] = min(1.0, base_score + synergy)
 
@@ -138,8 +138,8 @@ class CETRelevanceScorer:
                     )
 
                 # Calculate keyword score with diminishing returns
-                keyword_score = (exact_matches * 3 + partial_matches * 0.75) / max(1, text_length)
-                total_score += min(keyword_score, 0.15)  # Cap individual keyword contribution
+                keyword_score = (exact_matches * 5 + partial_matches * 1.0) / max(1, text_length)
+                total_score += min(keyword_score, 0.30)  # Cap individual keyword contribution
 
             # Apply category weight and normalize
             final_score = min(total_score * weight, 1.0)
