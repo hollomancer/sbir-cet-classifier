@@ -189,7 +189,11 @@ class TestAwardeeEnrichmentIntegration:
         import time
 
         # Test matching performance
-        award_data = {"award_id": "AWARD-001", "awardee_uei": "ABC123DEF456"}
+        award_data = {
+            "award_id": "AWARD-001",
+            "awardee_uei": "ABC123DEF456",
+            "awardee_name": "Tech Innovations LLC",
+        }
 
         start_time = time.time()
         match_result = awardee_matcher.match_awardee(award_data, MatchStrategy.COMPREHENSIVE)
