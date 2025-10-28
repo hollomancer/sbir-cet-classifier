@@ -205,20 +205,20 @@ class TestEnrichmentPipelineEndToEnd:
         mock_api_responses: dict,
     ) -> None:
         """Test batch enrichment deduplicates awards sharing same solicitation."""
-        # Create 5 awards, 3 sharing same solicitation
+        # Create 5 awards, 3 sharing same solicitation (using NIH since DOD not supported)
         awards = [
             Award(
-                award_id=f"DOD-{i:03d}",
-                agency="DOD",
-                topic_code="AF241-001",  # Same solicitation
-                abstract=f"AI research project {i}",
-                keywords=["AI", "autonomy"],
-                phase="I",
-                firm_name=f"TechCorp{i}",
-                firm_city="Boston",
-                firm_state="MA",
-                award_amount=150000.0,
-                award_date=datetime(2024, 1, 15).date(),
+                award_id=f"NIH-{i:03d}",
+                agency="NIH",
+                topic_code="PA-23-123",  # Same solicitation
+                abstract=f"Cancer research project {i}",
+                keywords=["cancer", "immunotherapy"],
+                phase="II",
+                firm_name=f"BioTech{i}",
+                firm_city="San Diego",
+                firm_state="CA",
+                award_amount=750000.0,
+                award_date=datetime(2023, 6, 1).date(),
                 source_version="test",
                 ingested_at=datetime.now(UTC),
             )
@@ -229,31 +229,31 @@ class TestEnrichmentPipelineEndToEnd:
         awards.extend(
             [
                 Award(
-                    award_id="NIH-001",
+                    award_id="NIH-004",
                     agency="NIH",
-                    topic_code="PA-23-123",
-                    abstract="Cancer research",
-                    keywords=["cancer"],
-                    phase="II",
-                    firm_name="BioTech",
-                    firm_city="San Diego",
-                    firm_state="CA",
-                    award_amount=750000.0,
-                    award_date=datetime(2023, 6, 1).date(),
+                    topic_code="PA-24-456",  # Different solicitation
+                    abstract="Alzheimer's research",
+                    keywords=["alzheimers", "neurology"],
+                    phase="I",
+                    firm_name="NeuroTech",
+                    firm_city="Boston",
+                    firm_state="MA",
+                    award_amount=150000.0,
+                    award_date=datetime(2024, 1, 15).date(),
                     source_version="test",
                     ingested_at=datetime.now(UTC),
                 ),
                 Award(
-                    award_id="DOD-004",
-                    agency="DOD",
-                    topic_code="AF241-001",  # Same as first 3 DOD awards
-                    abstract="More AI research",
-                    keywords=["AI"],
-                    phase="I",
-                    firm_name="TechCorp4",
+                    award_id="NIH-005",
+                    agency="NIH",
+                    topic_code="PA-23-123",  # Same as first 3 NIH awards
+                    abstract="More cancer research",
+                    keywords=["cancer"],
+                    phase="II",
+                    firm_name="BioTech4",
                     firm_city="Austin",
                     firm_state="TX",
-                    award_amount=150000.0,
+                    award_amount=750000.0,
                     award_date=datetime(2024, 3, 20).date(),
                     source_version="test",
                     ingested_at=datetime.now(UTC),
@@ -261,15 +261,22 @@ class TestEnrichmentPipelineEndToEnd:
             ]
         )
 
-        with (
-            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants,
-            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih,
-        ):
-            # Mock all API clients
-            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses[
-                "AF241-001"
-            ]
-            mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
+        with patch("sbir_cet_classifier.features.enrichment.NIHClient") as mock_nih:
+            # Mock NIH API client to return appropriate response based on solicitation ID
+            def mock_lookup(funding_opportunity):
+                if funding_opportunity == "PA-23-123":
+                    return mock_api_responses["PA-23-123"]
+                elif funding_opportunity == "PA-24-456":
+                    # Return a different mock response for the second solicitation
+                    return SolicitationData(
+                        solicitation_id="PA-24-456",
+                        description="NIH SBIR: Alzheimer's Disease Research",
+                        technical_keywords=["alzheimers", "neurology", "brain", "cognitive"],
+                        api_source="nih",
+                    )
+                return None
+
+            mock_nih.return_value.lookup_solicitation.side_effect = mock_lookup
 
             # Create batch optimizer
             metrics = EnrichmentMetrics(artifacts_dir=temp_artifacts_dir)
@@ -287,12 +294,12 @@ class TestEnrichmentPipelineEndToEnd:
             assert stats.unique_solicitations == 2
             assert stats.deduplication_ratio == 2 / 5  # 40% unique
 
-            # Verify all DOD awards have same solicitation data
-            dod_awards = [ea for ea in enriched_awards if ea.award.award_id.startswith("DOD")]
-            assert len(dod_awards) == 4
-            for enriched in dod_awards:
+            # Verify all NIH awards with PA-23-123 have same solicitation data
+            pa_23_awards = [ea for ea in enriched_awards if ea.award.topic_code == "PA-23-123"]
+            assert len(pa_23_awards) == 4
+            for enriched in pa_23_awards:
                 assert enriched.enrichment_status == "enriched"
-                assert "Artificial Intelligence for Defense" in enriched.solicitation_description
+                assert "Cancer Immunotherapy Research" in enriched.solicitation_description
 
             optimizer.close()
 
@@ -304,7 +311,7 @@ class TestEnrichmentPipelineEndToEnd:
         mock_api_responses: dict,
     ) -> None:
         """Test that enriched text improves classification features."""
-        award = sample_awards[0]  # DOD AI award
+        award = sample_awards[1]  # NIH award (DOD not yet supported)
 
         # Prepare award-only text
         award_only_text = prepare_award_text_for_classification(
@@ -313,7 +320,7 @@ class TestEnrichmentPipelineEndToEnd:
         )
 
         # Prepare enriched text
-        sol_data = mock_api_responses["AF241-001"]
+        sol_data = mock_api_responses["PA-23-123"]
         enriched_text = build_enriched_text(
             award_text=award_only_text,
             solicitation_description=sol_data.description,
