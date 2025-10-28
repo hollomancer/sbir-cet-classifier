@@ -183,7 +183,7 @@ class CETRelevanceScorer:
             if has_multiword_exact:
                 combined = max(combined, 0.80)
             elif has_any_exact:
-                combined = max(combined, 0.70)
+                combined = max(combined, 0.72)
             combined_scores[category] = min(1.0, combined)
 
         return combined_scores
