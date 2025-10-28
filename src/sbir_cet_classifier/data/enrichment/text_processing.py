@@ -12,13 +12,13 @@ class SolicitationTextProcessor:
         """Extract technical requirements section from solicitation text."""
         # Look for common section headers
         patterns = [
-            r"TECHNICAL\s+REQUIREMENTS?\s*:?\s*(.*?)(?=\n\s*[A-Z][A-Z\s]{2,}(?::|$)|$)",
-            r"TECHNICAL\s+APPROACH\s*:?\s*(.*?)(?=\n\s*[A-Z][A-Z\s]{2,}(?::|$)|$)",
-            r"TECHNICAL\s+OBJECTIVES?\s*:?\s*(.*?)(?=\n\s*[A-Z][A-Z\s]{2,}(?::|$)|$)",
+            r"TECHNICAL\s+REQUIREMENTS?\s*:?\s*(.*?)(?=^\s*[A-Z][A-Z ]+(?::|$)|\Z)",
+            r"TECHNICAL\s+APPROACH\s*:?\s*(.*?)(?=^\s*[A-Z][A-Z ]+(?::|$)|\Z)",
+            r"TECHNICAL\s+OBJECTIVES?\s*:?\s*(.*?)(?=^\s*[A-Z][A-Z ]+(?::|$)|\Z)",
         ]
 
         for pattern in patterns:
-            match = re.search(pattern, full_text, re.IGNORECASE | re.DOTALL)
+            match = re.search(pattern, full_text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
             if match:
                 return self.clean_text(match.group(1)).lower()
 
@@ -27,13 +27,13 @@ class SolicitationTextProcessor:
     def extract_evaluation_criteria(self, full_text: str) -> str:
         """Extract evaluation criteria section from solicitation text."""
         patterns = [
-            r"EVALUATION\s+CRITERIA\s*:?\s*(.*?)(?=\n\s*[A-Z][A-Z\s]{2,}(?::|$)|$)",
-            r"SELECTION\s+CRITERIA\s*:?\s*(.*?)(?=\n\s*[A-Z][A-Z\s]{2,}(?::|$)|$)",
-            r"AWARD\s+CRITERIA\s*:?\s*(.*?)(?=\n\s*[A-Z][A-Z\s]{2,}(?::|$)|$)",
+            r"EVALUATION\s+CRITERIA\s*:?\s*(.*?)(?=^\s*[A-Z][A-Z ]+(?::|$)|\Z)",
+            r"SELECTION\s+CRITERIA\s*:?\s*(.*?)(?=^\s*[A-Z][A-Z ]+(?::|$)|\Z)",
+            r"AWARD\s+CRITERIA\s*:?\s*(.*?)(?=^\s*[A-Z][A-Z ]+(?::|$)|\Z)",
         ]
 
         for pattern in patterns:
-            match = re.search(pattern, full_text, re.IGNORECASE | re.DOTALL)
+            match = re.search(pattern, full_text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
             if match:
                 return self.clean_text(match.group(1))
 
