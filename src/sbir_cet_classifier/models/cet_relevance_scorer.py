@@ -323,13 +323,21 @@ class CETRelevanceScorer:
         return sorted_scores[:top_n]
 
     def normalize_scores(self, scores: Dict[str, float]) -> Dict[str, float]:
-        """Normalize scores so they sum to 1.0, preserving relative proportions."""
+        """Normalize scores so they sum to <= 1.0, preserving relative proportions."""
         if not scores:
             return {}
-        total = float(sum(max(0.0, float(v)) for v in scores.values()))
+        # Convert to non-negative floats
+        cleaned = {k: max(0.0, float(v)) for k, v in scores.items()}
+        total = float(sum(cleaned.values()))
         if total <= 0.0:
-            return {k: 0.0 for k in scores.keys()}
-        return {k: float(max(0.0, float(v))) / total for k, v in scores.items()}
+            return {k: 0.0 for k in cleaned.keys()}
+        normalized = {k: (v / total) for k, v in cleaned.items()}
+        s = sum(normalized.values())
+        if s > 1.0:
+            # Clamp tiny floating overflow by rescaling to sum exactly 1.0
+            scale = 1.0 / s
+            normalized = {k: v * scale for k, v in normalized.items()}
+        return normalized
 
     def score_cet_category(self, text: str, category: str) -> float:
         """Score text relevance for a specific CET category."""
