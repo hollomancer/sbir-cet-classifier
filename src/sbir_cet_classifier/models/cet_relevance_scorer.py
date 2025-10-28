@@ -86,7 +86,14 @@ class CETRelevanceScorer:
             if present_multi >= 1:
                 synergy += 0.10  # at least one multi-word keyword/phrase present
 
-            combined_scores[category] = min(1.0, base_score + synergy)
+            # Apply a floor when an exact multi-word keyword for this category is present
+            has_multiword_exact = any(
+                isinstance(kw, str) and (" " in kw) and (kw in text_lower) for kw in kw_list
+            )
+            combined = base_score + synergy
+            if has_multiword_exact:
+                combined = max(combined, 0.75)
+            combined_scores[category] = min(1.0, combined)
 
         return combined_scores
 
