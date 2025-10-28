@@ -155,10 +155,10 @@ class TestCacheByAPISource:
         """Should store same solicitation ID from different API sources separately."""
         cache = SolicitationCache(temp_cache_path)
 
-        cache.put("nih", "12345", "Grants.gov description", ["keyword1"])
+        cache.put("grants", "12345", "Grants.gov description", ["keyword1"])
         cache.put("nih", "12345", "NIH description", ["keyword2"])
 
-        grants_result = cache.get("nih", "12345")
+        grants_result = cache.get("grants", "12345")
         nih_result = cache.get("nih", "12345")
 
         assert grants_result is not None
@@ -178,18 +178,18 @@ class TestPurgeOperations:
         cache = SolicitationCache(temp_cache_path)
 
         # Add entries for multiple API sources
-        cache.put("nih", "SOL-001", "Grants 1", ["kw1"])
-        cache.put("nih", "SOL-002", "Grants 2", ["kw2"])
+        cache.put("grants", "SOL-001", "Grants 1", ["kw1"])
+        cache.put("grants", "SOL-002", "Grants 2", ["kw2"])
         cache.put("nih", "SOL-003", "NIH 1", ["kw3"])
 
         # Purge grants.gov entries
-        purged_count = cache.purge_by_api_source("nih")
+        purged_count = cache.purge_by_api_source("grants")
 
         assert purged_count == 2
 
         # Verify grants.gov entries removed
-        assert cache.get("nih", "SOL-001") is None
-        assert cache.get("nih", "SOL-002") is None
+        assert cache.get("grants", "SOL-001") is None
+        assert cache.get("grants", "SOL-002") is None
 
         # Verify other sources still exist
         assert cache.get("nih", "SOL-003") is not None
@@ -201,7 +201,7 @@ class TestPurgeOperations:
         cache = SolicitationCache(temp_cache_path)
 
         # Add same solicitation ID across multiple sources
-        cache.put("nih", "SOL-001", "Grants description", ["kw1"])
+        cache.put("grants", "SOL-001", "Grants description", ["kw1"])
         cache.put("nih", "SOL-001", "NIH description", ["kw2"])
         cache.put("nih", "SOL-002", "NIH description 2", ["kw3"])
 
@@ -211,7 +211,7 @@ class TestPurgeOperations:
         assert purged_count == 2
 
         # Verify SOL-001 removed from all sources
-        assert cache.get("nih", "SOL-001") is None
+        assert cache.get("grants", "SOL-001") is None
         assert cache.get("nih", "SOL-001") is None
 
         # Verify SOL-002 still exists
@@ -319,14 +319,14 @@ class TestCacheStats:
         """Should return stats with entry counts."""
         cache = SolicitationCache(temp_cache_path)
 
-        cache.put("nih", "SOL-001", "Description 1", ["kw1"])
-        cache.put("nih", "SOL-002", "Description 2", ["kw2"])
+        cache.put("grants", "SOL-001", "Description 1", ["kw1"])
+        cache.put("grants", "SOL-002", "Description 2", ["kw2"])
         cache.put("nih", "SOL-003", "Description 3", ["kw3"])
 
         stats = cache.get_cache_stats()
 
         assert stats["total_entries"] == 3
-        assert stats["by_api_source"]["nih"] == 2
+        assert stats["by_api_source"]["grants"] == 2
         assert stats["by_api_source"]["nih"] == 1
         assert stats["oldest_entry"] is not None
         assert stats["newest_entry"] is not None
