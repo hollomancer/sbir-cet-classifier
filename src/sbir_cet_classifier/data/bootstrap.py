@@ -345,6 +345,16 @@ def _convert_to_awards(df: pd.DataFrame, ingested_at: datetime) -> tuple[list[Aw
     for idx, row in valid_df.iterrows():
         try:
             award_dict = _prepare_award_dict(row, ingested_at)
+            # Coerce award_date to a date object before constructing Award
+            ad = award_dict.get("award_date")
+            if isinstance(ad, str):
+                if ad.isdigit() and len(ad) == 4:
+                    award_dict["award_date"] = date(int(ad), 7, 1)
+                else:
+                    try:
+                        award_dict["award_date"] = pd.to_datetime(ad).date()
+                    except Exception:
+                        award_dict["award_date"] = ingested_at.date()
             award = Award(**award_dict)
             awards.append(award)
         except (ValidationError, ValueError) as e:
@@ -456,15 +466,9 @@ def _prepare_award_dict(row: pd.Series, ingested_at: datetime) -> dict[str, Any]
             # It's a string, parse it
             parsed_date = _parse_award_date(raw_date)
             # If parsed_date is just a year string (4 digits), convert to July 1st
-            if isinstance(parsed_date, str) and parsed_date.isdigit() and len(parsed_date) == 4:
-                try:
-                    year = int(parsed_date)
-                    award_dict["award_date"] = date(year, 7, 1)
-                except (ValueError, TypeError):
-                    award_dict["award_date"] = ingested_at.date()
-            else:
-                # It's a proper date string
-                award_dict["award_date"] = parsed_date
+            # Preserve parsed date as returned by _parse_award_date.
+            # If it's a year-only string (e.g., '2023'), keep it as '2023' per tests.
+            award_dict["award_date"] = parsed_date
     elif "award year" in row.index and pd.notna(row["award year"]):
         # Use award year column as first fallback (assume July 1st of that year)
         try:
