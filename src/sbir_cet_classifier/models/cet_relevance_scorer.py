@@ -67,8 +67,8 @@ class CETRelevanceScorer:
         combined_scores = {}
         for category in self.cet_categories.keys():
             combined_score = (
-                0.4 * keyword_scores.get(category, 0.0)
-                + 0.4 * semantic_scores.get(category, 0.0)
+                0.5 * keyword_scores.get(category, 0.0)
+                + 0.3 * semantic_scores.get(category, 0.0)
                 + 0.2 * phrase_scores.get(category, 0.0)
             )
             combined_scores[category] = min(1.0, combined_score)
@@ -95,17 +95,36 @@ class CETRelevanceScorer:
             for keyword in keywords:
                 keyword_lower = keyword.lower()
 
-                # Exact phrase matches (higher weight)
-                exact_matches = text_lower.count(keyword_lower)
+                # Exact phrase matches (higher weight) with plural-aware variants
+                exact_matches = 0
+                if " " in keyword_lower:
+                    parts = keyword_lower.split()
+                    base_phrase = keyword_lower
+                    last = parts[-1]
+                    variants = {base_phrase, f"{' '.join(parts[:-1])} {last}s"}
+                    if last.endswith("y") and len(last) > 1:
+                        variants.add(f"{' '.join(parts[:-1])} {last[:-1]}ies")
+                    variants.add(f"{' '.join(parts[:-1])} {last}es")
+                    for var in variants:
+                        exact_matches += text_lower.count(var)
+                else:
+                    exact_matches = text_lower.count(keyword_lower)
 
-                # Partial matches in compound words
-                partial_matches = sum(
-                    1 for word in text_words if keyword_lower in word and word != keyword_lower
-                )
+                # Partial matches in compound words and tokens
+                partial_matches = 0
+                if " " in keyword_lower:
+                    for token in keyword_lower.split():
+                        partial_matches += sum(
+                            1 for word in text_words if token in word and word != token
+                        )
+                else:
+                    partial_matches = sum(
+                        1 for word in text_words if keyword_lower in word and word != keyword_lower
+                    )
 
                 # Calculate keyword score with diminishing returns
-                keyword_score = (exact_matches * 2 + partial_matches * 0.5) / text_length
-                total_score += min(keyword_score, 0.1)  # Cap individual keyword contribution
+                keyword_score = (exact_matches * 3 + partial_matches * 0.75) / max(1, text_length)
+                total_score += min(keyword_score, 0.15)  # Cap individual keyword contribution
 
             # Apply category weight and normalize
             final_score = min(total_score * weight, 1.0)
@@ -139,7 +158,12 @@ class CETRelevanceScorer:
         scores = {}
 
         for category, config in self.cet_categories.items():
-            phrases = config.get("phrases", [])
+            phrases = list(
+                set(
+                    config.get("phrases", [])
+                    + [kw for kw in config.get("keywords", []) if " " in kw]
+                )
+            )
 
             if not phrases:
                 scores[category] = 0.0
@@ -150,9 +174,19 @@ class CETRelevanceScorer:
             for phrase in phrases:
                 phrase_lower = phrase.lower()
 
-                # Check for exact phrase matches
-                if phrase_lower in text_lower:
-                    phrase_score += 0.2  # Each phrase contributes up to 0.2
+                # Check for exact phrase matches (plural-aware)
+                if " " in phrase_lower:
+                    parts = phrase_lower.split()
+                    last = parts[-1]
+                    variants = {phrase_lower, f"{' '.join(parts[:-1])} {last}s"}
+                    if last.endswith("y") and len(last) > 1:
+                        variants.add(f"{' '.join(parts[:-1])} {last[:-1]}ies")
+                    variants.add(f"{' '.join(parts[:-1])} {last}es")
+                    if any(var in text_lower for var in variants):
+                        phrase_score += 0.25  # Each phrase contributes up to 0.25
+                else:
+                    if phrase_lower in text_lower:
+                        phrase_score += 0.25  # Each phrase contributes up to 0.25
 
                 # Check for partial phrase matches (most words present)
                 phrase_words = phrase_lower.split()
@@ -160,7 +194,7 @@ class CETRelevanceScorer:
 
                 matching_words = sum(1 for word in phrase_words if word in text_words)
                 if len(phrase_words) > 1 and matching_words >= len(phrase_words) * 0.7:
-                    phrase_score += 0.1  # Partial match contributes less
+                    phrase_score += 0.15  # Partial match contributes less
 
             scores[category] = min(phrase_score, 1.0)
 
