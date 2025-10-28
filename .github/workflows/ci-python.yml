@@ -82,18 +82,9 @@ jobs:
           if python -c "import importlib, pkgutil, sys; print('ok')" >/dev/null 2>&1; then
             true
           fi
-          if grep -q "\[dev\]" pyproject.toml 2>/dev/null || python - <<'PY' 2>/dev/null
-try:
-    import tomllib, sys, pathlib
-    p = pathlib.Path('pyproject.toml')
-    if p.exists():
-        data = tomllib.loads(p.read_text())
-        if 'project' in data and 'optional-dependencies' in data['project'] and 'dev' in data['project']['optional-dependencies']:
-            print('has_dev')
-except Exception:
-    pass
-PY
-          then
+          # If pyproject.toml exists and mentions optional dev dependencies, prefer editable dev install.
+          # Avoid complex heredoc/python-in-yaml to keep workflow YAML simple and robust.
+          if [ -f pyproject.toml ] && grep -q 'optional-dependencies' pyproject.toml 2>/dev/null; then
             pip install -e ".[dev]"
           elif [ -f requirements-dev.txt ]; then
             pip install -r requirements-dev.txt
