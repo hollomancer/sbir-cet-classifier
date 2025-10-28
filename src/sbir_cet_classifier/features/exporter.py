@@ -170,9 +170,8 @@ class ExportOrchestrator:
         else:
             # Merge awards with latest assessments
             if not assessments_df.empty and "assessed_at" in assessments_df.columns:
-                latest_assessments = (
-                    assessments_df.sort_values("assessed_at")
-                    .drop_duplicates("award_id", keep="last")
+                latest_assessments = assessments_df.sort_values("assessed_at").drop_duplicates(
+                    "award_id", keep="last"
                 )
                 merged = awards_df.merge(
                     latest_assessments,
@@ -184,8 +183,12 @@ class ExportOrchestrator:
                 merged = awards_df
 
             # Exclude controlled awards from line-level output
-            controlled_count = merged["is_export_controlled"].sum() if "is_export_controlled" in merged.columns else 0
-            export_df = merged[~merged.get("is_export_controlled", False)]
+            if "is_export_controlled" in merged.columns:
+                controlled_count = int(merged["is_export_controlled"].sum())
+                export_df = merged[~merged["is_export_controlled"]]
+            else:
+                controlled_count = 0
+                export_df = merged
 
             # Add normalized CET weights (0-1, summing to 1 per award)
             export_df = self._add_cet_weights(export_df, taxonomy_df)
@@ -196,7 +199,7 @@ class ExportOrchestrator:
             mode_values = export_df["taxonomy_version"].mode()
             if not mode_values.empty:
                 taxonomy_version = mode_values.iloc[0]
-        
+
         metadata = ExportMetadata(
             data_currency_note=f"Ingested from SBIR.gov as of {datetime.now().date().isoformat()}",
             ingestion_timestamp=datetime.now().isoformat(),
@@ -251,7 +254,9 @@ class ExportOrchestrator:
                 remaining_weight = 0.4
                 for cet in supporting_cets:
                     if f"weight_{cet}" in result.columns:
-                        result.at[idx, f"weight_{cet}"] = remaining_weight / len(supporting_cets) if supporting_cets else 0
+                        result.at[idx, f"weight_{cet}"] = (
+                            remaining_weight / len(supporting_cets) if supporting_cets else 0
+                        )
 
         return result
 
@@ -266,7 +271,9 @@ class ExportOrchestrator:
             f.write(f"# Taxonomy Version: {metadata.taxonomy_version}\n")
             f.write(f"# Export Timestamp: {metadata.export_timestamp}\n")
 
-    def _log_export_telemetry(self, job_id: str, record_count: int, metadata: ExportMetadata) -> None:
+    def _log_export_telemetry(
+        self, job_id: str, record_count: int, metadata: ExportMetadata
+    ) -> None:
         """Log export run telemetry."""
         config = load_config()
         config.artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -277,13 +284,15 @@ class ExportOrchestrator:
         else:
             telemetry = {"export_runs": []}
 
-        telemetry["export_runs"].append({
-            "job_id": job_id,
-            "timestamp": metadata.export_timestamp,
-            "record_count": record_count,
-            "controlled_excluded": metadata.controlled_awards_excluded,
-            "taxonomy_version": metadata.taxonomy_version,
-        })
+        telemetry["export_runs"].append(
+            {
+                "job_id": job_id,
+                "timestamp": metadata.export_timestamp,
+                "record_count": record_count,
+                "controlled_excluded": metadata.controlled_awards_excluded,
+                "taxonomy_version": metadata.taxonomy_version,
+            }
+        )
 
         telemetry_path.write_text(json.dumps(telemetry, indent=2))
 
@@ -343,7 +352,9 @@ class ExportOrchestrator:
             filters=data["filters"],
             format=ExportFormat(data["format"]),
             submitted_at=datetime.fromisoformat(data["submitted_at"]),
-            completed_at=datetime.fromisoformat(data["completed_at"]) if data.get("completed_at") else None,
+            completed_at=datetime.fromisoformat(data["completed_at"])
+            if data.get("completed_at")
+            else None,
             download_url=data.get("download_url"),
             error_message=data.get("error_message"),
         )
