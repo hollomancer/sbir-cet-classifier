@@ -329,8 +329,8 @@ class TestEnrichmentPipelineEndToEnd:
 
         # Verify enriched text is longer and contains solicitation keywords
         assert len(enriched_text) > len(award_only_text)
-        assert "Defense Applications" in enriched_text
-        assert "artificial intelligence" in enriched_text.lower()
+        assert "Cancer Immunotherapy Research" in enriched_text
+        assert "cancer" in enriched_text.lower()
         assert award_only_text in enriched_text  # Award text preserved
 
         # Verify award-only fallback works
