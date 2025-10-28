@@ -313,11 +313,23 @@ class CETRelevanceScorer:
 
         return scores
 
-    def get_top_relevant_categories(self, text: str, top_n: int = 5) -> List[Tuple[str, float]]:
-        """Get top N most relevant CET categories for text."""
-        scores = self.calculate_relevance_scores(text)
+    def get_top_relevant_categories(self, input_data, top_n: int = 5) -> List[Tuple[str, float]]:
+        """Get top N most relevant CET categories for text or from a precomputed score dict."""
+        if isinstance(input_data, dict):
+            scores = input_data
+        else:
+            scores = self.calculate_relevance_scores(str(input_data))
         sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         return sorted_scores[:top_n]
+
+    def normalize_scores(self, scores: Dict[str, float]) -> Dict[str, float]:
+        """Normalize scores so they sum to 1.0, preserving relative proportions."""
+        if not scores:
+            return {}
+        total = float(sum(max(0.0, float(v)) for v in scores.values()))
+        if total <= 0.0:
+            return {k: 0.0 for k in scores.keys()}
+        return {k: float(max(0.0, float(v))) / total for k, v in scores.items()}
 
     def score_cet_category(self, text: str, category: str) -> float:
         """Score text relevance for a specific CET category."""
