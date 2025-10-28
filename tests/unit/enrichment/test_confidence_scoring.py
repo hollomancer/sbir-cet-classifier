@@ -301,6 +301,7 @@ class TestConfidenceScoringIntegration:
         # Scenario: Good name similarity + some address match, no UEI
         match_factors = {
             MatchFactor.UEI_EXACT: False,
+            MatchFactor.NAME_EXACT: True,
             MatchFactor.NAME_SIMILARITY: 0.8,
             MatchFactor.ADDRESS_SIMILARITY: 0.7,
             MatchFactor.AWARD_NUMBER_EXACT: False,
