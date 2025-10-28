@@ -385,7 +385,11 @@ class TechnicalKeywordExtractor:
         text_lower = text.lower()
 
         # Find 2-4 word candidate phrases composed of alphabetic tokens
-        candidates = re.findall(r"\b[a-z]+(?:\s+[a-z]+){1,3}\b", text_lower)
+        tokens = re.findall(r"[a-z]+", text_lower)
+        ngrams: List[str] = []
+        for n in (2, 3, 4):
+            for i in range(0, max(0, len(tokens) - n + 1)):
+                ngrams.append(" ".join(tokens[i : i + n]))
 
         # Technical heads commonly used in STEM phrases
         tech_heads = {
@@ -408,7 +412,7 @@ class TechnicalKeywordExtractor:
         phrases: set[str] = set()
         leading_stops = {"and", "or", "the", "a", "an"}
         trailing_tails = {"algorithms", "methods", "techniques"}
-        for phrase in candidates:
+        for phrase in ngrams:
             words = phrase.split()
             # Trim leading stopwords/conjunctions
             while words and words[0] in leading_stops:
@@ -423,6 +427,10 @@ class TechnicalKeywordExtractor:
             if last in tech_heads or re.search(r"(ing|tion|s)$", last):
                 phrases.add(" ".join(words))
 
+        # Ensure two-word core phrases ending with technical heads are included
+        for head in tech_heads:
+            for m in re.finditer(rf"\b[a-z]+\s+{head}\b", text_lower):
+                phrases.add(m.group(0))
         return sorted(phrases)
 
     def filter_domain_specific_terms(self, terms: List[str]) -> List[str]:
