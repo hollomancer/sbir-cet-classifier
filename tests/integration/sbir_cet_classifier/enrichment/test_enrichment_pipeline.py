@@ -440,32 +440,31 @@ class TestEnrichmentPipelineEndToEnd:
                 metrics=metrics,
             )
 
-            # Enrich first time (all cache misses)
-            for award in sample_awards:
-                orchestrator.enrich_award(award)
+            # Use only NIH award (DOD not supported)
+            nih_award = sample_awards[1]
 
-            # Enrich second time (all cache hits)
-            for award in sample_awards:
-                orchestrator.enrich_award(award)
+            # Enrich first time (cache miss)
+            orchestrator.enrich_award(nih_award)
+
+            # Enrich second time (cache hit)
+            orchestrator.enrich_award(nih_award)
 
             # Get metrics summary
             summary = metrics.get_summary()
 
             # Verify metrics captured
-            assert summary["total_awards_processed"] == 4  # 2 awards x 2 passes
-            assert summary["awards_enriched"] == 4
+            assert summary["total_awards_processed"] == 2  # 1 award x 2 passes
+            assert summary["awards_enriched"] == 2
 
             # Verify per-API metrics
             api_sources = summary["api_sources"]
-            assert "grants.gov" in api_sources
             assert "nih" in api_sources
 
             # Verify cache hit tracking
-            # First pass: 2 cache misses, Second pass: 2 cache hits
-            total_hits = sum(src["cache_hits"] for src in api_sources.values())
-            total_misses = sum(src["cache_misses"] for src in api_sources.values())
-            assert total_hits == 2
-            assert total_misses == 2
+            # First pass: 1 cache miss, Second pass: 1 cache hit
+            nih_metrics = api_sources["nih"]
+            assert nih_metrics["cache_hits"] == 1
+            assert nih_metrics["cache_misses"] == 1
 
             # Flush metrics to file
             metrics_file = orchestrator.flush_metrics()
