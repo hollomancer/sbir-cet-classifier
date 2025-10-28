@@ -12,6 +12,7 @@ from sbir_cet_classifier.data.enrichment.solicitation_service import Solicitatio
 from sbir_cet_classifier.data.enrichment.batch_processor import SolicitationBatchProcessor
 from sbir_cet_classifier.data.storage import SolicitationStorage
 from sbir_cet_classifier.data.enrichment.sam_client import SAMClient
+from sbir_cet_classifier.common.config import EnrichmentConfig
 
 console = Console()
 app = typer.Typer(name="enrich", help="Enrichment commands for SAM.gov data")
@@ -30,7 +31,8 @@ def enrich_solicitation(
         console.print(f"[blue]Enriching solicitation: {solicitation_number}[/blue]")
 
     # Initialize components
-    sam_client = SAMClient(api_key=api_key or "demo_key")
+    config = EnrichmentConfig(api_key=api_key or "demo_key")
+    sam_client = SAMClient(config)
     solicitation_service = SolicitationService(sam_client)
 
     # Set up storage
@@ -126,7 +128,8 @@ def enrich_batch_solicitations(
     console.print(f"[blue]Processing {len(awards)} awards for solicitation enrichment[/blue]")
 
     # Initialize components
-    sam_client = SAMClient(api_key=api_key or "demo_key")
+    config = EnrichmentConfig(api_key=api_key or "demo_key")
+    sam_client = SAMClient(config)
     output_dir.mkdir(parents=True, exist_ok=True)
     storage = SolicitationStorage(output_dir / "solicitations.parquet")
 

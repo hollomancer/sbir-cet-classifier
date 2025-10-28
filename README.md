@@ -2,22 +2,12 @@
 
 Quick links to consolidated docs:
 - CLI: docs/cli/README.md
-- CI troubleshooting: docs/ci/troubleshooting.md
 - Configuration: docs/config/README.md
-- Config & imports migration: docs/migrations/config-yaml-migration.md
-- Engineering performance: docs/engineering/performance.md
-- Refactoring guide: docs/engineering/refactoring/guide.md
 - Contributing: CONTRIBUTING.md
-
-> **Classify SBIR awards against Critical and Emerging Technology (CET) areas using ML**
-
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-232%2F232%20passing-brightgreen)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A585%25-brightgreen)](tests/)
 
 ## Overview
 
-Automated classification system for SBIR awards against 20 Critical and Emerging Technology areas. Features ML-based scoring, portfolio analytics, and export capabilities. Not finished yet
+Automated classification system for SBIR awards against 20 Critical and Emerging Technology areas. Features ML-based scoring, portfolio analytics, and export capabilities.
 
 ## Quick Start
 
@@ -124,22 +114,6 @@ sbir-cet-classifier/
 ├── config/                           # Configuration files
 └── ingest_awards.py                  # Ingestion script
 ```
-
-## Performance
-
-### Current Metrics
-- **Success Rate**: 97.9% (210k/214k awards)
-- **Throughput**: 5,979 records/second
-- **Per-Record Latency**: 0.17ms
-- **Duration**: 35.85s for 214k awards
-
-### Phase O Optimizations ✅
-- Agency name normalization (+25% recovery)
-- Batch validation with pandas vectorization (+40% recovery)
-- N-gram features for technical phrase capture
-- Chi-squared feature selection
-- Balanced class weights for minority categories
-- Multi-core parallel scoring (2-4x faster)
 
 ## Configuration
 
@@ -258,18 +232,6 @@ export SBIR_BATCH_SIZE=100
 export SBIR_MAX_WORKERS=4
 ```
 
-## Success Criteria
-
-| Criterion | Target | Status |
-|-----------|--------|--------|
-| Automated classification rate | ≥95% | ✅ 100% |
-| Summary generation time | ≤3 min | ✅ Verified |
-| Award drill-down time | ≤5 min | ✅ Verified |
-| Reviewer agreement | ≥85% | ✅ Tracked |
-| Export completion (50k awards) | ≤10 min | ✅ Instrumented |
-| Scoring latency (100 awards) | ≤500ms median | ✅ Instrumented |
-| Ingestion time (120k awards) | ≤2 hours | ✅ Instrumented |
-
 ## Testing
 
 ```bash
@@ -288,14 +250,12 @@ pytest tests/contract/ -v          # API contract tests
 pytest -m "not slow" -v
 ```
 
-**Current Test Status**: 232/232 passing ✅
-
 ## Contributing
 
 This is a personal research project. For collaboration:
 
 1. Review the development guide for detailed setup instructions
-2. Check task documentation for implementation status  
+2. Check task documentation for implementation status
 3. Run tests before submitting changes: `pytest tests/ -v`
 4. Maintain ≥85% code coverage
 5. Follow ruff formatting: `ruff format src/ tests/`
