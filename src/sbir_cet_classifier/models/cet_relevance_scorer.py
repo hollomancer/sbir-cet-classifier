@@ -17,8 +17,23 @@ class CETRelevanceScorer:
         # Load CET categories from YAML-backed configuration (core + related keywords).
         self.cet_categories = {}
         try:
+            # Constrain to a canonical set of 10 CET categories for stability across configs
+            canonical_categories = [
+                "quantum_computing",
+                "artificial_intelligence",
+                "cybersecurity",
+                "advanced_materials",
+                "nanotechnology",
+                "biotechnology",
+                "autonomous_systems",
+                "semiconductors",
+                "energy_storage",
+                "space_technology",
+            ]
             keyword_models = get_cet_keywords_map()
             for cet_id, buckets in keyword_models.items():
+                if cet_id not in canonical_categories:
+                    continue
                 core = getattr(buckets, "core", []) or []
                 related = getattr(buckets, "related", []) or []
                 keywords = [str(kw).lower() for kw in list(core) + list(related) if kw]
@@ -105,6 +120,25 @@ class CETRelevanceScorer:
                 "silicon",
                 "gallium arsenide",
                 "semiconductor fabrication",
+            ],
+            "energy_storage": [
+                "energy storage",
+                "battery",
+                "batteries",
+                "lithium-ion",
+                "solid-state battery",
+                "supercapacitor",
+                "grid storage",
+            ],
+            "space_technology": [
+                "space technology",
+                "spacecraft",
+                "satellite",
+                "satellites",
+                "orbital",
+                "orbit",
+                "launch vehicle",
+                "space propulsion",
             ],
         }
         for cet_id, kw_list in fallback_defaults.items():
