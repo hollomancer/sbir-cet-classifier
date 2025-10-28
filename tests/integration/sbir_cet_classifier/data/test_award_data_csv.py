@@ -66,7 +66,7 @@ def test_csv_file_exists():
     """Verify the award_data-3.csv file exists."""
     if not CSV_FILE_PATH.exists():
         pytest.skip(f"Test CSV file not found at {CSV_FILE_PATH}")
-    assert CSV_FILE_PATH.exists(), f"CSV file not found at {CSV_FILE_PATH}"
+    # File exists if we reach here (skip would have been triggered otherwise)
 
 
 def test_csv_loads_successfully(award_dataframe):
