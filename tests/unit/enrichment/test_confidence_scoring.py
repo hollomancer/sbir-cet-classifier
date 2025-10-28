@@ -183,7 +183,11 @@ class TestConfidenceScorer:
     def test_confidence_thresholds(self, scorer):
         """Test confidence threshold classifications."""
         # High confidence threshold
-        high_confidence_factors = {MatchFactor.UEI_EXACT: True, MatchFactor.NAME_SIMILARITY: 0.9}
+        high_confidence_factors = {
+            MatchFactor.UEI_EXACT: True,
+            MatchFactor.NAME_SIMILARITY: 0.9,
+            MatchFactor.AWARD_NUMBER_EXACT: True,
+        }
 
         score = scorer.calculate_score(high_confidence_factors)
         confidence_level = scorer.get_confidence_level(score)
@@ -192,6 +196,7 @@ class TestConfidenceScorer:
 
         # Medium confidence threshold
         medium_confidence_factors = {
+            MatchFactor.NAME_EXACT: True,
             MatchFactor.NAME_SIMILARITY: 0.7,
             MatchFactor.ADDRESS_SIMILARITY: 0.6,
         }
