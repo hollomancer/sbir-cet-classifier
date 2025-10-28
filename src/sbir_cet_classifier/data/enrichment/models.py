@@ -327,16 +327,20 @@ class AwardeeEnrichmentService:
         )
 
     def calculate_confidence_score(self, match_data: Dict[str, Any]) -> float:
-        """Calculate confidence score based on match data."""
+        """Calculate confidence score based on match data.
+
+        Note: name similarity weight was increased so that strong fuzzy-only
+        matches (e.g., similarity ~0.8) produce a medium-level confidence.
+        """
         score = 0.0
 
         # UEI match is highest confidence
         if match_data.get("uei_match"):
             score += 0.5
 
-        # Name similarity
+        # Name similarity (increased weight to better reflect strong fuzzy matches)
         name_sim = match_data.get("name_similarity", 0.0)
-        score += name_sim * 0.3
+        score += name_sim * 0.65
 
         # Award number match
         if match_data.get("award_number_match"):
