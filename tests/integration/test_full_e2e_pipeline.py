@@ -200,6 +200,11 @@ def test_full_pipeline_ingest_enrich_classify_export(tmp_path: Path):
 
     # Prepare assessments_df to match exporter expectations:
     assessments_df = enriched_df.copy()
+
+    # Ensure award_id column exists in assessments
+    if "award_id" not in assessments_df.columns:
+        raise ValueError("assessments_df missing required 'award_id' column")
+
     # Rename primary_cet -> primary_cet_id if necessary
     if "primary_cet" in assessments_df.columns and "primary_cet_id" not in assessments_df.columns:
         assessments_df = assessments_df.rename(columns={"primary_cet": "primary_cet_id"})
@@ -210,6 +215,17 @@ def test_full_pipeline_ingest_enrich_classify_export(tmp_path: Path):
         assessments_df["supporting_cet_ids"] = [[] for _ in range(len(assessments_df))]
     if "assessed_at" not in assessments_df.columns:
         assessments_df["assessed_at"] = pd.Timestamp.now(tz=timezone.utc)
+
+    # Verify awards and assessments have matching award_ids for merge
+    assert "award_id" in awards_df.columns, "awards_df missing 'award_id' column"
+    assert len(assessments_df) > 0, "assessments_df is empty"
+
+    # Expand taxonomy to include all CETs that appear in assessments
+    unique_cets = set(assessments_df["primary_cet_id"].dropna().unique())
+    taxonomy_records = [
+        {"cet_id": cet_id, "name": cet_id.replace("_", " ").title()} for cet_id in unique_cets
+    ]
+    taxonomy_df = pd.DataFrame(taxonomy_records)
 
     # 4) Export: create exports and verify artifacts
     exports_dir = tmp_path / "exports"
@@ -232,10 +248,10 @@ def test_full_pipeline_ingest_enrich_classify_export(tmp_path: Path):
         format=ExportFormat.CSV,
         awards_df=awards_df,
         assessments_df=assessments_df,
-        taxonomy_df=pd.DataFrame([{"cet_id": "ai", "name": "Artificial Intelligence"}]),
+        taxonomy_df=taxonomy_df,
     )
 
-    assert job_csv.status == ExportStatus.COMPLETE
+    assert job_csv.status == ExportStatus.COMPLETE, f"CSV export failed: {job_csv.error_message}"
     csv_path_out = exports_dir / f"{job_csv.job_id}.csv"
     assert csv_path_out.exists()
 
@@ -250,9 +266,11 @@ def test_full_pipeline_ingest_enrich_classify_export(tmp_path: Path):
         format=ExportFormat.PARQUET,
         awards_df=awards_df,
         assessments_df=assessments_df,
-        taxonomy_df=pd.DataFrame([{"cet_id": "ai", "name": "Artificial Intelligence"}]),
+        taxonomy_df=taxonomy_df,
     )
-    assert job_parquet.status == ExportStatus.COMPLETE
+    assert (
+        job_parquet.status == ExportStatus.COMPLETE
+    ), f"Parquet export failed: {job_parquet.error_message}"
     parquet_path_out = exports_dir / f"{job_parquet.job_id}.parquet"
     assert parquet_path_out.exists()
 

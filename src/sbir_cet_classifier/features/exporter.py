@@ -184,11 +184,11 @@ class ExportOrchestrator:
 
             # Exclude controlled awards from line-level output
             if "is_export_controlled" in merged.columns:
-                controlled_count = int(merged["is_export_controlled"].sum())
-                export_df = merged[~merged["is_export_controlled"]]
+                controlled_count = int(merged["is_export_controlled"].fillna(False).sum())
+                export_df = merged[~merged["is_export_controlled"].fillna(False)]
             else:
                 controlled_count = 0
-                export_df = merged
+                export_df = merged.copy()
 
             # Add normalized CET weights (0-1, summing to 1 per award)
             export_df = self._add_cet_weights(export_df, taxonomy_df)
