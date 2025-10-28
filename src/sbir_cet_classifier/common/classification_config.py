@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 
 
 # ----------------------------
@@ -49,18 +49,16 @@ class ClassificationRules(BaseModel):
     unrelated keys present in the YAML file.
     """
 
+    model_config = ConfigDict(extra="allow")
+
     version: str | None = None
     agency_priors: dict[str, dict[str, int]] = Field(default_factory=dict)
     branch_priors: dict[str, dict[str, int]] = Field(default_factory=dict)
     cet_keywords: dict[str, CETKeywords] = Field(default_factory=dict)
     context_rules: dict[str, list[ContextRule]] = Field(default_factory=dict)
 
-    class Config:
-        # Accept extra keys in the raw YAML so the loader can be tolerant of
-        # other sections (vectorizer, classifier, etc.) that may coexist.
-        extra = "allow"
-
-    @root_validator(pre=True)
+    @model_validator(mode="before")
+    @classmethod
     def _normalize_inputs(cls, values: dict[str, Any]) -> dict[str, Any]:
         """
         Normalize raw YAML structure into the expected shapes:
