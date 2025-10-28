@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from src.sbir_cet_classifier.models.cet_relevance_scorer import CETRelevanceScorer
+from sbir_cet_classifier.models.cet_relevance_scorer import CETRelevanceScorer
 
 
 class TestCETRelevanceScorer:

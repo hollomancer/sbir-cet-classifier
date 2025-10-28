@@ -5,7 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from pydantic import ValidationError
 
-from src.sbir_cet_classifier.data.enrichment.models import Solicitation
+from sbir_cet_classifier.data.enrichment.models import Solicitation
 
 
 class TestSolicitation:
@@ -32,9 +32,9 @@ class TestSolicitation:
             keywords=["materials", "nanotechnology", "composites"],
             cet_relevance_scores={"advanced_materials": 0.95, "quantum": 0.1},
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         assert solicitation.solicitation_id == "SOL-2024-001"
         assert solicitation.funding_range_min == Decimal("100000.00")
         assert len(solicitation.keywords) == 3
@@ -59,9 +59,9 @@ class TestSolicitation:
                 keywords=[],
                 cet_relevance_scores={},
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
-        
+
         assert "funding_range_min must be <= funding_range_max" in str(exc_info.value)
 
     def test_solicitation_performance_period_validation(self):
@@ -84,9 +84,9 @@ class TestSolicitation:
                 keywords=[],
                 cet_relevance_scores={},
                 created_at=datetime.now(),
-                updated_at=datetime.now()
+                updated_at=datetime.now(),
             )
-        
+
         assert "Input should be greater than 0" in str(exc_info.value)
 
     def test_solicitation_cet_relevance_scores_validation(self):
@@ -109,9 +109,9 @@ class TestSolicitation:
             keywords=[],
             cet_relevance_scores={"ai": 0.8, "quantum": 0.3},
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         assert solicitation.cet_relevance_scores["ai"] == 0.8
 
     def test_solicitation_optional_fields(self):
@@ -133,9 +133,9 @@ class TestSolicitation:
             keywords=[],
             cet_relevance_scores={},
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         assert solicitation.topic_number is None
         assert solicitation.award_start_date is None
         assert len(solicitation.keywords) == 0
@@ -159,9 +159,9 @@ class TestSolicitation:
             keywords=["test"],
             cet_relevance_scores={"ai": 0.5},
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         data = solicitation.model_dump()
         assert data["solicitation_id"] == "SOL-2024-001"
         assert data["keywords"] == ["test"]

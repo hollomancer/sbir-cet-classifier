@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from src.sbir_cet_classifier.data.classification import classify_with_enrichment
+from sbir_cet_classifier.data.classification import classify_with_enrichment
 
 
 def _write_awards_csv(tmp_path: Path) -> Path:

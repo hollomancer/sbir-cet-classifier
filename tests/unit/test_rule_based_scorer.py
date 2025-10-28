@@ -1,6 +1,6 @@
 import pytest
 
-from src.sbir_cet_classifier.models.rules_scorer import RuleBasedScorer
+from sbir_cet_classifier.models.rules_scorer import RuleBasedScorer
 
 
 @pytest.fixture

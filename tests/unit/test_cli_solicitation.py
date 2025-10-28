@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch, AsyncMock
 from pathlib import Path
 from typer.testing import CliRunner
 
-from src.sbir_cet_classifier.cli.enrichment_commands import app
+from sbir_cet_classifier.cli.enrichment_commands import app
 
 
 class TestSolicitationCLI:

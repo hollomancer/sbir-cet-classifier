@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from src.sbir_cet_classifier.data.enrichment.text_processing import (
+from sbir_cet_classifier.data.enrichment.text_processing import (
     SolicitationTextProcessor,
     TechnicalKeywordExtractor,
     CETRelevanceScorer

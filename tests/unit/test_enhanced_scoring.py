@@ -6,11 +6,11 @@ from unittest.mock import Mock, patch
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
-from src.sbir_cet_classifier.models.enhanced_scoring import (
+from sbir_cet_classifier.models.enhanced_scoring import (
     EnhancedCETClassifier,
     SolicitationEnhancedScorer,
 )
-from src.sbir_cet_classifier.models.vectorizers import MultiSourceTextVectorizer
+from sbir_cet_classifier.models.vectorizers import MultiSourceTextVectorizer
 
 
 class TestEnhancedCETClassifier:

@@ -5,8 +5,8 @@ from unittest.mock import Mock, patch, AsyncMock
 from datetime import date, datetime
 from decimal import Decimal
 
-from src.sbir_cet_classifier.data.enrichment.solicitation_service import SolicitationService
-from src.sbir_cet_classifier.data.enrichment.models import Solicitation
+from sbir_cet_classifier.data.enrichment.solicitation_service import SolicitationService
+from sbir_cet_classifier.data.enrichment.models import Solicitation
 
 
 class TestSolicitationService:

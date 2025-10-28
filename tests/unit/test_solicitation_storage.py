@@ -8,8 +8,8 @@ from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
-from src.sbir_cet_classifier.data.storage import SolicitationStorage
-from src.sbir_cet_classifier.data.enrichment.models import Solicitation
+from sbir_cet_classifier.data.storage import SolicitationStorage
+from sbir_cet_classifier.data.enrichment.models import Solicitation
 
 
 class TestSolicitationStorage:

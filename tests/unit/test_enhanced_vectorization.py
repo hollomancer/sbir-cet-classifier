@@ -5,7 +5,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from src.sbir_cet_classifier.models.vectorizers import MultiSourceTextVectorizer
+from sbir_cet_classifier.models.vectorizers import MultiSourceTextVectorizer
 
 
 class TestMultiSourceTextVectorizer:
