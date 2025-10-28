@@ -2,17 +2,7 @@
 
 This directory contains historical documentation, reports, and analysis that are no longer actively maintained but preserved for reference.
 
-## Cleanup Reports (`cleanup-reports/`)
 
-**Date Range**: 2025-10-09  
-**Purpose**: Security cleanup, refactoring, and optimization reports
-
-- **CLEANUP_COMPLETE.md** - Security cleanup summary (API key removal)
-- **CLEANUP_EXECUTED.md** - Detailed cleanup execution log
-- **CLEANUP_RECOMMENDATIONS.md** - Original cleanup recommendations
-- **REFACTORING_COMPLETE.md** - Code refactoring summary
-- **SECURITY_AUDIT.md** - Security audit findings and resolutions
-- **V5_FINAL_REPORT.md** - Classifier v5 performance analysis
 
 ## API Integration History
 
@@ -47,6 +37,7 @@ This directory contains historical documentation, reports, and analysis that are
 - **Status**: These documents are **archived** and no longer maintained
 - **Relevance**: Historical context only - current documentation is in the parent directories
 - **Access**: Read-only reference material for understanding project evolution
+- Cleanup reports and source documents were removed from this repository; contact maintainers or see PR history if historical copies are needed.
 
 ## Current Documentation
 

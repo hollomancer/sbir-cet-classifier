@@ -54,3 +54,6 @@ htmlcov/
 *.swp
 *.swo
 .DS_Store
+
+# Accept both spellings for raw awards CSV
+awards_data*.csv
