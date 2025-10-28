@@ -74,10 +74,19 @@ class SolicitationService:
         """Parse SAM.gov API response into Solicitation model."""
         # Extract and process technical keywords
         full_text = response.get("full_text", "")
-        keywords = self.keyword_extractor.extract_cet_keywords(full_text)
+        # Prefer provided keywords if available; otherwise extract from full_text
+        resp_keywords = response.get("keywords")
+        if isinstance(resp_keywords, list) and len(resp_keywords) > 0:
+            keywords = [str(k) for k in resp_keywords]
+        else:
+            keywords = self.keyword_extractor.extract_cet_keywords(full_text)
 
-        # Calculate CET relevance scores
-        cet_scores = self.cet_scorer.calculate_relevance_scores(full_text)
+        # Prefer provided CET relevance scores if available; otherwise calculate from full_text
+        resp_scores = response.get("cet_relevance_scores")
+        if isinstance(resp_scores, dict) and resp_scores:
+            cet_scores = {str(k): float(v) for k, v in resp_scores.items()}
+        else:
+            cet_scores = self.cet_scorer.calculate_relevance_scores(full_text)
 
         return Solicitation(
             solicitation_id=response.get("solicitation_id", ""),
