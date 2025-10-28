@@ -230,6 +230,92 @@ class TechnicalKeywordExtractor:
             }
 
         # Technical terms that indicate advanced research
+        fallback_defaults = {
+            "quantum_computing": [
+                "quantum computing",
+                "quantum algorithm",
+                "quantum cryptography",
+                "quantum sensing",
+                "quantum communication",
+                "qubit",
+                "quantum entanglement",
+            ],
+            "artificial_intelligence": [
+                "artificial intelligence",
+                "machine learning",
+                "deep learning",
+                "neural network",
+                "ai",
+                "ml",
+                "computer vision",
+                "natural language processing",
+            ],
+            "cybersecurity": [
+                "cybersecurity",
+                "cyber security",
+                "information security",
+                "encryption",
+                "cryptography",
+                "firewall",
+                "intrusion detection",
+                "malware",
+            ],
+            "advanced_materials": [
+                "advanced materials",
+                "nanomaterials",
+                "composites",
+                "metamaterials",
+                "smart materials",
+                "biomaterials",
+                "carbon nanotubes",
+            ],
+            "nanotechnology": [
+                "nanotechnology",
+                "nanoparticles",
+                "nanoscale",
+                "nanostructures",
+                "nanofabrication",
+                "nanoelectronics",
+            ],
+            "biotechnology": [
+                "biotechnology",
+                "bioengineering",
+                "synthetic biology",
+                "gene therapy",
+                "bioinformatics",
+                "biomedical",
+                "pharmaceutical",
+            ],
+            "autonomous_systems": [
+                "autonomous systems",
+                "autonomous vehicles",
+                "robotics",
+                "unmanned",
+                "self-driving",
+                "autonomous navigation",
+                "robot",
+            ],
+            "semiconductors": [
+                "semiconductors",
+                "microelectronics",
+                "integrated circuits",
+                "chips",
+                "silicon",
+                "gallium arsenide",
+                "semiconductor fabrication",
+            ],
+        }
+        # Merge fallback defaults with any config-provided keywords to ensure baseline coverage
+        if hasattr(self, "cet_keywords") and isinstance(self.cet_keywords, dict):
+            for cet_id, kw_list in fallback_defaults.items():
+                existing = self.cet_keywords.get(cet_id, [])
+                # Normalize to lowercase for substring matching
+                merged = sorted(list(set([k.lower() for k in existing + kw_list])))
+                self.cet_keywords[cet_id] = merged
+        else:
+            self.cet_keywords = {
+                k: sorted(list(set([kw.lower() for kw in v]))) for k, v in fallback_defaults.items()
+            }
         self.technical_terms = [
             "algorithm",
             "protocol",
@@ -256,11 +342,12 @@ class TechnicalKeywordExtractor:
         text_lower = text.lower()
         found_keywords = []
 
-        # Check for CET category keywords
-        for category, keywords in self.cet_keywords.items():
+        # Check for CET category keywords (normalize to lowercase for substring matching)
+        for _, keywords in self.cet_keywords.items():
             for keyword in keywords:
-                if keyword in text_lower:
-                    found_keywords.append(keyword)
+                kw_lower = keyword.lower()
+                if kw_lower in text_lower:
+                    found_keywords.append(kw_lower)
 
         # Remove duplicates and sort
         return sorted(list(set(found_keywords)))
