@@ -89,7 +89,16 @@ class ApplicabilityModel:
         else:
             adjusted_max_df = float(max(max_df_cfg, float(adjusted_min_df)))
         self._vectorizer.set_params(min_df=adjusted_min_df, max_df=adjusted_max_df)
-        X = self._vectorizer.fit_transform(texts)
+        try:
+            X = self._vectorizer.fit_transform(texts)
+        except ValueError as e:
+            msg = str(e)
+            if "After pruning, no terms remain" in msg or "empty vocabulary" in msg:
+                # Fallback for tiny datasets: relax pruning thresholds
+                self._vectorizer.set_params(min_df=1, max_df=1.0)
+                X = self._vectorizer.fit_transform(texts)
+            else:
+                raise
 
         # Feature selection (if enabled)
         if self._feature_selector:
