@@ -386,3 +386,16 @@ class CETRelevanceScorer:
     def batch_score(self, texts: List[str]) -> List[Dict[str, float]]:
         """Score multiple texts efficiently."""
         return [self.calculate_relevance_scores(text) for text in texts]
+
+    def extract_entities(self, text: str) -> List[str]:
+        """Extract entities from text using spaCy (patched in tests)."""
+        try:
+            # Use the spacy module imported in text_processing so tests can patch it
+            from sbir_cet_classifier.data.enrichment.text_processing import spacy as _spacy
+
+            nlp = _spacy.load("en_core_web_sm")
+            doc = nlp(text)
+            return [ent.text for ent in doc.ents]
+        except Exception:
+            # On any failure (e.g., model not available), return empty list
+            return []
