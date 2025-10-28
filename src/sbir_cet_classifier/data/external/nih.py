@@ -120,7 +120,9 @@ class NIHClient:
             ...     print(result.description)
         """
         if not funding_opportunity and not solicitation_id and not project_number:
-            raise ValueError("Must provide funding_opportunity, solicitation_id, or project_number")
+            raise ValueError(
+                "Must provide either funding_opportunity, solicitation_id, or project_number"
+            )
 
         query_id = funding_opportunity or solicitation_id or project_number
         search_type = "project" if project_number else "foa"
@@ -144,7 +146,9 @@ class NIHClient:
                 return None
 
             if response.status_code != 200:
-                raise NIHAPIError(f"NIH API returned status {response.status_code}: {response.text}")
+                raise NIHAPIError(
+                    f"NIH API returned status {response.status_code}: {response.text}"
+                )
 
             return self._parse_response(response.json(), query_id)
 
@@ -226,48 +230,28 @@ class NIHClient:
             title = project.get("project_title", "")
             phr_text = project.get("phr_text", "")
             spending_cats = project.get("spending_categories_desc", "")
-            
+
             # Build comprehensive description
             description_parts = []
+            if title:
+                description_parts.append(title)
             if abstract:
                 description_parts.append(abstract)
-            elif title:
-                description_parts.append(title)
-            
+
             if phr_text:
                 description_parts.append(phr_text)
-            
+
             if spending_cats:
                 description_parts.append(f"Research Categories: {spending_cats}")
-            
+
             description = " ".join(description_parts)
-            
+
             if not description:
                 logger.warning("No description in NIH response", extra={"query_id": query_id})
                 return None
 
-            # Extract keywords from multiple sources
-            keywords = []
-            
-            # 1. MeSH terms (original source)
-            terms = project.get("terms", "")
-            if terms:
-                # Terms are angle-bracket delimited
-                mesh_terms = [term.strip() for term in terms.replace("><", "|").strip("<>").split("|") if term.strip()]
-                keywords.extend(mesh_terms[:10])
-            
-            # 2. Preferred terms (comprehensive, curated)
-            pref_terms = project.get("pref_terms", "")
-            if pref_terms:
-                # Preferred terms are semicolon-delimited
-                pref_list = [term.strip() for term in pref_terms.split(";") if term.strip()]
-                # Add top 20 preferred terms (avoiding duplicates)
-                for term in pref_list[:20]:
-                    if term not in keywords:
-                        keywords.append(term)
-            
-            # Limit total keywords to 30 for performance
-            keywords = keywords[:30]
+            # Extract keywords using helper to include project_terms, agency, activity code, and fiscal year
+            keywords = self._extract_keywords(project)
 
             return SolicitationData(
                 solicitation_id=project.get("project_num", query_id),
