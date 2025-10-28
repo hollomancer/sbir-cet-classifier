@@ -69,6 +69,8 @@ jobs:
             # Ensure pytest exists so subsequent steps can run
             pip install pytest
           fi
+          # Ensure pytest-asyncio is available so pytest respects --asyncio-mode options
+          pip install pytest-asyncio
 
       - name: Show Python / Pip versions
         run: |
