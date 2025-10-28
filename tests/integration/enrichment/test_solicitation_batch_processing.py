@@ -267,7 +267,7 @@ class TestSolicitationBatchProcessor:
         results = await processor.process_batch(awards, skip_existing=True)
 
         # Should skip existing solicitation
-        assert results.skipped == 1
+        assert len(results.skipped) == 1
         assert mock_sam_client.get_solicitation_by_number.call_count == 0
 
     @pytest.mark.asyncio
