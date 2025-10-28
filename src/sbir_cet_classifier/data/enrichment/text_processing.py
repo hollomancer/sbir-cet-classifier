@@ -3,6 +3,7 @@
 import re
 from typing import List, Dict, Tuple, Optional
 from collections import Counter
+from datetime import datetime
 
 
 class SolicitationTextProcessor:
@@ -100,31 +101,54 @@ class SolicitationTextProcessor:
             "performance_start": None,
         }
 
-        # Date patterns
-        date_patterns = [
-            r"(\w+\s+\d{1,2},\s+\d{4})",  # Month DD, YYYY
-            r"(\d{1,2}/\d{1,2}/\d{4})",  # MM/DD/YYYY
-            r"(\d{4}-\d{2}-\d{2})",  # YYYY-MM-DD
-        ]
+        def normalize(date_str: str) -> Optional[str]:
+            """Normalize a date string to YYYY-MM-DD."""
+            if not date_str:
+                return None
+            date_str = date_str.strip()
+            # Try common formats
+            for fmt in ("%B %d, %Y", "%m/%d/%Y", "%Y-%m-%d"):
+                try:
+                    dt = datetime.strptime(date_str, fmt)
+                    return dt.strftime("%Y-%m-%d")
+                except Exception:
+                    continue
+            # If raw string contains a date-like pattern, extract and retry
+            for pat in [
+                r"(\w+\s+\d{1,2},\s+\d{4})",
+                r"(\d{1,2}/\d{1,2}/\d{4})",
+                r"(\d{4}-\d{2}-\d{2})",
+            ]:
+                m = re.search(pat, date_str)
+                if m:
+                    return normalize(m.group(1))
+            return None
 
-        # Look for proposal deadline
-        deadline_patterns = [
-            r"proposal\s+submission\s+deadline:?\s*([^.\n]+)",
-            r"due\s+date:?\s*([^.\n]+)",
-            r"deadline:?\s*([^.\n]+)",
-        ]
+        # Map patterns to deadline keys
+        label_patterns: Dict[str, List[str]] = {
+            "proposal_deadline": [
+                r"proposal\s+submission\s+deadline:?\s*([^.\n]+)",
+                r"due\s+date:?\s*([^.\n]+)",
+                r"deadline:?\s*([^.\n]+)",
+            ],
+            "award_notification": [
+                r"award\s+notification:?\s*([^.\n]+)",
+                r"notification\s+date:?\s*([^.\n]+)",
+            ],
+            "performance_start": [
+                r"performance\s+start(?:\s+date)?:?\s*([^.\n]+)",
+                r"start\s+date:?\s*([^.\n]+)",
+            ],
+        }
 
-        for pattern in deadline_patterns:
-            match = re.search(pattern, full_text, re.IGNORECASE)
-            if match:
-                date_text = match.group(1)
-                for date_pattern in date_patterns:
-                    date_match = re.search(date_pattern, date_text)
-                    if date_match:
-                        deadlines["proposal_deadline"] = date_match.group(1)
+        for key, patterns in label_patterns.items():
+            for pattern in patterns:
+                match = re.search(pattern, full_text, re.IGNORECASE)
+                if match:
+                    normalized = normalize(match.group(1))
+                    if normalized:
+                        deadlines[key] = normalized
                         break
-                if deadlines["proposal_deadline"]:
-                    break
 
         return deadlines
 
