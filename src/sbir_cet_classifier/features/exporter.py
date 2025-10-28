@@ -241,8 +241,12 @@ class ExportOrchestrator:
             primary_cet = row.get("primary_cet_id")
             supporting_cets = row.get("supporting_cet_ids", [])
 
+            # Handle various data types for supporting_cets
             if isinstance(supporting_cets, str):
                 supporting_cets = json.loads(supporting_cets) if supporting_cets else []
+            elif not isinstance(supporting_cets, list):
+                # Handle NaN, float, or other non-list types
+                supporting_cets = []
 
             total_cets = 1 + len(supporting_cets)
             if total_cets > 0:
