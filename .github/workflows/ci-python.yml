@@ -100,6 +100,7 @@ jobs:
       - name: Run tests
         env:
           PYTEST_ADDOPTS: "-q --maxfail=1"
+          PYTHONPATH: src
         run: |
           pytest tests/ -q
 
