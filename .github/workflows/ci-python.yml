@@ -75,15 +75,10 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
 
       - name: Install project + dev dependencies
-        # Try to install editable dev extras; if project does not expose extras,
-        # fall back to requirements-dev.txt or requirements.txt if present.
+        # Prefer editable dev extras if available; otherwise fall back to requirements files.
         run: |
           set -e
-          if python -c "import importlib, pkgutil, sys; print('ok')" >/dev/null 2>&1; then
-            true
-          fi
-          # If pyproject.toml exists and mentions optional dev dependencies, prefer editable dev install.
-          # Avoid complex heredoc/python-in-yaml to keep workflow YAML simple and robust.
+          # Prefer editable dev install when pyproject.toml is present and optional-dependencies is defined.
           if [ -f pyproject.toml ] && grep -q 'optional-dependencies' pyproject.toml 2>/dev/null; then
             pip install -e ".[dev]"
           elif [ -f requirements-dev.txt ]; then
