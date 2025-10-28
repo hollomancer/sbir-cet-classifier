@@ -59,19 +59,24 @@ def test_cli_refresh_invokes_ingestion(monkeypatch, tmp_path):
 
     def fake_ingest(year: int, url: str, config, raw_archive=None):  # type: ignore[no-redef]
         calls.append(year)
-        return type("Result", (), {
-            "fiscal_year": year,
-            "source_url": url,
-            "raw_archive": Path(f"archive_{year}.zip"),
-            "records_ingested": 10,
-        })()
+        return type(
+            "Result",
+            (),
+            {
+                "fiscal_year": year,
+                "source_url": url,
+                "raw_archive": Path(f"archive_{year}.zip"),
+                "records_ingested": 10,
+            },
+        )()
 
-    monkeypatch.setattr("sbir_cet_classifier.cli.app.load_config", fake_config)
-    monkeypatch.setattr("sbir_cet_classifier.cli.app.ingest_fiscal_year", fake_ingest)
+    monkeypatch.setattr("sbir_cet_classifier.cli.commands.ingest.load_config", fake_config)
+    monkeypatch.setattr("sbir_cet_classifier.cli.commands.ingest.ingest_fiscal_year", fake_ingest)
 
     result = runner.invoke(
         app,
         [
+            "ingest",
             "refresh",
             "--fiscal-year-start",
             "2023",
