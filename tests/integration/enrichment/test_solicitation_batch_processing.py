@@ -6,8 +6,8 @@ from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime, date
 from decimal import Decimal
 
-from src.sbir_cet_classifier.data.enrichment.batch_processor import SolicitationBatchProcessor
-from src.sbir_cet_classifier.data.enrichment.models import Solicitation
+from sbir_cet_classifier.data.enrichment.batch_processor import SolicitationBatchProcessor
+from sbir_cet_classifier.data.enrichment.models import Solicitation
 
 
 class TestSolicitationBatchProcessor:
@@ -34,10 +34,7 @@ class TestSolicitationBatchProcessor:
     def processor(self, mock_sam_client, mock_storage):
         """Create batch processor with mocked dependencies."""
         return SolicitationBatchProcessor(
-            sam_client=mock_sam_client,
-            storage=mock_storage,
-            batch_size=10,
-            max_concurrent=3
+            sam_client=mock_sam_client, storage=mock_storage, batch_size=10, max_concurrent=3
         )
 
     @pytest.fixture
@@ -48,20 +45,20 @@ class TestSolicitationBatchProcessor:
                 "award_id": "AWARD-001",
                 "solicitation_number": "N00014-24-S-B001",
                 "agency": "DON",
-                "title": "Quantum Computing Research"
+                "title": "Quantum Computing Research",
             },
             {
-                "award_id": "AWARD-002", 
+                "award_id": "AWARD-002",
                 "solicitation_number": "W911NF-24-S-0001",
                 "agency": "DOD",
-                "title": "AI Applications"
+                "title": "AI Applications",
             },
             {
                 "award_id": "AWARD-003",
-                "solicitation_number": "FA8750-24-S-0001", 
+                "solicitation_number": "FA8750-24-S-0001",
                 "agency": "USAF",
-                "title": "Cybersecurity Systems"
-            }
+                "title": "Cybersecurity Systems",
+            },
         ]
 
     @pytest.mark.asyncio
@@ -84,19 +81,19 @@ class TestSolicitationBatchProcessor:
                 "proposal_deadline": "2024-06-15",
                 "performance_period": 12,
                 "keywords": [award["title"].lower().split()],
-                "cet_relevance_scores": {"quantum_computing": 0.8}
+                "cet_relevance_scores": {"quantum_computing": 0.8},
             }
             for i, award in enumerate(sample_awards, 1)
         ]
-        
+
         mock_sam_client.get_solicitation_by_number.side_effect = mock_responses
-        
+
         results = await processor.process_batch(sample_awards)
-        
+
         assert len(results.successful) == 3
         assert len(results.failed) == 0
         assert results.total_processed == 3
-        
+
         # Verify API calls
         assert mock_sam_client.get_solicitation_by_number.call_count == 3
 
@@ -120,7 +117,7 @@ class TestSolicitationBatchProcessor:
                 "proposal_deadline": "2024-06-15",
                 "performance_period": 12,
                 "keywords": ["quantum"],
-                "cet_relevance_scores": {"quantum_computing": 0.9}
+                "cet_relevance_scores": {"quantum_computing": 0.9},
             },
             Exception("API Error"),  # Failure
             {
@@ -138,16 +135,16 @@ class TestSolicitationBatchProcessor:
                 "proposal_deadline": "2024-07-15",
                 "performance_period": 12,
                 "keywords": ["cybersecurity"],
-                "cet_relevance_scores": {"cybersecurity": 0.85}
-            }
+                "cet_relevance_scores": {"cybersecurity": 0.85},
+            },
         ]
-        
+
         results = await processor.process_batch(sample_awards)
-        
+
         assert len(results.successful) == 2
         assert len(results.failed) == 1
         assert results.total_processed == 3
-        assert results.success_rate == 2/3
+        assert results.success_rate == 2 / 3
 
     @pytest.mark.asyncio
     async def test_concurrent_processing_limit(self, processor, mock_sam_client):
@@ -158,14 +155,14 @@ class TestSolicitationBatchProcessor:
                 "award_id": f"AWARD-{i:03d}",
                 "solicitation_number": f"SOL-{i:03d}",
                 "agency": "DON",
-                "title": f"Research {i}"
+                "title": f"Research {i}",
             }
             for i in range(20)
         ]
-        
+
         # Track concurrent calls
         concurrent_calls = []
-        
+
         async def mock_api_call(solicitation_number):
             concurrent_calls.append(datetime.now())
             await asyncio.sleep(0.1)  # Simulate API delay
@@ -185,13 +182,13 @@ class TestSolicitationBatchProcessor:
                 "proposal_deadline": "2024-06-15",
                 "performance_period": 12,
                 "keywords": [],
-                "cet_relevance_scores": {}
+                "cet_relevance_scores": {},
             }
-        
+
         mock_sam_client.get_solicitation_by_number.side_effect = mock_api_call
-        
+
         results = await processor.process_batch(many_awards)
-        
+
         assert results.total_processed == 20
         # Should respect max_concurrent limit of 3
 
@@ -204,11 +201,11 @@ class TestSolicitationBatchProcessor:
                 "award_id": f"AWARD-{i:03d}",
                 "solicitation_number": f"SOL-{i:03d}",
                 "agency": "DON",
-                "title": f"Research {i}"
+                "title": f"Research {i}",
             }
             for i in range(25)  # More than batch_size of 10
         ]
-        
+
         mock_sam_client.get_solicitation_by_number.return_value = {
             "solicitation_id": "SOL-001",
             "solicitation_number": "SOL-001",
@@ -224,11 +221,11 @@ class TestSolicitationBatchProcessor:
             "proposal_deadline": "2024-06-15",
             "performance_period": 12,
             "keywords": [],
-            "cet_relevance_scores": {}
+            "cet_relevance_scores": {},
         }
-        
+
         results = await processor.process_batch(awards)
-        
+
         assert results.total_processed == 25
         # Should process in chunks of batch_size
 
@@ -253,20 +250,22 @@ class TestSolicitationBatchProcessor:
             keywords=[],
             cet_relevance_scores={},
             created_at=datetime.now(),
-            updated_at=datetime.now()
+            updated_at=datetime.now(),
         )
-        
+
         mock_storage.find_solicitation_by_id.return_value = existing_solicitation
-        
-        awards = [{
-            "award_id": "AWARD-001",
-            "solicitation_number": "N00014-24-S-B001",
-            "agency": "DON",
-            "title": "Test"
-        }]
-        
+
+        awards = [
+            {
+                "award_id": "AWARD-001",
+                "solicitation_number": "N00014-24-S-B001",
+                "agency": "DON",
+                "title": "Test",
+            }
+        ]
+
         results = await processor.process_batch(awards, skip_existing=True)
-        
+
         # Should skip existing solicitation
         assert results.skipped == 1
         assert mock_sam_client.get_solicitation_by_number.call_count == 0
@@ -279,11 +278,11 @@ class TestSolicitationBatchProcessor:
                 "award_id": f"AWARD-{i:03d}",
                 "solicitation_number": f"SOL-{i:03d}",
                 "agency": "DON",
-                "title": f"Research {i}"
+                "title": f"Research {i}",
             }
             for i in range(5)
         ]
-        
+
         mock_sam_client.get_solicitation_by_number.return_value = {
             "solicitation_id": "SOL-001",
             "solicitation_number": "SOL-001",
@@ -299,29 +298,33 @@ class TestSolicitationBatchProcessor:
             "proposal_deadline": "2024-06-15",
             "performance_period": 12,
             "keywords": [],
-            "cet_relevance_scores": {}
+            "cet_relevance_scores": {},
         }
-        
+
         progress_updates = []
-        
+
         def progress_callback(current, total, status):
             progress_updates.append((current, total, status))
-        
+
         results = await processor.process_batch(awards, progress_callback=progress_callback)
-        
+
         assert len(progress_updates) > 0
-        assert progress_updates[-1][0] == progress_updates[-1][1]  # Final update should show completion
+        assert (
+            progress_updates[-1][0] == progress_updates[-1][1]
+        )  # Final update should show completion
 
     @pytest.mark.asyncio
     async def test_error_recovery_and_retry(self, processor, mock_sam_client):
         """Test error recovery and retry logic."""
-        awards = [{
-            "award_id": "AWARD-001",
-            "solicitation_number": "SOL-001",
-            "agency": "DON",
-            "title": "Test"
-        }]
-        
+        awards = [
+            {
+                "award_id": "AWARD-001",
+                "solicitation_number": "SOL-001",
+                "agency": "DON",
+                "title": "Test",
+            }
+        ]
+
         # First call fails, second succeeds
         mock_sam_client.get_solicitation_by_number.side_effect = [
             Exception("Temporary API Error"),
@@ -340,30 +343,30 @@ class TestSolicitationBatchProcessor:
                 "proposal_deadline": "2024-06-15",
                 "performance_period": 12,
                 "keywords": [],
-                "cet_relevance_scores": {}
-            }
+                "cet_relevance_scores": {},
+            },
         ]
-        
+
         results = await processor.process_batch(awards, max_retries=1)
-        
+
         assert len(results.successful) == 1
         assert len(results.failed) == 0
         assert mock_sam_client.get_solicitation_by_number.call_count == 2
 
     def test_batch_results_summary(self, processor):
         """Test batch results summary generation."""
-        from src.sbir_cet_classifier.data.enrichment.batch_processor import BatchProcessingResults
-        
+        from sbir_cet_classifier.data.enrichment.batch_processor import BatchProcessingResults
+
         results = BatchProcessingResults(
             successful=["SOL-001", "SOL-002"],
             failed=[("SOL-003", "API Error")],
             skipped=["SOL-004"],
             total_processed=4,
-            processing_time=120.5
+            processing_time=120.5,
         )
-        
+
         summary = results.get_summary()
-        
+
         assert "2 successful" in summary
         assert "1 failed" in summary
         assert "1 skipped" in summary
@@ -373,13 +376,15 @@ class TestSolicitationBatchProcessor:
     @pytest.mark.asyncio
     async def test_storage_integration(self, processor, mock_sam_client, mock_storage):
         """Test integration with storage layer."""
-        awards = [{
-            "award_id": "AWARD-001",
-            "solicitation_number": "SOL-001",
-            "agency": "DON",
-            "title": "Test"
-        }]
-        
+        awards = [
+            {
+                "award_id": "AWARD-001",
+                "solicitation_number": "SOL-001",
+                "agency": "DON",
+                "title": "Test",
+            }
+        ]
+
         mock_sam_client.get_solicitation_by_number.return_value = {
             "solicitation_id": "SOL-001",
             "solicitation_number": "SOL-001",
@@ -395,14 +400,14 @@ class TestSolicitationBatchProcessor:
             "proposal_deadline": "2024-06-15",
             "performance_period": 12,
             "keywords": [],
-            "cet_relevance_scores": {}
+            "cet_relevance_scores": {},
         }
-        
+
         results = await processor.process_batch(awards, save_to_storage=True)
-        
+
         assert len(results.successful) == 1
         mock_storage.save_solicitations.assert_called_once()
-        
+
         # Verify solicitation was passed to storage
         saved_solicitations = mock_storage.save_solicitations.call_args[0][0]
         assert len(saved_solicitations) == 1
