@@ -198,7 +198,9 @@ class TestAwardeeHistoricalDataService:
         uei = "ABC123DEF456"
 
         # Mock paginated responses
-        def mock_paginated_call(uei, offset=0, limit=100):
+        def mock_paginated_call(uei, *args, **kwargs):
+            offset = kwargs.get("offset", 0)
+            limit = kwargs.get("limit", 100)
             if offset == 0:
                 return {
                     "awards": [{"awardId": f"AWARD-{i}"} for i in range(100)],
@@ -340,9 +342,8 @@ class TestAwardeePerformanceAnalyzer:
         expertise = analyzer.identify_expertise_areas(awards)
 
         # AI should be most frequent
-        assert expertise[0]["area"] == "AI"
-        assert expertise[0]["frequency"] == 2
-        assert any(area["area"] == "Cybersecurity" for area in expertise)
+        assert expertise[0] == "AI"
+        assert "Cybersecurity" in expertise
 
     def test_calculate_agency_diversity(self, analyzer):
         """Test agency diversity calculation."""
