@@ -67,7 +67,9 @@ class SAMAwardResponse(BaseModel):
     start_date: Optional[datetime] = Field(None, alias="startDate")
     end_date: Optional[datetime] = Field(None, alias="endDate")
     recipient_name: Optional[str] = Field(None, alias="recipientName")
-    recipient_uei: Optional[str] = Field(None, alias="recipientUei")
+    recipient_uei: Optional[str] = Field(None, alias="recipientUEI")
+    funding_agency: Optional[str] = Field(None, alias="fundingAgency")
+    program_office: Optional[str] = Field(None, alias="programOffice")
     primary_place_of_performance: Optional[OfficeAddress] = Field(
         None, alias="primaryPlaceOfPerformance"
     )
