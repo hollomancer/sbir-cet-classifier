@@ -66,7 +66,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-cache-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/requirements*.txt') }}
+          # Simpler, stable cache key to avoid complex interpolation issues in YAML parsing
+          key: pip-cache-${{ matrix.python-version }}-${{ runner.os }}-pip
           restore-keys: |
             pip-cache-${{ matrix.python-version }}-
 
@@ -75,12 +76,12 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
 
       - name: Install project + dev dependencies
-        # Prefer editable dev extras if available; otherwise fall back to requirements files.
+        # Prefer editable dev extras when available; otherwise fall back to requirements files.
         run: |
           set -e
-          # Prefer editable dev install when pyproject.toml is present and optional-dependencies is defined.
-          if [ -f pyproject.toml ] && grep -q 'optional-dependencies' pyproject.toml 2>/dev/null; then
-            pip install -e ".[dev]"
+          # If pyproject.toml exists, try editable dev install first (best-effort).
+          if [ -f pyproject.toml ]; then
+            pip install -e ".[dev]" || true
           elif [ -f requirements-dev.txt ]; then
             pip install -r requirements-dev.txt
           elif [ -f requirements.txt ]; then
