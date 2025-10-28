@@ -88,14 +88,20 @@ class ApplicabilityModel:
             adjusted_max_df = min(1.0, max(max_df_cfg, min_fraction))
         else:
             adjusted_max_df = float(max(max_df_cfg, float(adjusted_min_df)))
-        self._vectorizer.set_params(min_df=adjusted_min_df, max_df=adjusted_max_df)
+        # Proactively relax pruning for very small datasets to avoid empty vocabularies
+        if n_docs <= 3:
+            self._vectorizer.set_params(min_df=1, max_df=1.0)
+        else:
+            self._vectorizer.set_params(min_df=adjusted_min_df, max_df=adjusted_max_df)
         try:
             X = self._vectorizer.fit_transform(texts)
         except ValueError as e:
             msg = str(e)
             if "After pruning, no terms remain" in msg or "empty vocabulary" in msg:
-                # Fallback for tiny datasets: relax pruning thresholds
-                self._vectorizer.set_params(min_df=1, max_df=1.0)
+                # Fallback for tiny datasets: relax pruning thresholds and disable stop words; widen token pattern
+                self._vectorizer.set_params(
+                    min_df=1, max_df=1.0, stop_words=None, token_pattern=r"(?u)\b\w+\b"
+                )
                 X = self._vectorizer.fit_transform(texts)
             else:
                 raise
