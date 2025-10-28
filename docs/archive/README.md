@@ -51,7 +51,11 @@ This directory contains historical documentation, reports, and analysis that are
 ## Current Documentation
 
 For up-to-date documentation, see:
-- **[../../README.md](../../README.md)** - Current project overview
-- **[../../GETTING_STARTED.md](../../GETTING_STARTED.md)** - Current usage guide
-- **[../../TESTING.md](../../TESTING.md)** - Current testing guide
-- **[../PERFORMANCE_OPTIMIZATIONS.md](../PERFORMANCE_OPTIMIZATIONS.md)** - Latest performance improvements
+- **[../../README.md](../../README.md)** - Project overview
+- **[../cli/README.md](../cli/README.md)** - CLI usage and command reference
+- **[../ci/troubleshooting.md](../ci/troubleshooting.md)** - CI troubleshooting and common fixes
+- **[../config/README.md](../config/README.md)** - Configuration guide
+- **[../migrations/config-yaml-migration.md](../migrations/config-yaml-migration.md)** - Config and imports migration
+- **[../engineering/performance.md](../engineering/performance.md)** - Engineering performance guide
+- **[../engineering/refactoring/guide.md](../engineering/refactoring/guide.md)** - Refactoring guide
+- **[../../CONTRIBUTING.md](../../CONTRIBUTING.md)** - Contributing, dev setup, and testing

@@ -1,5 +1,14 @@
 # SBIR CET Classifier
 
+Quick links to consolidated docs:
+- CLI: docs/cli/README.md
+- CI troubleshooting: docs/ci/troubleshooting.md
+- Configuration: docs/config/README.md
+- Config & imports migration: docs/migrations/config-yaml-migration.md
+- Engineering performance: docs/engineering/performance.md
+- Refactoring guide: docs/engineering/refactoring/guide.md
+- Contributing: CONTRIBUTING.md
+
 > **Classify SBIR awards against Critical and Emerging Technology (CET) areas using ML**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)

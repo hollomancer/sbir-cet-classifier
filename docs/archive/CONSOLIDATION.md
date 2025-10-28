@@ -1,9 +1,16 @@
 # Consolidation & Migration Guide
 
-Status: in-progress  
-Purpose: document the consolidation of duplicated vectorizer and scoring code, list archived modules, and show canonical replacements and migration steps for maintainers and consumers.
+Status: superseded  
+This document has been superseded by consolidated documentation. For the latest guidance, see:
+- docs/cli/README.md — CLI usage and command reference
+- docs/ci/troubleshooting.md — CI troubleshooting and common fixes
+- docs/config/README.md — Configuration guide
+- docs/migrations/config-yaml-migration.md — Config & imports migration
+- docs/engineering/performance.md — Engineering performance guide
+- docs/engineering/refactoring/guide.md — Refactoring guide
+- CONTRIBUTING.md — Dev setup, tests, and conventions
 
-This document is the single source-of-truth for recent consolidation work (vectorizers, CET scorers, and associated helpers). It explains what was archived, what remains canonical, how to migrate imports and tests, and recommended next steps.
+The content below is retained for historical context.
 
 ---
 
