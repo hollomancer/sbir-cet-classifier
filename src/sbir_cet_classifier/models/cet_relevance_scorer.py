@@ -31,6 +31,94 @@ class CETRelevanceScorer:
             # Fallback to empty mapping if configuration unavailable
             self.cet_categories = {}
 
+        # Merge fallback defaults to ensure baseline coverage of CET categories
+        fallback_defaults = {
+            "quantum_computing": [
+                "quantum computing",
+                "quantum algorithm",
+                "quantum cryptography",
+                "quantum sensing",
+                "quantum communication",
+                "qubit",
+                "quantum entanglement",
+            ],
+            "artificial_intelligence": [
+                "artificial intelligence",
+                "machine learning",
+                "deep learning",
+                "neural network",
+                "ai",
+                "ml",
+                "computer vision",
+                "natural language processing",
+            ],
+            "cybersecurity": [
+                "cybersecurity",
+                "cyber security",
+                "information security",
+                "encryption",
+                "cryptography",
+                "firewall",
+                "intrusion detection",
+                "malware",
+            ],
+            "advanced_materials": [
+                "advanced materials",
+                "nanomaterials",
+                "composites",
+                "metamaterials",
+                "smart materials",
+                "biomaterials",
+                "carbon nanotubes",
+            ],
+            "nanotechnology": [
+                "nanotechnology",
+                "nanoparticles",
+                "nanoscale",
+                "nanostructures",
+                "nanofabrication",
+                "nanoelectronics",
+            ],
+            "biotechnology": [
+                "biotechnology",
+                "bioengineering",
+                "synthetic biology",
+                "gene therapy",
+                "bioinformatics",
+                "biomedical",
+                "pharmaceutical",
+            ],
+            "autonomous_systems": [
+                "autonomous systems",
+                "autonomous vehicles",
+                "robotics",
+                "unmanned",
+                "self-driving",
+                "autonomous navigation",
+                "robot",
+            ],
+            "semiconductors": [
+                "semiconductors",
+                "microelectronics",
+                "integrated circuits",
+                "chips",
+                "silicon",
+                "gallium arsenide",
+                "semiconductor fabrication",
+            ],
+        }
+        for cet_id, kw_list in fallback_defaults.items():
+            entry = self.cet_categories.get(cet_id, {"keywords": [], "phrases": [], "weight": 1.0})
+            merged = sorted(
+                list(set([str(k).lower() for k in entry.get("keywords", []) + kw_list]))
+            )
+            entry["keywords"] = merged
+            if "phrases" not in entry:
+                entry["phrases"] = []
+            if "weight" not in entry:
+                entry["weight"] = 1.0
+            self.cet_categories[cet_id] = entry
+
         # Initialize TF-IDF vectorizer for semantic similarity
         self.vectorizer = TfidfVectorizer(
             ngram_range=(1, 3), max_features=5000, stop_words="english"
@@ -86,13 +174,16 @@ class CETRelevanceScorer:
             if present_multi >= 1:
                 synergy += 0.10  # at least one multi-word keyword/phrase present
 
-            # Apply a floor when an exact multi-word keyword for this category is present
+            # Apply a floor when an exact keyword for this category is present
             has_multiword_exact = any(
                 isinstance(kw, str) and (" " in kw) and (kw in text_lower) for kw in kw_list
             )
+            has_any_exact = any(isinstance(kw, str) and (kw in text_lower) for kw in kw_list)
             combined = base_score + synergy
             if has_multiword_exact:
-                combined = max(combined, 0.75)
+                combined = max(combined, 0.80)
+            elif has_any_exact:
+                combined = max(combined, 0.70)
             combined_scores[category] = min(1.0, combined)
 
         return combined_scores
