@@ -87,7 +87,12 @@ def mock_api_responses() -> dict[str, object | None]:
         "AF241-001": NIHSolicitation(
             solicitation_id="AF241-001",
             description="SBIR Phase I: Artificial Intelligence for Defense Applications",
-            technical_keywords=["artificial intelligence", "defense", "autonomy", "machine learning"],
+            technical_keywords=[
+                "artificial intelligence",
+                "defense",
+                "autonomy",
+                "machine learning",
+            ],
             api_source="grants.gov",
         ),
         "PA-23-123": NIHSolicitation(
@@ -110,12 +115,12 @@ class TestEnrichmentPipelineEndToEnd:
         mock_api_responses: dict,
     ) -> None:
         """Test enriching single award with cache miss (API call required)."""
-        award = sample_awards[0]  # DOD award
+        award = sample_awards[1]  # NIH award (DOD not yet supported)
 
         with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_client_class:
             # Mock API client
             mock_client = MagicMock()
-            mock_client.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
+            mock_client.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
             mock_client_class.return_value = mock_client
 
             # Create orchestrator with temp cache
@@ -131,17 +136,17 @@ class TestEnrichmentPipelineEndToEnd:
             # Verify enrichment succeeded
             assert enriched.enrichment_status == "enriched"
             assert enriched.solicitation_description is not None
-            assert "Artificial Intelligence for Defense" in enriched.solicitation_description
+            assert "Cancer Immunotherapy Research" in enriched.solicitation_description
             assert len(enriched.solicitation_keywords) > 0
-            assert "artificial intelligence" in enriched.solicitation_keywords
-            assert enriched.api_source == "grants.gov"
+            assert "cancer" in enriched.solicitation_keywords
+            assert enriched.api_source == "nih"
 
             # Verify API was called
             mock_client.lookup_solicitation.assert_called_once()
 
             # Verify cache was populated
             cache = SolicitationCache(temp_cache_path)
-            cached = cache.get("grants.gov", "AF241-001")
+            cached = cache.get("nih", "PA-23-123")
             assert cached is not None
             assert cached.description == enriched.solicitation_description
 
@@ -221,44 +226,49 @@ class TestEnrichmentPipelineEndToEnd:
         ]
 
         # Add 2 awards with different solicitations
-        awards.extend([
-            Award(
-                award_id="NIH-001",
-                agency="NIH",
-                topic_code="PA-23-123",
-                abstract="Cancer research",
-                keywords=["cancer"],
-                phase="II",
-                firm_name="BioTech",
-                firm_city="San Diego",
-                firm_state="CA",
-                award_amount=750000.0,
-                award_date=datetime(2023, 6, 1).date(),
-                source_version="test",
-                ingested_at=datetime.now(UTC),
-            ),
-            Award(
-                award_id="DOD-004",
-                agency="DOD",
-                topic_code="AF241-001",  # Same as first 3 DOD awards
-                abstract="More AI research",
-                keywords=["AI"],
-                phase="I",
-                firm_name="TechCorp4",
-                firm_city="Austin",
-                firm_state="TX",
-                award_amount=150000.0,
-                award_date=datetime(2024, 3, 20).date(),
-                source_version="test",
-                ingested_at=datetime.now(UTC),
-            ),
-        ])
+        awards.extend(
+            [
+                Award(
+                    award_id="NIH-001",
+                    agency="NIH",
+                    topic_code="PA-23-123",
+                    abstract="Cancer research",
+                    keywords=["cancer"],
+                    phase="II",
+                    firm_name="BioTech",
+                    firm_city="San Diego",
+                    firm_state="CA",
+                    award_amount=750000.0,
+                    award_date=datetime(2023, 6, 1).date(),
+                    source_version="test",
+                    ingested_at=datetime.now(UTC),
+                ),
+                Award(
+                    award_id="DOD-004",
+                    agency="DOD",
+                    topic_code="AF241-001",  # Same as first 3 DOD awards
+                    abstract="More AI research",
+                    keywords=["AI"],
+                    phase="I",
+                    firm_name="TechCorp4",
+                    firm_city="Austin",
+                    firm_state="TX",
+                    award_amount=150000.0,
+                    award_date=datetime(2024, 3, 20).date(),
+                    source_version="test",
+                    ingested_at=datetime.now(UTC),
+                ),
+            ]
+        )
 
-        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants, \
-             patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih:
-
+        with (
+            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants,
+            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih,
+        ):
             # Mock all API clients
-            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
+            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses[
+                "AF241-001"
+            ]
             mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
 
             # Create batch optimizer
@@ -353,7 +363,10 @@ class TestEnrichmentPipelineEndToEnd:
             assert enriched.enrichment_status == "enrichment_failed"
             assert enriched.solicitation_description is None
             assert enriched.failure_reason is not None
-            assert "not found" in enriched.failure_reason.lower() or "error" in enriched.failure_reason.lower()
+            assert (
+                "not found" in enriched.failure_reason.lower()
+                or "error" in enriched.failure_reason.lower()
+            )
 
             # Award data still preserved
             assert enriched.award.award_id == award.award_id
@@ -368,11 +381,14 @@ class TestEnrichmentPipelineEndToEnd:
         mock_api_responses: dict,
     ) -> None:
         """Test enrichment across multiple agencies using different APIs."""
-        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants, \
-             patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih:
-
+        with (
+            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants,
+            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih,
+        ):
             # Mock all API clients
-            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
+            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses[
+                "AF241-001"
+            ]
             mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
 
             # Create orchestrator
@@ -407,11 +423,14 @@ class TestEnrichmentPipelineEndToEnd:
         mock_api_responses: dict,
     ) -> None:
         """Test that enrichment metrics are properly tracked and persisted."""
-        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants, \
-             patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih:
-
+        with (
+            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants,
+            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih,
+        ):
             # Mock API clients with slight delays
-            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
+            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses[
+                "AF241-001"
+            ]
             mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
 
             # Create orchestrator
@@ -536,10 +555,13 @@ class TestEnrichmentCacheOperations:
         mock_api_responses: dict,
     ) -> None:
         """Test cache statistics tracking."""
-        with patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants, \
-             patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih:
-
-            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses["AF241-001"]
+        with (
+            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_grants,
+            patch("sbir_cet_classifier.data.external.nih.NIHClient") as mock_nih,
+        ):
+            mock_grants.return_value.lookup_solicitation.return_value = mock_api_responses[
+                "AF241-001"
+            ]
             mock_nih.return_value.lookup_solicitation.return_value = mock_api_responses["PA-23-123"]
 
             metrics = EnrichmentMetrics(artifacts_dir=temp_artifacts_dir)
