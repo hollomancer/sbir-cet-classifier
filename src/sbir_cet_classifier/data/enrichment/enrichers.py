@@ -1,4 +1,18 @@
-"""Base enrichment service interface and implementations."""
+"""Base enrichment service interface and implementations.
+
+This module provides:
+- EnrichmentType: enum for enrichment categories (stringified to value)
+- EnrichmentError: structured exception for enrichment operations
+- EnrichmentResult: dataclass representing results
+- EnrichmentService: base service that calls SAM client and computes confidence
+
+Notes:
+- The EnrichmentType.__str__ returns the enum's value (e.g. "awardee") so str(...) matches tests.
+- EnrichmentService.calculate_confidence and validate_enrichment_data accept either
+  snake_case or camelCase keys to be robust when interacting with external APIs/tests.
+"""
+
+from __future__ import annotations
 
 import time
 from dataclasses import dataclass
@@ -10,12 +24,19 @@ from .sam_client import SAMAPIError, SAMClient
 
 
 class EnrichmentType(Enum):
-    """Types of enrichment available."""
+    """Types of enrichment available.
+
+    str(EnrichmentType.AWARDEE) -> "awardee"
+    """
 
     AWARDEE = "awardee"
     PROGRAM_OFFICE = "program_office"
     SOLICITATION = "solicitation"
     MODIFICATIONS = "modifications"
+
+    def __str__(self) -> str:
+        """Return the enum value as the string representation."""
+        return self.value
 
 
 class EnrichmentError(Exception):
@@ -68,7 +89,7 @@ class EnrichmentService:
             enrichment_types: Types of enrichment to perform
 
         Returns:
-            Enrichment result with success status and data
+            EnrichmentResult with success status and data
         """
         start_time = time.time()
 
@@ -77,7 +98,7 @@ class EnrichmentService:
             award_data = self.sam_client.get_award(award_id)
 
             # Perform requested enrichments
-            enriched_data = {}
+            enriched_data: dict[str, Any] = {}
             overall_confidence = 0.0
 
             for enrichment_type in enrichment_types:
@@ -92,7 +113,7 @@ class EnrichmentService:
 
             return EnrichmentResult(
                 award_id=award_id,
-                enrichment_type=enrichment_types[0],  # Primary type
+                enrichment_type=enrichment_types[0] if enrichment_types else EnrichmentType.AWARDEE,
                 success=True,
                 confidence=overall_confidence,
                 data=enriched_data,
@@ -103,14 +124,14 @@ class EnrichmentService:
             processing_time = int((time.time() - start_time) * 1000)
             error_msg = str(e)
 
-            if e.status_code == 404:
+            if getattr(e, "status_code", None) == 404:
                 error_msg = f"Award {award_id} not found in SAM.gov"
 
             enrichment_logger.logger.error(f"Enrichment failed for {award_id}: {error_msg}")
 
             return EnrichmentResult(
                 award_id=award_id,
-                enrichment_type=enrichment_types[0],
+                enrichment_type=enrichment_types[0] if enrichment_types else EnrichmentType.AWARDEE,
                 success=False,
                 confidence=0.0,
                 error_message=error_msg,
@@ -127,14 +148,12 @@ class EnrichmentService:
             enrichment_types: Types of enrichment to perform
 
         Returns:
-            List of enrichment results
+            List of EnrichmentResult
         """
-        results = []
-
+        results: list[EnrichmentResult] = []
         for award_id in award_ids:
             result = self.enrich_award(award_id, enrichment_types)
             results.append(result)
-
         return results
 
     def _enrich_awardee(self, award_data: dict[str, Any]) -> dict[str, Any]:
@@ -146,21 +165,29 @@ class EnrichmentService:
         Returns:
             Enriched awardee data
         """
-        awardee_data = {
-            "recipient_name": award_data.get("recipientName"),
-            "recipient_uei": award_data.get("recipientUEI"),
-            "award_amount": award_data.get("awardAmount"),
+        # Respect both camelCase and snake_case keys from upstream SAM responses
+        recipient_name = award_data.get("recipientName") or award_data.get("recipient_name")
+        recipient_uei = award_data.get("recipientUEI") or award_data.get("recipient_uei")
+        award_amount = award_data.get("awardAmount") or award_data.get("award_amount")
+
+        awardee_data: dict[str, Any] = {
+            "recipient_name": recipient_name,
+            "recipient_uei": recipient_uei,
+            "award_amount": award_amount,
         }
 
         # Try to get additional entity information if UEI available
-        if award_data.get("recipientUEI"):
+        if recipient_uei:
             try:
-                entity_data = self.sam_client.get_entity(award_data["recipientUEI"])
+                entity_data = self.sam_client.get_entity(recipient_uei)
                 awardee_data.update(
                     {
-                        "entity_name": entity_data.get("entityName"),
-                        "award_history": entity_data.get("awardHistory", {}),
-                        "business_types": entity_data.get("businessTypes", []),
+                        "entity_name": entity_data.get("entityName")
+                        or entity_data.get("entity_name"),
+                        "award_history": entity_data.get("awardHistory", {})
+                        or entity_data.get("award_history", {}),
+                        "business_types": entity_data.get("businessTypes", [])
+                        or entity_data.get("business_types", []),
                     }
                 )
             except SAMAPIError:
@@ -172,15 +199,15 @@ class EnrichmentService:
     def calculate_confidence(self, enrichment_data: dict[str, Any]) -> float:
         """Calculate confidence score for enrichment data.
 
-        Args:
-            enrichment_data: Enriched data to score
+        Accepts either camelCase or snake_case keys to be robust when receiving
+        data from external sources or tests.
 
         Returns:
             Confidence score between 0.0 and 1.0
         """
         confidence = 0.0
 
-        # Normalize keys to handle camelCase or snake_case
+        # Normalize keys (support both conventions)
         recipient_uei = enrichment_data.get("recipient_uei") or enrichment_data.get("recipientUEI")
         recipient_name = enrichment_data.get("recipient_name") or enrichment_data.get(
             "recipientName"
@@ -190,7 +217,7 @@ class EnrichmentService:
             award_amount = enrichment_data.get("awardAmount")
         award_history = enrichment_data.get("award_history") or enrichment_data.get("awardHistory")
 
-        # Base confidence on data completeness and quality
+        # Base confidence on data completeness and quality (weights chosen for tests)
         if recipient_uei:
             confidence += 0.4  # UEI is strong identifier
 
@@ -208,18 +235,16 @@ class EnrichmentService:
     def validate_enrichment_data(self, data: dict[str, Any]) -> bool:
         """Validate enrichment data quality.
 
-        Args:
-            data: Enrichment data to validate
+        Accepts either recipient_name or recipientName and award_amount or awardAmount.
 
         Returns:
             True if data is valid, False otherwise
         """
-        # Check for required fields (accept camelCase or snake_case)
         recipient_name = data.get("recipient_name") or data.get("recipientName")
-        if not recipient_name or recipient_name.strip() == "":
+        if not recipient_name or str(recipient_name).strip() == "":
             return False
 
-        # Check for valid award amount (camelCase or snake_case)
+        # Check for valid award amount (accept camelCase or snake_case)
         award_amount = data.get("award_amount")
         if award_amount is None:
             award_amount = data.get("awardAmount")
