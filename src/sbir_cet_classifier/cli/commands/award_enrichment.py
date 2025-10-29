@@ -1,6 +1,8 @@
 """CLI commands for award enrichment operations."""
 
 import json
+import sys
+from pathlib import Path
 from typing import Optional
 
 import click
@@ -99,10 +101,8 @@ def enrich_single(
                 click.echo(f"Failed to enrich award {award_id}")
                 if "error" in result_dict:
                     click.echo(f"Error: {result_dict['error']}")
-                raise click.Exit(1)
+                sys.exit(1)
 
-    except click.Exit:
-        raise
     except Exception as e:
         if output_format == "json":
             error_output = {
@@ -113,7 +113,7 @@ def enrich_single(
             click.echo(json.dumps(error_output, indent=2))
         else:
             click.echo(f"Error enriching award: {str(e)}")
-        raise click.Exit(1)
+        sys.exit(1)
 
 
 @click.command("enrich-batch")
@@ -164,7 +164,7 @@ def enrich_batch(
 
         if not award_ids:
             console.print("[red]No award IDs found in input file[/red]")
-            raise click.Exit(1)
+            sys.exit(1)
 
         console.print(f"[blue]Processing {len(award_ids)} awards...[/blue]")
 
@@ -227,13 +227,11 @@ def enrich_batch(
         console.print(f"  Success Rate: {(successful / len(award_ids)):.1%}")
 
         if failed > 0:
-            raise click.Exit(1)
+            sys.exit(1)
 
-    except click.Exit:
-        raise
     except Exception as e:
         click.echo(f"Error during batch processing: {str(e)}")
-        raise click.Exit(1)
+        sys.exit(1)
 
 
 # Create a group for the commands
