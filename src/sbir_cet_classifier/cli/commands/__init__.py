@@ -29,6 +29,24 @@ from sbir_cet_classifier.cli.commands.review_queue import app as review_queue_ap
 from sbir_cet_classifier.cli.commands.rules import app as rules_app
 from sbir_cet_classifier.cli.commands.summary import app as summary_app
 
+# Batch enrichment service export for test patching
+try:
+    from sbir_cet_classifier.data.enrichment.batch_enricher import (  # type: ignore
+        BatchEnrichmentService,
+    )
+except Exception:
+
+    class BatchEnrichmentService:  # pragma: no cover - test patch target
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def enrich_batch(self, *args, **kwargs):
+            return {}
+
+        def resume_batch(self, *args, **kwargs):
+            return {}
+
+
 # Expose services and utilities so tests can patch these symbols on this module path
 from sbir_cet_classifier.data.enrichment.enrichers import EnrichmentService  # for patching
 from sbir_cet_classifier.data.enrichment.status import EnrichmentStatusTracker  # for patching
@@ -101,6 +119,7 @@ __all__ = [
     "ProgramOfficeEnrichmentService",
     "SolicitationEnrichmentService",
     "ModificationsEnrichmentService",
+    "BatchEnrichmentService",
     "load_config",
     # Command aliases expected by tests
     "enrich_single",
