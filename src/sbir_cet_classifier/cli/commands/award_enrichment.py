@@ -96,9 +96,9 @@ def enrich_single(
                     for key, value in result_dict["data"].items():
                         console.print(f"  {key}: {value}")
             else:
-                console.print(f"[red]✗ Failed to enrich award {award_id}[/red]")
+                click.echo(f"Failed to enrich award {award_id}")
                 if "error" in result_dict:
-                    console.print(f"  Error: {result_dict['error']}")
+                    click.echo(f"Error: {result_dict['error']}")
                 raise click.Exit(1)
 
     except click.Exit:
@@ -112,7 +112,7 @@ def enrich_single(
             }
             click.echo(json.dumps(error_output, indent=2))
         else:
-            console.print(f"[red]Error enriching award: {str(e)}[/red]")
+            click.echo(f"Error enriching award: {str(e)}")
         raise click.Exit(1)
 
 
@@ -232,7 +232,7 @@ def enrich_batch(
     except click.Exit:
         raise
     except Exception as e:
-        console.print(f"[red]Error during batch processing: {str(e)}[/red]")
+        click.echo(f"Error during batch processing: {str(e)}")
         raise click.Exit(1)
 
 
