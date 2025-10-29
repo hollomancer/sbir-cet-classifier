@@ -1,6 +1,5 @@
 """CLI commands for enrichment operations."""
 
-import asyncio
 from pathlib import Path
 from typing import Optional, List
 import typer
@@ -260,6 +259,13 @@ def enrichment_status(
         table.add_row("Solicitations", "✗ Not found", "0", "0 MB")
 
     console.print(table)
+
+
+# Default asyncio import for direct module usage (not via enrichment_commands shim)
+try:
+    asyncio  # noqa: F821
+except NameError:
+    import asyncio  # noqa: F401
 
 
 if __name__ == "__main__":

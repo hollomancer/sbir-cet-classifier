@@ -4,6 +4,9 @@ Several unit tests import :mod:`sbir_cet_classifier.cli.enrichment_commands` and
 objects on that module. The production code lives under
 :mod:`sbir_cet_classifier.cli.commands.enrichment`, so this file re-exports the symbols
 those tests expect while keeping the application logic in its canonical location.
+
+This module also injects a patchable asyncio reference into the enrichment module
+to allow tests to mock asyncio.run() calls.
 """
 
 from __future__ import annotations
@@ -19,14 +22,16 @@ from sbir_cet_classifier.data.enrichment.sam_client import SAMClient  # noqa: F4
 from sbir_cet_classifier.data.enrichment.solicitation_service import SolicitationService  # noqa: F401
 from sbir_cet_classifier.data.storage import SolicitationStorage  # noqa: F401
 
-# Import enrichment module and inject our asyncio reference for test patchability
+# Import the enrichment module and inject our asyncio reference
+# This must happen BEFORE we import the command functions
 import sbir_cet_classifier.cli.commands.enrichment as _enrichment_module
 
-# Make the enrichment module use our asyncio so test patches to this module work
+# Inject our asyncio into the enrichment module so patches to this module's asyncio
+# will affect the enrichment commands
 _enrichment_module.asyncio = asyncio
 
-# Re-export CLI commands from the enrichment module
-from sbir_cet_classifier.cli.commands.enrichment import (
+# Now import the CLI commands - they will use the asyncio we injected above
+from sbir_cet_classifier.cli.commands.enrichment import (  # noqa: E402
     app,
     enrich_batch_solicitations,
     enrich_solicitation,
