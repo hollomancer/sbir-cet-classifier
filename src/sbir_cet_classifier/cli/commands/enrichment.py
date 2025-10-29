@@ -1,5 +1,6 @@
 """CLI commands for enrichment operations."""
 
+import asyncio
 from pathlib import Path
 from typing import Optional, List
 import typer
@@ -12,9 +13,6 @@ from sbir_cet_classifier.data.enrichment.batch_processor import SolicitationBatc
 from sbir_cet_classifier.data.storage import SolicitationStorage
 from sbir_cet_classifier.data.enrichment.sam_client import SAMClient
 from sbir_cet_classifier.common.config import EnrichmentConfig
-
-# Import asyncio via enrichment_commands for test patchability
-from sbir_cet_classifier.cli import enrichment_commands
 
 console = Console()
 app = typer.Typer(name="enrich", help="Enrichment commands for SAM.gov data")
@@ -119,7 +117,7 @@ def enrich_solicitation(
             raise typer.Exit(1)
 
     # Run async function
-    enrichment_commands.asyncio.run(enrich_single())
+    asyncio.run(enrich_single())
 
 
 @app.command("batch-solicitations")
@@ -200,7 +198,7 @@ def enrich_batch_solicitations(
             raise typer.Exit(1)
 
     # Run async function
-    enrichment_commands.asyncio.run(process_batch())
+    asyncio.run(process_batch())
 
 
 @app.command("status")

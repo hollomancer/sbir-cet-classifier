@@ -13,17 +13,24 @@ import asyncio
 # Third-party dependencies re-exported for test patching.
 import pandas as pd  # noqa: F401
 
+from sbir_cet_classifier.common.config import EnrichmentConfig  # noqa: F401
+from sbir_cet_classifier.data.enrichment.batch_processor import SolicitationBatchProcessor  # noqa: F401
+from sbir_cet_classifier.data.enrichment.sam_client import SAMClient  # noqa: F401
+from sbir_cet_classifier.data.enrichment.solicitation_service import SolicitationService  # noqa: F401
+from sbir_cet_classifier.data.storage import SolicitationStorage  # noqa: F401
+
+# Import enrichment commands module and re-export its CLI
 from sbir_cet_classifier.cli.commands.enrichment import (
     app,
     enrich_batch_solicitations,
     enrich_solicitation,
     enrichment_status,
 )
-from sbir_cet_classifier.common.config import EnrichmentConfig  # noqa: F401
-from sbir_cet_classifier.data.enrichment.batch_processor import SolicitationBatchProcessor  # noqa: F401
-from sbir_cet_classifier.data.enrichment.sam_client import SAMClient  # noqa: F401
-from sbir_cet_classifier.data.enrichment.solicitation_service import SolicitationService  # noqa: F401
-from sbir_cet_classifier.data.storage import SolicitationStorage  # noqa: F401
+
+# Make the enrichment module use our asyncio reference so test patches work
+import sbir_cet_classifier.cli.commands.enrichment as _enrichment_module
+
+_enrichment_module.asyncio = asyncio
 
 __all__ = [
     "asyncio",
