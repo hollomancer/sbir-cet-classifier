@@ -259,10 +259,11 @@ app.add_command(enrich_batch)
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 def enrichment_status(summary: bool, award_id: Optional[str], failed_only: bool, verbose: bool):
     """Show enrichment status and statistics."""
-    from sbir_cet_classifier.cli.commands import EnrichmentStatusTracker
+    from sbir_cet_classifier.cli.commands import EnrichmentStatusTracker, load_config
 
     try:
-        # Initialize status tracker
+        # Load configuration and initialize status tracker
+        load_config()
         status_tracker = EnrichmentStatusTracker()
 
         if summary:
