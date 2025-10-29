@@ -6,7 +6,8 @@ This package organizes CLI commands into feature-based modules:
 - summary: Summary and reporting commands
 - review_queue: Manual review queue commands
 - awards: Award data management commands
-- enrichment: Data enrichment commands
+- award_enrichment: Award enrichment commands
+- enrichment: Data enrichment commands (solicitations)
 - export: Data export commands
 - config: Configuration management commands
 - rules: Rule management commands
@@ -15,6 +16,12 @@ This package organizes CLI commands into feature-based modules:
 from __future__ import annotations
 
 from sbir_cet_classifier.cli.commands.awards import awards_app
+from sbir_cet_classifier.cli.commands.award_enrichment import (
+    app as award_enrichment_app,
+    enrich_single,
+    enrich_batch,
+    enrichment_status,
+)
 from sbir_cet_classifier.cli.commands.classify import app as classify_app
 from sbir_cet_classifier.cli.commands.config import app as config_app
 from sbir_cet_classifier.cli.commands.enrichment import (
@@ -81,15 +88,6 @@ except Exception:
 from sbir_cet_classifier.common.config import load_config as load_config  # re-export
 
 
-# Command aliases expected by tests
-def enrich_single(*args, **kwargs):
-    return _enrich_solicitation_cmd(*args, **kwargs)
-
-
-enrich_batch = _enrich_batch_cmd
-enrich_status = _enrichment_status_cmd
-
-
 # Additional shim commands (placeholders; tests patch the services referenced here)
 def enrich_awardee(*args, **kwargs):  # pragma: no cover - shim for tests
     _ = AwardeeEnrichmentService  # reference to enable patch target
@@ -108,6 +106,7 @@ def enrich_modifications(*args, **kwargs):  # pragma: no cover - shim for tests
 
 __all__ = [
     "awards_app",
+    "award_enrichment_app",
     "classify_app",
     "config_app",
     "enrichment_app",
@@ -125,10 +124,10 @@ __all__ = [
     "ModificationsEnrichmentService",
     "BatchEnrichmentService",
     "load_config",
-    # Command aliases expected by tests
+    # Award enrichment commands expected by tests
     "enrich_single",
     "enrich_batch",
-    "enrich_status",
+    "enrichment_status",
     "enrich_awardee",
     "enrich_program",
     "enrich_modifications",

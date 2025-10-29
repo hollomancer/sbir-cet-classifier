@@ -7,16 +7,11 @@ from pathlib import Path
 import json
 import click
 
-from sbir_cet_classifier.cli.commands.enrichment import (
-    app,
-    enrich_solicitation,
-    enrich_batch_solicitations,
-    enrichment_status,
+from sbir_cet_classifier.cli.commands import (
+    enrich_single,
+    enrich_batch,
+    enrichment_status as enrich_status,
 )
-
-enrich_single = click.Command("enrich-single", callback=enrich_solicitation)
-enrich_batch = click.Command("enrich-batch", callback=enrich_batch_solicitations)
-enrich_status = click.Command("enrich-status", callback=enrichment_status)
 
 
 class TestEnrichSingleCommand:
