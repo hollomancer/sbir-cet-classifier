@@ -247,67 +247,220 @@ app.add_command(enrich_batch)
 
 
 @click.command("enrich-status")
-@click.option(
-    "--data-dir",
-    "-d",
-    type=click.Path(),
-    default="data/processed",
-    help="Data directory",
-)
+@click.option("--summary", is_flag=True, help="Show summary statistics")
+@click.option("--award-id", help="Show status for specific award")
+@click.option("--failed-only", is_flag=True, help="Show only failed enrichments")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-def enrichment_status(data_dir: str, verbose: bool):
+def enrichment_status(summary: bool, award_id: Optional[str], failed_only: bool, verbose: bool):
     """Show enrichment status and statistics."""
-    from pathlib import Path
-    from rich.table import Table
+    from sbir_cet_classifier.cli.commands import EnrichmentStatusTracker
 
-    data_path = Path(data_dir)
+    try:
+        # Initialize status tracker
+        status_tracker = EnrichmentStatusTracker()
 
-    table = Table(title="Enrichment Status")
-    table.add_column("Data Type", style="cyan")
-    table.add_column("Status", style="white")
-    table.add_column("Records", style="green")
-    table.add_column("File Size", style="blue")
+        if summary:
+            # Get summary statistics
+            summary_data = status_tracker.get_summary()
 
-    # Check for enrichment files
-    enrichment_file = data_path / "enrichment_results.json"
+            total = summary_data.get("total", 0)
+            completed = summary_data.get("completed", 0)
+            failed = summary_data.get("failed", 0)
+            pending = summary_data.get("pending", 0)
+            success_rate = summary_data.get("success_rate", 0.0)
 
-    if enrichment_file.exists():
-        try:
-            with open(enrichment_file, "r") as f:
-                results = json.load(f)
+            click.echo("Enrichment Summary:")
+            click.echo(f"  Total: {total}")
+            click.echo(f"  Completed: {completed}")
+            click.echo(f"  Failed: {failed}")
+            click.echo(f"  Pending: {pending}")
+            click.echo(f"  Success Rate: {success_rate:.0%}")
 
-            file_size = enrichment_file.stat().st_size
-            successful = sum(1 for r in results if r.get("status") == "completed")
+        elif award_id:
+            # Get status for specific award
+            status = status_tracker.get_status(award_id)
 
-            table.add_row(
-                "Enrichment Results",
-                "✓ Available",
-                str(len(results)),
-                f"{file_size / 1024:.1f} KB",
-            )
+            if status:
+                click.echo(f"Award ID: {status.award_id}")
+                click.echo(
+                    f"Status: {status.status.value if hasattr(status.status, 'value') else str(status.status).lower()}"
+                )
+                click.echo(f"Confidence Score: {status.confidence_score:.2%}")
+                click.echo(
+                    f"Enrichment Types: {', '.join(str(t) for t in status.enrichment_types)}"
+                )
+                click.echo(f"Last Updated: {status.last_updated}")
 
-            if verbose:
-                console.print(table)
-                console.print(f"\n[cyan]Enrichment Summary:[/cyan]")
-                console.print(f"  Total records: {len(results)}")
-                console.print(f"  Successful: {successful}")
-                console.print(f"  Failed: {len(results) - successful}")
+                if status.error_message:
+                    click.echo(f"Error: {status.error_message}")
 
-                if results:
-                    avg_confidence = sum(r.get("confidence_score", 0) for r in results) / len(
-                        results
-                    )
-                    console.print(f"  Average confidence: {avg_confidence:.1%}")
-                return
-        except Exception as e:
-            table.add_row("Enrichment Results", f"✗ Error: {str(e)}", "0", "0 KB")
-    else:
-        table.add_row("Enrichment Results", "✗ Not found", "0", "0 KB")
+                if status.data_sources:
+                    click.echo(f"Data Sources: {', '.join(status.data_sources)}")
+            else:
+                click.echo(f"No status found for award {award_id}")
+                sys.exit(1)
 
-    console.print(table)
+        elif failed_only:
+            # Import StatusState
+            from sbir_cet_classifier.data.enrichment.status import StatusState
+
+            # List only failed enrichments
+            failed_statuses = status_tracker.list_statuses(status_filter=StatusState.FAILED)
+
+            if failed_statuses:
+                click.echo(f"Failed Enrichments ({len(failed_statuses)}):")
+                for status in failed_statuses:
+                    award_id_val = status.award_id
+                    error_msg = status.error_message or "Unknown error"
+                    click.echo(f"  {award_id_val}: {error_msg}")
+            else:
+                click.echo("No failed enrichments found")
+        else:
+            # Default: show basic status
+            summary_data = status_tracker.get_summary()
+            total = summary_data.get("total", 0)
+            completed = summary_data.get("completed", 0)
+            failed = summary_data.get("failed", 0)
+
+            click.echo(f"Total enrichments: {total}")
+            click.echo(f"Completed: {completed}")
+            click.echo(f"Failed: {failed}")
+
+    except Exception as e:
+        if verbose:
+            click.echo(f"Error retrieving status: {str(e)}")
+        # Don't exit with error for status command
 
 
 app.add_command(enrichment_status)
+
+
+@click.command("enrich-awardee")
+@click.argument("award_id")
+@click.option("--min-confidence", type=float, default=0.0, help="Minimum confidence threshold")
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def enrich_awardee(award_id: str, min_confidence: float, verbose: bool):
+    """Enrich awardee information for an award."""
+    from sbir_cet_classifier.cli.commands import AwardeeEnrichmentService
+
+    try:
+        # Initialize awardee enrichment service
+        awardee_service = AwardeeEnrichmentService()
+
+        # Enrich awardee
+        result = awardee_service.enrich_awardee(award_id)
+
+        # Handle both dict (mock) and object (real) responses
+        if isinstance(result, dict):
+            result_dict = result
+        else:
+            result_dict = {
+                "award_id": getattr(result, "award_id", award_id),
+                "awardee_uei": getattr(result, "awardee_uei", None),
+                "confidence_score": getattr(result, "confidence_score", 0.0),
+                "data_sources": getattr(result, "data_sources", []),
+            }
+
+        award_id_val = result_dict.get("award_id", award_id)
+        confidence_score = result_dict.get("confidence_score", 0.0)
+        awardee_uei = result_dict.get("awardee_uei", "Unknown")
+        data_sources = result_dict.get("data_sources", [])
+
+        click.echo(f"Award ID: {award_id_val}")
+        click.echo(f"Awardee UEI: {awardee_uei}")
+        click.echo(f"Confidence Score: {confidence_score:.2%}")
+
+        if data_sources:
+            click.echo(f"Data Sources: {', '.join(data_sources)}")
+
+        # Warn if confidence is below threshold
+        if min_confidence > 0 and confidence_score < min_confidence:
+            click.echo(
+                f"Warning: Confidence score ({confidence_score:.2%}) is below threshold ({min_confidence:.2%})"
+            )
+
+    except Exception as e:
+        click.echo(f"Error enriching awardee: {str(e)}")
+        sys.exit(1)
+
+
+@click.command("enrich-program")
+@click.argument("award_id")
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def enrich_program(award_id: str, verbose: bool):
+    """Enrich program office information for an award."""
+    from sbir_cet_classifier.cli.commands import ProgramOfficeEnrichmentService
+
+    try:
+        # Initialize program office enrichment service
+        program_service = ProgramOfficeEnrichmentService()
+
+        # Enrich program office
+        result = program_service.enrich_program_office(award_id)
+
+        # Handle both dict (mock) and object (real) responses
+        if isinstance(result, dict):
+            result_dict = result
+        else:
+            result_dict = {
+                "award_id": getattr(result, "award_id", award_id),
+                "agency": getattr(result, "agency", None),
+                "office_name": getattr(result, "office_name", None),
+                "strategic_focus": getattr(result, "strategic_focus", []),
+            }
+
+        award_id_val = result_dict.get("award_id", award_id)
+        agency = result_dict.get("agency", "Unknown")
+        office_name = result_dict.get("office_name", "Unknown")
+        strategic_focus = result_dict.get("strategic_focus", [])
+
+        click.echo(f"Award ID: {award_id_val}")
+        click.echo(f"Agency: {agency}")
+        click.echo(f"Office Name: {office_name}")
+
+        if strategic_focus:
+            click.echo(f"Strategic Focus: {', '.join(strategic_focus)}")
+
+    except Exception as e:
+        click.echo(f"Error enriching program office: {str(e)}")
+        sys.exit(1)
+
+
+@click.command("enrich-modifications")
+@click.argument("award_id")
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def enrich_modifications(award_id: str, verbose: bool):
+    """Enrich award modifications information."""
+    from sbir_cet_classifier.cli.commands import ModificationsEnrichmentService
+
+    try:
+        # Initialize modifications enrichment service
+        modifications_service = ModificationsEnrichmentService()
+
+        # Enrich modifications
+        result = modifications_service.enrich_modifications(award_id)
+
+        # Handle both dict (mock) and object (real) responses
+        if isinstance(result, dict):
+            result_dict = result
+        else:
+            result_dict = {
+                "award_id": getattr(result, "award_id", award_id),
+                "modification_count": getattr(result, "modification_count", 0),
+                "total_value_change": getattr(result, "total_value_change", 0.0),
+            }
+
+        award_id_val = result_dict.get("award_id", award_id)
+        modification_count = result_dict.get("modification_count", 0)
+        total_value_change = result_dict.get("total_value_change", 0.0)
+
+        click.echo(f"Award ID: {award_id_val}")
+        click.echo(f"Modifications: {modification_count}")
+        click.echo(f"Total Value Change: ${total_value_change:,.2f}")
+
+    except Exception as e:
+        click.echo(f"Error enriching modifications: {str(e)}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

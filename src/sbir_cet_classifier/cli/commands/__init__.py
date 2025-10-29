@@ -21,6 +21,9 @@ from sbir_cet_classifier.cli.commands.award_enrichment import (
     enrich_single,
     enrich_batch,
     enrichment_status,
+    enrich_awardee,
+    enrich_program,
+    enrich_modifications,
 )
 from sbir_cet_classifier.cli.commands.classify import app as classify_app
 from sbir_cet_classifier.cli.commands.config import app as config_app
@@ -88,20 +91,8 @@ except Exception:
 from sbir_cet_classifier.common.config import load_config as load_config  # re-export
 
 
-# Additional shim commands (placeholders; tests patch the services referenced here)
-def enrich_awardee(*args, **kwargs):  # pragma: no cover - shim for tests
-    _ = AwardeeEnrichmentService  # reference to enable patch target
-    return None
-
-
-def enrich_program(*args, **kwargs):  # pragma: no cover - shim for tests
-    _ = ProgramOfficeEnrichmentService
-    return None
-
-
-def enrich_modifications(*args, **kwargs):  # pragma: no cover - shim for tests
-    _ = ModificationsEnrichmentService
-    return None
+# Note: enrich_awardee, enrich_program, and enrich_modifications are now
+# imported from award_enrichment module above
 
 
 __all__ = [
