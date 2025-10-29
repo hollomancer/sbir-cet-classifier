@@ -30,6 +30,7 @@ console = Console()
     help="Output format",
 )
 @click.option("--api-key", help="SAM.gov API key")
+@click.option("--quiet", "-q", is_flag=True, help="Suppress non-essential output")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 def enrich_single(
     award_id: str,
@@ -37,8 +38,12 @@ def enrich_single(
     output_format: str,
     api_key: Optional[str],
     verbose: bool,
+    quiet: bool,
 ):
     """Enrich a single award with SAM.gov data."""
+    if quiet and verbose:
+        raise click.UsageError("Cannot use --quiet and --verbose together.")
+
     try:
         # Import here to allow test mocking to work
         from sbir_cet_classifier.cli.commands import EnrichmentService
@@ -51,7 +56,7 @@ def enrich_single(
         # Convert types to list or None
         enrichment_types = list(types) if types else None
 
-        if verbose:
+        if verbose and not quiet:
             console.print(f"[blue]Enriching award: {award_id}[/blue]")
             if enrichment_types:
                 console.print(f"[blue]Enrichment types: {', '.join(enrichment_types)}[/blue]")
@@ -85,15 +90,16 @@ def enrich_single(
             enrichment_types_list = result_dict.get("enrichment_types", [])
 
             if status == "completed":
-                console.print(f"[green]✓ Successfully enriched award {award_id}[/green]")
-                console.print(f"  Status: {status}")
-                console.print(f"  Confidence Score: {confidence:.2%}")
-                console.print(f"  Enrichment Types: {', '.join(enrichment_types_list)}")
+                if not quiet:
+                    console.print(f"[green]✓ Successfully enriched award {award_id}[/green]")
+                    console.print(f"  Status: {status}")
+                    console.print(f"  Confidence Score: {confidence:.2%}")
+                    console.print(f"  Enrichment Types: {', '.join(enrichment_types_list)}")
 
-                if "processing_time_ms" in result_dict:
-                    console.print(f"  Processing Time: {result_dict['processing_time_ms']}ms")
+                    if "processing_time_ms" in result_dict:
+                        console.print(f"  Processing Time: {result_dict['processing_time_ms']}ms")
 
-                if verbose and "data" in result_dict:
+                if verbose and not quiet and "data" in result_dict:
                     console.print("\n[blue]Enrichment Data:[/blue]")
                     for key, value in result_dict["data"].items():
                         console.print(f"  {key}: {value}")
