@@ -117,12 +117,23 @@ def enrich_single(
 
 
 @click.command("enrich-batch")
-@click.argument("input_file", type=click.Path(exists=True))
+@click.option(
+    "--input-file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Input CSV file with award data",
+)
 @click.option(
     "--output",
     "-o",
     type=click.Path(),
     help="Output file for results",
+)
+@click.option(
+    "--batch-size",
+    type=int,
+    default=10,
+    help="Batch size for processing",
 )
 @click.option(
     "--types",
@@ -131,23 +142,31 @@ def enrich_single(
     help="Enrichment types to perform",
 )
 @click.option("--api-key", help="SAM.gov API key")
+@click.option("--show-progress", is_flag=True, help="Show progress bar")
+@click.option("--parallel", is_flag=True, help="Enable parallel processing")
+@click.option("--max-workers", type=int, default=4, help="Maximum parallel workers")
+@click.option("--resume", is_flag=True, help="Resume from previous run")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 def enrich_batch(
     input_file: str,
     output: Optional[str],
+    batch_size: int,
     types: tuple,
     api_key: Optional[str],
+    show_progress: bool,
+    parallel: bool,
+    max_workers: int,
+    resume: bool,
     verbose: bool,
 ):
     """Batch enrich awards from a CSV file."""
     try:
         import csv
-        from sbir_cet_classifier.cli.commands import EnrichmentService
+        from sbir_cet_classifier.cli.commands import BatchEnrichmentService
 
-        # Initialize components
+        # Initialize batch enrichment service
         config = EnrichmentConfig(api_key=api_key or "demo_key")
-        sam_client = SAMClient(config)
-        enricher = EnrichmentService(sam_client)
+        batch_enricher = BatchEnrichmentService(config)
 
         # Convert types to list or None
         enrichment_types = list(types) if types else None
@@ -163,68 +182,50 @@ def enrich_batch(
                     award_ids.append(row["id"])
 
         if not award_ids:
-            console.print("[red]No award IDs found in input file[/red]")
+            click.echo("No award IDs found in input file")
             sys.exit(1)
 
-        console.print(f"[blue]Processing {len(award_ids)} awards...[/blue]")
+        if verbose:
+            click.echo(f"Processing {len(award_ids)} awards...")
 
-        # Process awards
-        results = []
-        successful = 0
-        failed = 0
+        # Call batch enrichment service
+        if resume:
+            result = batch_enricher.resume_batch(
+                input_file=input_file,
+                output_file=output,
+                enrichment_types=enrichment_types,
+                batch_size=batch_size,
+            )
+        else:
+            # Progress callback
+            def progress_callback(current, total):
+                if show_progress or verbose:
+                    click.echo(f"Progress: {current}/{total}")
 
-        for i, award_id in enumerate(award_ids, 1):
-            try:
-                result = enricher.enrich_award(award_id, enrichment_types)
-
-                # Handle both dict (mock) and object (real) responses
-                if isinstance(result, dict):
-                    result_dict = result
-                    result_success = result_dict.get("status") == "completed"
-                else:
-                    result_success = result.success
-                    result_dict = {
-                        "award_id": result.award_id,
-                        "status": "completed" if result.success else "failed",
-                        "confidence_score": result.confidence,
-                        "error": result.error_message,
-                    }
-
-                results.append(result_dict)
-
-                if result_success:
-                    successful += 1
-                    if verbose:
-                        console.print(f"  [{i}/{len(award_ids)}] ✓ {award_id}")
-                else:
-                    failed += 1
-                    error_msg = result_dict.get("error", "Unknown error")
-                    if verbose:
-                        console.print(f"  [{i}/{len(award_ids)}] ✗ {award_id}: {error_msg}")
-            except Exception as e:
-                failed += 1
-                results.append(
-                    {
-                        "award_id": award_id,
-                        "status": "failed",
-                        "error": str(e),
-                    }
-                )
-                if verbose:
-                    console.print(f"  [{i}/{len(award_ids)}] ✗ {award_id}: {str(e)}")
-
-        # Output results
-        if output:
-            with open(output, "w") as f:
-                json.dump(results, f, indent=2)
-            console.print(f"[green]Results saved to {output}[/green]")
+            result = batch_enricher.enrich_batch(
+                award_ids=award_ids,
+                enrichment_types=enrichment_types,
+                batch_size=batch_size,
+                parallel=parallel,
+                max_workers=max_workers if parallel else 1,
+                progress_callback=progress_callback if show_progress else None,
+                output_file=output,
+            )
 
         # Display summary
-        console.print(f"\n[blue]Summary:[/blue]")
-        console.print(f"  Total: {len(award_ids)}")
-        console.print(f"  [green]Successful: {successful}[/green]")
-        console.print(f"  [red]Failed: {failed}[/red]")
-        console.print(f"  Success Rate: {(successful / len(award_ids)):.1%}")
+        total_processed = result.get("total_processed", 0)
+        successful = result.get("successful", 0)
+        failed = result.get("failed", 0)
+        success_rate = result.get("success_rate", 0.0)
+
+        click.echo(f"\nSummary:")
+        click.echo(f"  Total: {total_processed}")
+        click.echo(f"  Successful: {successful}")
+        click.echo(f"  Failed: {failed}")
+        click.echo(f"  Success Rate: {success_rate:.1%}")
+
+        if resume and "resumed_from" in result:
+            click.echo(f"  Resumed from: {result['resumed_from']}")
 
         if failed > 0:
             sys.exit(1)
