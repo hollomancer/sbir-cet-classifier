@@ -19,18 +19,19 @@ from sbir_cet_classifier.data.enrichment.sam_client import SAMClient  # noqa: F4
 from sbir_cet_classifier.data.enrichment.solicitation_service import SolicitationService  # noqa: F401
 from sbir_cet_classifier.data.storage import SolicitationStorage  # noqa: F401
 
-# Import enrichment commands module and re-export its CLI
+# Import enrichment module and inject our asyncio reference for test patchability
+import sbir_cet_classifier.cli.commands.enrichment as _enrichment_module
+
+# Make the enrichment module use our asyncio so test patches to this module work
+_enrichment_module.asyncio = asyncio
+
+# Re-export CLI commands from the enrichment module
 from sbir_cet_classifier.cli.commands.enrichment import (
     app,
     enrich_batch_solicitations,
     enrich_solicitation,
     enrichment_status,
 )
-
-# Make the enrichment module use our asyncio reference so test patches work
-import sbir_cet_classifier.cli.commands.enrichment as _enrichment_module
-
-_enrichment_module.asyncio = asyncio
 
 __all__ = [
     "asyncio",
