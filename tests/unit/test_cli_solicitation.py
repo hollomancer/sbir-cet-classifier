@@ -36,10 +36,10 @@ class TestSolicitationCLI:
         assert result.exit_code == 0
         assert "Enrich a single solicitation" in result.stdout
 
-    @patch("sbir_cet_classifier.cli.enrichment_commands.asyncio.run")
-    @patch("sbir_cet_classifier.cli.enrichment_commands.SolicitationService")
-    @patch("sbir_cet_classifier.cli.enrichment_commands.SAMClient")
-    @patch("sbir_cet_classifier.cli.enrichment_commands.SolicitationStorage")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.asyncio.run")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.SolicitationService")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.SAMClient")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.SolicitationStorage")
     def test_enrich_solicitation_success(
         self, mock_storage_class, mock_client_class, mock_service_class, mock_asyncio_run, runner
     ):
@@ -75,9 +75,9 @@ class TestSolicitationCLI:
         assert result.exit_code == 0
         mock_storage.save_solicitations.assert_called_once()
 
-    @patch("sbir_cet_classifier.cli.enrichment_commands.asyncio.run")
-    @patch("sbir_cet_classifier.cli.enrichment_commands.SolicitationService")
-    @patch("sbir_cet_classifier.cli.enrichment_commands.SAMClient")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.asyncio.run")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.SolicitationService")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.SAMClient")
     def test_enrich_solicitation_not_found(
         self, mock_client_class, mock_service_class, mock_asyncio_run, runner
     ):
@@ -117,9 +117,9 @@ class TestSolicitationCLI:
         assert result.exit_code == 1
         assert "Input file not found" in result.stdout
 
-    @patch("sbir_cet_classifier.cli.enrichment_commands.pd.read_csv")
-    @patch("sbir_cet_classifier.cli.enrichment_commands.asyncio.run")
-    @patch("sbir_cet_classifier.cli.enrichment_commands.SolicitationBatchProcessor")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.pd.read_csv")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.asyncio.run")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.SolicitationBatchProcessor")
     def test_batch_solicitations_success(
         self, mock_processor_class, mock_asyncio_run, mock_read_csv, runner, tmp_path
     ):
@@ -165,7 +165,7 @@ class TestSolicitationCLI:
         assert result.exit_code == 0
         assert "Show enrichment status" in result.stdout
 
-    @patch("sbir_cet_classifier.cli.enrichment_commands.SolicitationStorage")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.SolicitationStorage")
     def test_status_command_no_data(self, mock_storage_class, runner, tmp_path):
         """Test status command with no enrichment data."""
         mock_storage = Mock()
@@ -178,7 +178,7 @@ class TestSolicitationCLI:
         assert result.exit_code == 0
         assert "Not found" in result.stdout
 
-    @patch("sbir_cet_classifier.cli.enrichment_commands.SolicitationStorage")
+    @patch("sbir_cet_classifier.cli.commands.enrichment.SolicitationStorage")
     def test_status_command_with_data(self, mock_storage_class, runner, tmp_path):
         """Test status command with enrichment data."""
         # Create mock solicitation file
@@ -202,15 +202,15 @@ class TestSolicitationCLI:
 
     def test_command_with_custom_api_key(self, runner):
         """Test command with custom API key."""
-        with patch("sbir_cet_classifier.cli.enrichment_commands.asyncio.run"):
-            with patch("sbir_cet_classifier.cli.enrichment_commands.SAMClient") as mock_client:
+        with patch("sbir_cet_classifier.cli.commands.enrichment.asyncio.run"):
+            with patch("sbir_cet_classifier.cli.commands.enrichment.SAMClient") as mock_client:
                 result = runner.invoke(app, ["solicitation", "SOL-001", "--api-key", "custom_key"])
 
                 mock_client.assert_called_with(api_key="custom_key")
 
     def test_command_with_verbose_output(self, runner):
         """Test command with verbose output."""
-        with patch("sbir_cet_classifier.cli.enrichment_commands.asyncio.run"):
+        with patch("sbir_cet_classifier.cli.commands.enrichment.asyncio.run"):
             result = runner.invoke(app, ["solicitation", "SOL-001", "--verbose"])
 
             # Command should execute (may fail due to mocking, but verbose flag is processed)
@@ -221,8 +221,8 @@ class TestSolicitationCLI:
         test_file = tmp_path / "test.csv"
         test_file.write_text("award_id\nAWARD-001\n")
 
-        with patch("sbir_cet_classifier.cli.enrichment_commands.pd.read_csv"):
-            with patch("sbir_cet_classifier.cli.enrichment_commands.asyncio.run"):
+        with patch("sbir_cet_classifier.cli.commands.enrichment.pd.read_csv"):
+            with patch("sbir_cet_classifier.cli.commands.enrichment.asyncio.run"):
                 result = runner.invoke(
                     app,
                     [
