@@ -463,5 +463,49 @@ def enrich_modifications(award_id: str, verbose: bool):
         sys.exit(1)
 
 
+@click.command("enrich-solicitation")
+@click.argument("award_id")
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def enrich_solicitation(award_id: str, verbose: bool):
+    """Enrich solicitation information for an award."""
+    from sbir_cet_classifier.cli.commands import SolicitationEnrichmentService
+
+    try:
+        # Initialize solicitation enrichment service
+        solicitation_service = SolicitationEnrichmentService()
+
+        # Enrich solicitation
+        result = solicitation_service.enrich_solicitation(award_id)
+
+        # Handle both dict (mock) and object (real) responses
+        if isinstance(result, dict):
+            result_dict = result
+        else:
+            result_dict = {
+                "award_id": getattr(result, "award_id", award_id),
+                "solicitation_id": getattr(result, "solicitation_id", None),
+                "technical_requirements": getattr(result, "technical_requirements", []),
+                "topic_areas": getattr(result, "topic_areas", []),
+            }
+
+        award_id_val = result_dict.get("award_id", award_id)
+        solicitation_id = result_dict.get("solicitation_id", "Unknown")
+        technical_requirements = result_dict.get("technical_requirements", [])
+        topic_areas = result_dict.get("topic_areas", [])
+
+        click.echo(f"Award ID: {award_id_val}")
+        click.echo(f"Solicitation ID: {solicitation_id}")
+
+        if technical_requirements:
+            click.echo(f"Technical Requirements: {', '.join(technical_requirements)}")
+
+        if topic_areas:
+            click.echo(f"Topic Areas: {', '.join(topic_areas)}")
+
+    except Exception as e:
+        click.echo(f"Error enriching solicitation: {str(e)}")
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     app()

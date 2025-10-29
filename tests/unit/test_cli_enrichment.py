@@ -14,6 +14,7 @@ from sbir_cet_classifier.cli.commands import (
     enrich_awardee,
     enrich_program,
     enrich_modifications,
+    enrich_solicitation,
 )
 from sbir_cet_classifier.data.enrichment.enrichers import EnrichmentType
 from sbir_cet_classifier.data.enrichment.status import StatusState

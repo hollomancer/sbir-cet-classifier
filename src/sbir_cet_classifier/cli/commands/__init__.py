@@ -24,6 +24,7 @@ from sbir_cet_classifier.cli.commands.award_enrichment import (
     enrich_awardee,
     enrich_program,
     enrich_modifications,
+    enrich_solicitation,
 )
 from sbir_cet_classifier.cli.commands.classify import app as classify_app
 from sbir_cet_classifier.cli.commands.config import app as config_app
@@ -122,4 +123,5 @@ __all__ = [
     "enrich_awardee",
     "enrich_program",
     "enrich_modifications",
+    "enrich_solicitation",
 ]
