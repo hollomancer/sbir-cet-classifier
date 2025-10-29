@@ -69,15 +69,42 @@ def enrich_solicitation(
                     table.add_column("Field", style="cyan")
                     table.add_column("Value", style="white")
 
-                    table.add_row("Title", solicitation.title)
-                    table.add_row("Agency", solicitation.agency_code)
-                    table.add_row("Type", solicitation.solicitation_type)
-                    table.add_row(
-                        "Funding Range",
-                        f"${solicitation.funding_range_min:,.0f} - ${solicitation.funding_range_max:,.0f}",
+                    title = getattr(solicitation, "title", "N/A")
+                    agency = getattr(solicitation, "agency_code", "N/A")
+                    solicitation_type = getattr(solicitation, "solicitation_type", "N/A")
+
+                    funding_range_min = getattr(solicitation, "funding_range_min", None)
+                    funding_range_max = getattr(solicitation, "funding_range_max", None)
+                    if isinstance(funding_range_min, (int, float)) and isinstance(
+                        funding_range_max, (int, float)
+                    ):
+                        funding_range = f"${funding_range_min:,.0f} - ${funding_range_max:,.0f}"
+                    else:
+                        funding_range = "Not specified"
+
+                    performance_period = getattr(solicitation, "performance_period", None)
+                    performance_text = (
+                        f"{performance_period} months"
+                        if performance_period not in (None, "")
+                        else "Not specified"
                     )
-                    table.add_row("Performance Period", f"{solicitation.performance_period} months")
-                    table.add_row("Keywords", ", ".join(solicitation.keywords[:5]))
+
+                    keywords = getattr(solicitation, "keywords", None)
+                    if keywords:
+                        if isinstance(keywords, str):
+                            keyword_items = [keywords]
+                        else:
+                            keyword_items = list(keywords)
+                        keywords_text = ", ".join(keyword_items[:5])
+                    else:
+                        keywords_text = "None"
+
+                    table.add_row("Title", title)
+                    table.add_row("Agency", agency)
+                    table.add_row("Type", solicitation_type)
+                    table.add_row("Funding Range", funding_range)
+                    table.add_row("Performance Period", performance_text)
+                    table.add_row("Keywords", keywords_text)
 
                     console.print(table)
 
