@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch, MagicMock
 from click.testing import CliRunner
 from pathlib import Path
 import json
+import click
 
 from sbir_cet_classifier.cli.commands.enrichment import (
     app,
@@ -13,7 +14,9 @@ from sbir_cet_classifier.cli.commands.enrichment import (
     enrichment_status,
 )
 
-enrich_single = enrich_solicitation
+enrich_single = click.Command("enrich-single", callback=enrich_solicitation)
+enrich_batch = click.Command("enrich-batch", callback=enrich_batch_solicitations)
+enrich_status = click.Command("enrich-status", callback=enrichment_status)
 
 
 class TestEnrichSingleCommand:
