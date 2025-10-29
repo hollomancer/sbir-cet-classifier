@@ -13,6 +13,8 @@ from sbir_cet_classifier.cli.commands.enrichment import (
     enrichment_status,
 )
 
+enrich_single = enrich_solicitation
+
 
 class TestEnrichSingleCommand:
     """Test single award enrichment command."""

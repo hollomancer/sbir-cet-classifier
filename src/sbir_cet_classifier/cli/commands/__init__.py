@@ -80,8 +80,12 @@ except Exception:
 # Re-export load_config for tests that patch configuration loading
 from sbir_cet_classifier.common.config import load_config as load_config  # re-export
 
+
 # Command aliases expected by tests
-enrich_single = _enrich_solicitation_cmd
+def enrich_single(*args, **kwargs):
+    return _enrich_solicitation_cmd(*args, **kwargs)
+
+
 enrich_batch = _enrich_batch_cmd
 enrich_status = _enrichment_status_cmd
 
