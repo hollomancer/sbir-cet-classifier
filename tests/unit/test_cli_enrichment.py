@@ -11,7 +11,12 @@ from sbir_cet_classifier.cli.commands import (
     enrich_single,
     enrich_batch,
     enrichment_status as enrich_status,
+    enrich_awardee,
+    enrich_program,
+    enrich_modifications,
 )
+from sbir_cet_classifier.data.enrichment.enrichers import EnrichmentType
+from sbir_cet_classifier.data.enrichment.status import StatusState
 
 
 class TestEnrichSingleCommand:
