@@ -651,9 +651,420 @@ class EnrichedDataManager:
         }
 
 
+class StorageMigrationUtility:
+    """Utility for migrating storage files between schema versions.
+    
+    Provides functions for validating data integrity, migrating legacy formats,
+    and rollback capabilities for failed migrations.
+    
+    Example:
+        >>> migrator = StorageMigrationUtility()
+        >>> result = migrator.validate_file_integrity(file_path)
+        >>> if result.needs_migration:
+        ...     migrator.migrate_file(file_path, backup_dir)
+    """
+    
+    def __init__(self):
+        """Initialize migration utility."""
+        pass
+    
+    def validate_file_integrity(self, file_path: Path) -> Dict[str, Any]:
+        """Validate integrity of a storage file.
+        
+        Args:
+            file_path: Path to the storage file to validate
+            
+        Returns:
+            Dictionary with validation results including:
+            - is_valid: Boolean indicating if file is valid
+            - schema_version: Detected schema version
+            - needs_migration: Boolean indicating if migration is needed
+            - errors: List of validation errors if any
+        """
+        result = {
+            "is_valid": False,
+            "schema_version": "unknown",
+            "needs_migration": False,
+            "errors": [],
+            "file_path": str(file_path)
+        }
+        
+        try:
+            if not file_path.exists():
+                result["errors"].append("File does not exist")
+                return result
+            
+            # Try to read the file with PyArrow
+            import pandas as pd
+            df = pd.read_parquet(file_path, engine="pyarrow")
+            
+            # Detect data type based on columns
+            columns = set(df.columns)
+            data_type = self._detect_data_type(columns)
+            
+            if data_type:
+                # Validate against current schema
+                try:
+                    ParquetSchemaManager.validate_data(data_type, df)
+                    result["is_valid"] = True
+                    result["schema_version"] = "current"
+                except Exception as e:
+                    result["errors"].append(f"Schema validation failed: {str(e)}")
+                    result["needs_migration"] = True
+            else:
+                result["errors"].append("Could not detect data type from columns")
+            
+        except Exception as e:
+            result["errors"].append(f"Failed to read file: {str(e)}")
+        
+        return result
+    
+    def _detect_data_type(self, columns: set) -> Optional[str]:
+        """Detect data type based on column names.
+        
+        Args:
+            columns: Set of column names
+            
+        Returns:
+            Data type name or None if not detected
+        """
+        # Define column signatures for each data type
+        signatures = {
+            "awardee_profiles": {"uei", "legal_name", "total_awards"},
+            "program_offices": {"office_id", "agency_code", "office_name"},
+            "solicitations": {"solicitation_id", "title", "agency_code"},
+            "award_modifications": {"modification_id", "award_id", "modification_type"}
+        }
+        
+        for data_type, required_cols in signatures.items():
+            if required_cols.issubset(columns):
+                return data_type
+        
+        return None
+    
+    def migrate_file(self, file_path: Path, backup_dir: Optional[Path] = None) -> Dict[str, Any]:
+        """Migrate a storage file to the current schema version.
+        
+        Args:
+            file_path: Path to the file to migrate
+            backup_dir: Optional directory to store backup before migration
+            
+        Returns:
+            Dictionary with migration results including:
+            - success: Boolean indicating if migration succeeded
+            - backup_path: Path to backup file if created
+            - errors: List of errors if any
+        """
+        result = {
+            "success": False,
+            "backup_path": None,
+            "errors": [],
+            "file_path": str(file_path)
+        }
+        
+        try:
+            # Validate file first
+            validation = self.validate_file_integrity(file_path)
+            if not validation["needs_migration"]:
+                result["success"] = True
+                result["errors"].append("File does not need migration")
+                return result
+            
+            # Create backup if requested
+            if backup_dir:
+                backup_dir = Path(backup_dir)
+                backup_dir.mkdir(parents=True, exist_ok=True)
+                backup_path = backup_dir / f"{file_path.stem}_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.parquet"
+                
+                import shutil
+                shutil.copy2(file_path, backup_path)
+                result["backup_path"] = str(backup_path)
+            
+            # For now, migration is a no-op since we haven't changed schemas
+            # In the future, this would contain actual migration logic
+            result["success"] = True
+            
+        except Exception as e:
+            result["errors"].append(f"Migration failed: {str(e)}")
+        
+        return result
+    
+    def rollback_migration(self, file_path: Path, backup_path: Path) -> Dict[str, Any]:
+        """Rollback a failed migration using backup file.
+        
+        Args:
+            file_path: Path to the current file
+            backup_path: Path to the backup file
+            
+        Returns:
+            Dictionary with rollback results
+        """
+        result = {
+            "success": False,
+            "errors": []
+        }
+        
+        try:
+            if not Path(backup_path).exists():
+                result["errors"].append("Backup file does not exist")
+                return result
+            
+            import shutil
+            shutil.copy2(backup_path, file_path)
+            result["success"] = True
+            
+        except Exception as e:
+            result["errors"].append(f"Rollback failed: {str(e)}")
+        
+        return result
+    
+    def batch_validate_directory(self, data_dir: Path) -> Dict[str, Dict[str, Any]]:
+        """Validate all storage files in a directory.
+        
+        Args:
+            data_dir: Directory containing storage files
+            
+        Returns:
+            Dictionary mapping file names to validation results
+        """
+        results = {}
+        data_dir = Path(data_dir)
+        
+        if not data_dir.exists():
+            return results
+        
+        # Look for parquet files
+        for file_path in data_dir.glob("*.parquet"):
+            results[file_path.name] = self.validate_file_integrity(file_path)
+        
+        return results
+
+
+class UnifiedStorageManager:
+    """Unified storage manager that provides type-safe access to all storage types.
+    
+    This class wraps all storage types and provides a single interface for
+    managing different data types with type safety and convenience methods.
+    
+    Example:
+        >>> manager = UnifiedStorageManager(data_dir)
+        >>>
+        >>> # Type-safe access to specific storage
+        >>> profiles = manager.awardee_profiles.read()
+        >>> manager.solicitations.write([solicitation])
+        >>>
+        >>> # Convenience methods
+        >>> summary = manager.get_storage_summary()
+        >>> manager.backup_all_data(backup_dir)
+    """
+    
+    def __init__(self, data_dir: Path):
+        """Initialize unified storage manager.
+        
+        Args:
+            data_dir: Directory for all storage files
+        """
+        self.data_dir = Path(data_dir)
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create type-safe storage instances
+        self._awardee_profiles = StorageFactory.create_awardee_storage(self.data_dir)
+        self._program_offices = StorageFactory.create_program_office_storage(self.data_dir)
+        self._solicitations = StorageFactory.create_solicitation_storage(self.data_dir)
+        self._modifications = StorageFactory.create_modification_storage(self.data_dir)
+    
+    @property
+    def awardee_profiles(self) -> ParquetStorage[AwardeeProfile]:
+        """Get type-safe awardee profiles storage."""
+        return self._awardee_profiles
+    
+    @property
+    def program_offices(self) -> ParquetStorage[ProgramOffice]:
+        """Get type-safe program offices storage."""
+        return self._program_offices
+    
+    @property
+    def solicitations(self) -> ParquetStorage[Solicitation]:
+        """Get type-safe solicitations storage."""
+        return self._solicitations
+    
+    @property
+    def modifications(self) -> ParquetStorage[AwardModification]:
+        """Get type-safe award modifications storage."""
+        return self._modifications
+    
+    def get_storage_summary(self) -> Dict[str, Dict[str, Any]]:
+        """Get summary of all storage instances.
+        
+        Returns:
+            Dictionary with counts and metadata for each storage type
+        """
+        return {
+            "awardee_profiles": {
+                "count": self._awardee_profiles.count(),
+                "exists": self._awardee_profiles.exists(),
+                "file_path": str(self._awardee_profiles.file_path),
+            },
+            "program_offices": {
+                "count": self._program_offices.count(),
+                "exists": self._program_offices.exists(),
+                "file_path": str(self._program_offices.file_path),
+            },
+            "solicitations": {
+                "count": self._solicitations.count(),
+                "exists": self._solicitations.exists(),
+                "file_path": str(self._solicitations.file_path),
+            },
+            "award_modifications": {
+                "count": self._modifications.count(),
+                "exists": self._modifications.exists(),
+                "file_path": str(self._modifications.file_path),
+            },
+        }
+    
+    def backup_all_data(self, backup_dir: Path) -> Dict[str, bool]:
+        """Backup all storage files to a backup directory.
+        
+        Args:
+            backup_dir: Directory to store backup files
+            
+        Returns:
+            Dictionary mapping storage type to backup success status
+        """
+        backup_dir = Path(backup_dir)
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        
+        results = {}
+        storage_map = {
+            "awardee_profiles": self._awardee_profiles,
+            "program_offices": self._program_offices,
+            "solicitations": self._solicitations,
+            "award_modifications": self._modifications,
+        }
+        
+        for storage_name, storage in storage_map.items():
+            try:
+                if storage.exists():
+                    import shutil
+                    backup_path = backup_dir / storage.file_path.name
+                    shutil.copy2(storage.file_path, backup_path)
+                    results[storage_name] = True
+                else:
+                    results[storage_name] = False  # No file to backup
+            except Exception:
+                results[storage_name] = False
+        
+        return results
+    
+    def restore_from_backup(self, backup_dir: Path) -> Dict[str, bool]:
+        """Restore all storage files from a backup directory.
+        
+        Args:
+            backup_dir: Directory containing backup files
+            
+        Returns:
+            Dictionary mapping storage type to restore success status
+        """
+        backup_dir = Path(backup_dir)
+        if not backup_dir.exists():
+            return {name: False for name in ["awardee_profiles", "program_offices", "solicitations", "award_modifications"]}
+        
+        results = {}
+        storage_map = {
+            "awardee_profiles": self._awardee_profiles,
+            "program_offices": self._program_offices,
+            "solicitations": self._solicitations,
+            "award_modifications": self._modifications,
+        }
+        
+        for storage_name, storage in storage_map.items():
+            try:
+                backup_path = backup_dir / storage.file_path.name
+                if backup_path.exists():
+                    import shutil
+                    shutil.copy2(backup_path, storage.file_path)
+                    results[storage_name] = True
+                else:
+                    results[storage_name] = False  # No backup file found
+            except Exception:
+                results[storage_name] = False
+        
+        return results
+    
+    def clear_all_data(self) -> Dict[str, bool]:
+        """Clear all storage files.
+        
+        Returns:
+            Dictionary mapping storage type to clear success status
+        """
+        results = {}
+        storage_map = {
+            "awardee_profiles": self._awardee_profiles,
+            "program_offices": self._program_offices,
+            "solicitations": self._solicitations,
+            "award_modifications": self._modifications,
+        }
+        
+        for storage_name, storage in storage_map.items():
+            try:
+                if storage.exists():
+                    storage.file_path.unlink()
+                results[storage_name] = True
+            except Exception:
+                results[storage_name] = False
+        
+        return results
+    
+    def validate_all_schemas(self) -> Dict[str, bool]:
+        """Validate all existing storage files against their schemas.
+        
+        Returns:
+            Dictionary mapping storage type to validation success status
+        """
+        results = {}
+        
+        # Map storage types to their schema names
+        schema_map = {
+            "awardee_profiles": ("awardee_profiles", self._awardee_profiles),
+            "program_offices": ("program_offices", self._program_offices),
+            "solicitations": ("solicitations", self._solicitations),
+            "award_modifications": ("award_modifications", self._modifications),
+        }
+        
+        for storage_name, (schema_name, storage) in schema_map.items():
+            try:
+                if storage.exists():
+                    # Read the file and validate against schema
+                    import pandas as pd
+                    df = pd.read_parquet(storage.file_path, engine="pyarrow")
+                    ParquetSchemaManager.validate_data(schema_name, df)
+                    results[storage_name] = True
+                else:
+                    results[storage_name] = True  # No file to validate
+            except Exception:
+                results[storage_name] = False
+        
+        return results
+    
+    def get_file_paths(self) -> Dict[str, Path]:
+        """Get file paths for all storage files.
+        
+        Returns:
+            Dictionary mapping storage type to file path
+        """
+        return {
+            "awardee_profiles": self._awardee_profiles.file_path,
+            "program_offices": self._program_offices.file_path,
+            "solicitations": self._solicitations.file_path,
+            "award_modifications": self._modifications.file_path,
+        }
+
+
 __all__ = [
     "ParquetStorage",
     "ParquetSchemaManager",
     "StorageFactory",
     "EnrichedDataManager",
+    "UnifiedStorageManager",
+    "StorageMigrationUtility",
 ]

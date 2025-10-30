@@ -434,3 +434,230 @@ class TestSchemaEvolution:
         df = pd.read_parquet(file_path)
         assert len(df) == 1
         assert df.iloc[0]["uei"] == "TEST001"
+
+
+class TestUnifiedStorageManager:
+    """Test unified storage manager functionality."""
+    
+    @pytest.fixture
+    def temp_dir(self, tmp_path):
+        """Create temporary directory for storage."""
+        return tmp_path
+    
+    @pytest.fixture
+    def sample_awardee_profile(self):
+        """Create sample awardee profile for testing."""
+        return AwardeeProfile(
+            uei="TEST001",
+            legal_name="Test Company",
+            total_awards=5,
+            total_funding=Decimal("500000.00"),
+            success_rate=0.8,
+            avg_award_amount=Decimal("100000.00"),
+            first_award_date=datetime(2020, 1, 1),
+            last_award_date=datetime(2024, 1, 1),
+            primary_agencies=["NSF", "DOD"],
+            technology_areas=["AI", "Cybersecurity"]
+        )
+    
+    def test_unified_storage_manager_creation(self, temp_dir):
+        """Test creating unified storage manager."""
+        from sbir_cet_classifier.data.storage_v2 import UnifiedStorageManager
+        
+        manager = UnifiedStorageManager(temp_dir)
+        
+        # Check that all storage properties are accessible
+        assert hasattr(manager, 'awardee_profiles')
+        assert hasattr(manager, 'program_offices')
+        assert hasattr(manager, 'solicitations')
+        assert hasattr(manager, 'modifications')
+        
+        # Check that data directory was created
+        assert manager.data_dir.exists()
+        assert manager.data_dir == temp_dir
+    
+    def test_type_safe_storage_access(self, temp_dir, sample_awardee_profile):
+        """Test type-safe access to different storage types."""
+        from sbir_cet_classifier.data.storage_v2 import UnifiedStorageManager
+        
+        manager = UnifiedStorageManager(temp_dir)
+        
+        # Test writing and reading through unified manager
+        manager.awardee_profiles.write([sample_awardee_profile])
+        
+        # Verify data was written
+        assert manager.awardee_profiles.exists()
+        assert manager.awardee_profiles.count() == 1
+        
+        # Read back data
+        profiles = manager.awardee_profiles.read()
+        assert len(profiles) == 1
+        assert profiles[0].uei == "TEST001"
+    
+    def test_storage_summary(self, temp_dir, sample_awardee_profile):
+        """Test storage summary functionality."""
+        from sbir_cet_classifier.data.storage_v2 import UnifiedStorageManager
+        
+        manager = UnifiedStorageManager(temp_dir)
+        
+        # Initially all storage should be empty
+        summary = manager.get_storage_summary()
+        assert summary["awardee_profiles"]["count"] == 0
+        assert summary["awardee_profiles"]["exists"] is False
+        
+        # Add some data
+        manager.awardee_profiles.write([sample_awardee_profile])
+        
+        # Summary should reflect the change
+        summary = manager.get_storage_summary()
+        assert summary["awardee_profiles"]["count"] == 1
+        assert summary["awardee_profiles"]["exists"] is True
+        assert "file_path" in summary["awardee_profiles"]
+    
+    def test_backup_and_restore(self, temp_dir, sample_awardee_profile):
+        """Test backup and restore functionality."""
+        from sbir_cet_classifier.data.storage_v2 import UnifiedStorageManager
+        
+        manager = UnifiedStorageManager(temp_dir)
+        backup_dir = temp_dir / "backup"
+        
+        # Add some data
+        manager.awardee_profiles.write([sample_awardee_profile])
+        
+        # Backup data
+        backup_results = manager.backup_all_data(backup_dir)
+        assert backup_results["awardee_profiles"] is True
+        assert (backup_dir / "awardee_profiles.parquet").exists()
+        
+        # Clear original data
+        clear_results = manager.clear_all_data()
+        assert clear_results["awardee_profiles"] is True
+        assert not manager.awardee_profiles.exists()
+        
+        # Restore from backup
+        restore_results = manager.restore_from_backup(backup_dir)
+        assert restore_results["awardee_profiles"] is True
+        assert manager.awardee_profiles.exists()
+        assert manager.awardee_profiles.count() == 1
+    
+    def test_schema_validation(self, temp_dir, sample_awardee_profile):
+        """Test schema validation functionality."""
+        from sbir_cet_classifier.data.storage_v2 import UnifiedStorageManager
+        
+        manager = UnifiedStorageManager(temp_dir)
+        
+        # Add valid data
+        manager.awardee_profiles.write([sample_awardee_profile])
+        
+        # Validate schemas
+        validation_results = manager.validate_all_schemas()
+        assert validation_results["awardee_profiles"] is True
+    
+    def test_file_paths(self, temp_dir):
+        """Test file paths functionality."""
+        from sbir_cet_classifier.data.storage_v2 import UnifiedStorageManager
+        
+        manager = UnifiedStorageManager(temp_dir)
+        
+        file_paths = manager.get_file_paths()
+        
+        expected_files = [
+            "awardee_profiles.parquet",
+            "program_offices.parquet", 
+            "solicitations.parquet",
+            "award_modifications.parquet"
+        ]
+        
+        for storage_type, path in file_paths.items():
+            assert path.parent == temp_dir
+            assert path.name in expected_files
+
+
+class TestStorageMigrationUtility:
+    """Test storage migration utility functionality."""
+    
+    @pytest.fixture
+    def temp_dir(self, tmp_path):
+        """Create temporary directory for migration tests."""
+        return tmp_path
+    
+    @pytest.fixture
+    def sample_awardee_profile(self):
+        """Create sample awardee profile for testing."""
+        return AwardeeProfile(
+            uei="TEST001",
+            legal_name="Test Company",
+            total_awards=5,
+            total_funding=Decimal("500000.00"),
+            success_rate=0.8,
+            avg_award_amount=Decimal("100000.00"),
+            first_award_date=datetime(2020, 1, 1),
+            last_award_date=datetime(2024, 1, 1),
+            primary_agencies=["NSF", "DOD"],
+            technology_areas=["AI", "Cybersecurity"]
+        )
+    
+    def test_migration_utility_creation(self):
+        """Test creating migration utility."""
+        from sbir_cet_classifier.data.storage_v2 import StorageMigrationUtility
+        
+        migrator = StorageMigrationUtility()
+        assert migrator is not None
+    
+    def test_validate_nonexistent_file(self, temp_dir):
+        """Test validation of non-existent file."""
+        from sbir_cet_classifier.data.storage_v2 import StorageMigrationUtility
+        
+        migrator = StorageMigrationUtility()
+        result = migrator.validate_file_integrity(temp_dir / "nonexistent.parquet")
+        
+        assert result["is_valid"] is False
+        assert "File does not exist" in result["errors"]
+        assert result["needs_migration"] is False
+    
+    def test_validate_valid_file(self, temp_dir, sample_awardee_profile):
+        """Test validation of valid storage file."""
+        from sbir_cet_classifier.data.storage_v2 import StorageMigrationUtility, StorageFactory
+        
+        # Create a valid storage file
+        storage = StorageFactory.create_awardee_storage(temp_dir)
+        storage.write([sample_awardee_profile])
+        
+        # Validate the file
+        migrator = StorageMigrationUtility()
+        result = migrator.validate_file_integrity(storage.file_path)
+        
+        assert result["is_valid"] is True
+        assert result["schema_version"] == "current"
+        assert result["needs_migration"] is False
+        assert len(result["errors"]) == 0
+    
+    def test_batch_validate_directory(self, temp_dir, sample_awardee_profile):
+        """Test batch validation of directory."""
+        from sbir_cet_classifier.data.storage_v2 import StorageMigrationUtility, StorageFactory
+        
+        # Create multiple storage files
+        awardee_storage = StorageFactory.create_awardee_storage(temp_dir)
+        awardee_storage.write([sample_awardee_profile])
+        
+        # Validate directory
+        migrator = StorageMigrationUtility()
+        results = migrator.batch_validate_directory(temp_dir)
+        
+        assert "awardee_profiles.parquet" in results
+        assert results["awardee_profiles.parquet"]["is_valid"] is True
+    
+    def test_migration_no_op(self, temp_dir, sample_awardee_profile):
+        """Test migration when no migration is needed."""
+        from sbir_cet_classifier.data.storage_v2 import StorageMigrationUtility, StorageFactory
+        
+        # Create a valid storage file
+        storage = StorageFactory.create_awardee_storage(temp_dir)
+        storage.write([sample_awardee_profile])
+        
+        # Try to migrate (should be no-op)
+        migrator = StorageMigrationUtility()
+        result = migrator.migrate_file(storage.file_path, backup_dir=temp_dir / "backup")
+        
+        assert result["success"] is True
+        assert "does not need migration" in result["errors"][0]
