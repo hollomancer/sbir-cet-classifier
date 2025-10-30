@@ -66,19 +66,19 @@
   - Optimize configuration loading to meet 25% improvement target
   - _Requirements: 4.3, 4.5_
 
-- [ ]* 2.5 Write configuration management tests
+- [-] 2.5 Write configuration management tests
   - Test configuration loading and caching behavior
   - Verify validation works correctly for all config types
   - Test hot-reloading functionality
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 3. Test Framework Consolidation (Phase 3)
+- [-] 3. Test Framework Consolidation (Phase 3)
   - Consolidate duplicate test fixtures and utilities into shared modules
   - Create standard test data factories and setup patterns
   - Optimize test execution time and eliminate redundant test code
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 3.1 Create centralized test utilities module
+- [-] 3.1 Create centralized test utilities module
   - Implement TestDataFactory for generating consistent test data
   - Create TestStorageManager for temporary test storage
   - Add shared mock implementations and fixtures
