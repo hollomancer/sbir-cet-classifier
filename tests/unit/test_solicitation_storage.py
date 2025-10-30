@@ -8,7 +8,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
-from sbir_cet_classifier.data.storage import SolicitationStorage
+from sbir_cet_classifier.data.storage_v2 import StorageFactory
 from sbir_cet_classifier.data.enrichment.models import Solicitation
 
 
@@ -16,14 +16,14 @@ class TestSolicitationStorage:
     """Test SolicitationStorage."""
 
     @pytest.fixture
-    def temp_storage_path(self, tmp_path):
-        """Create temporary storage path."""
-        return tmp_path / "solicitations.parquet"
+    def temp_dir(self, tmp_path):
+        """Create temporary storage directory."""
+        return tmp_path
 
     @pytest.fixture
-    def storage(self, temp_storage_path):
-        """Create SolicitationStorage with temp path."""
-        return SolicitationStorage(file_path=temp_storage_path)
+    def storage(self, temp_dir):
+        """Create solicitation storage with temp path."""
+        return StorageFactory.create_solicitation_storage(temp_dir)
 
     @pytest.fixture
     def sample_solicitations(self):
@@ -75,11 +75,11 @@ class TestSolicitationStorage:
 
     def test_parquet_schema_definition(self, storage):
         """Test Parquet schema for solicitations."""
-        schema = storage.get_parquet_schema()
+        schema = storage.schema
         
         expected_fields = [
             "solicitation_id", "solicitation_number", "title", "agency_code",
-            "program_office_id", "solicitation_type", "topic_number", "full_text",
+            "program_office_id", "solicitation_type", "full_text",
             "technical_requirements", "evaluation_criteria", "funding_range_min",
             "funding_range_max", "proposal_deadline", "award_start_date",
             "performance_period", "keywords", "cet_relevance_scores",
@@ -90,25 +90,26 @@ class TestSolicitationStorage:
         for field in expected_fields:
             assert field in schema_fields
 
-    def test_save_solicitations(self, storage, sample_solicitations, temp_storage_path):
+    def test_save_solicitations(self, storage, sample_solicitations):
         """Test saving solicitations to Parquet."""
-        storage.save_solicitations(sample_solicitations)
+        storage.write(sample_solicitations)
         
-        assert temp_storage_path.exists()
+        assert storage.exists()
         
         # Verify data can be read back
-        df = pd.read_parquet(temp_storage_path)
-        assert len(df) == 2
-        assert "SOL-2024-001" in df["solicitation_id"].values
-        assert "SOL-2024-002" in df["solicitation_id"].values
+        solicitations = storage.read()
+        assert len(solicitations) == 2
+        solicitation_ids = [sol.solicitation_id for sol in solicitations]
+        assert "SOL-2024-001" in solicitation_ids
+        assert "SOL-2024-002" in solicitation_ids
 
-    def test_load_solicitations(self, storage, sample_solicitations, temp_storage_path):
+    def test_load_solicitations(self, storage, sample_solicitations):
         """Test loading solicitations from Parquet."""
         # First save data
-        storage.save_solicitations(sample_solicitations)
+        storage.write(sample_solicitations)
         
         # Then load it back
-        loaded_solicitations = storage.load_solicitations()
+        loaded_solicitations = storage.read()
         
         assert len(loaded_solicitations) == 2
         assert all(isinstance(sol, Solicitation) for sol in loaded_solicitations)
@@ -121,13 +122,13 @@ class TestSolicitationStorage:
 
     def test_load_solicitations_empty_file(self, storage):
         """Test loading from non-existent file."""
-        solicitations = storage.load_solicitations()
+        solicitations = storage.read()
         assert solicitations == []
 
-    def test_append_solicitations(self, storage, sample_solicitations, temp_storage_path):
+    def test_append_solicitations(self, storage, sample_solicitations):
         """Test appending solicitations to existing file."""
         # Save initial data
-        storage.save_solicitations([sample_solicitations[0]])
+        storage.write([sample_solicitations[0]])
         
         # Append new data
         new_solicitation = Solicitation(
@@ -143,6 +144,7 @@ class TestSolicitationStorage:
             funding_range_min=Decimal("150000.00"),
             funding_range_max=Decimal("350000.00"),
             proposal_deadline=date(2024, 8, 15),
+            award_start_date=date(2024, 11, 1),
             performance_period=12,
             keywords=["cybersecurity", "encryption"],
             cet_relevance_scores={"cybersecurity": 0.95},
@@ -150,10 +152,10 @@ class TestSolicitationStorage:
             updated_at=datetime.now()
         )
         
-        storage.append_solicitations([new_solicitation])
+        storage.append([new_solicitation])
         
         # Verify all data is present
-        all_solicitations = storage.load_solicitations()
+        all_solicitations = storage.read()
         assert len(all_solicitations) == 2
         
         solicitation_ids = [sol.solicitation_id for sol in all_solicitations]
@@ -162,31 +164,31 @@ class TestSolicitationStorage:
 
     def test_find_solicitation_by_id(self, storage, sample_solicitations):
         """Test finding solicitation by ID."""
-        storage.save_solicitations(sample_solicitations)
+        storage.write(sample_solicitations)
         
-        found = storage.find_solicitation_by_id("SOL-2024-001")
+        found = storage.read_one("SOL-2024-001", key_field="solicitation_id")
         assert found is not None
         assert found.title == "Advanced Materials Research"
         
-        not_found = storage.find_solicitation_by_id("NONEXISTENT")
+        not_found = storage.read_one("NONEXISTENT", key_field="solicitation_id")
         assert not_found is None
 
     def test_find_solicitations_by_agency(self, storage, sample_solicitations):
         """Test finding solicitations by agency."""
-        storage.save_solicitations(sample_solicitations)
+        storage.write(sample_solicitations)
         
-        don_solicitations = storage.find_solicitations_by_agency("DON")
+        don_solicitations = storage.read(filters={"agency_code": "DON"})
         assert len(don_solicitations) == 1
         assert don_solicitations[0].agency_code == "DON"
         
-        dod_solicitations = storage.find_solicitations_by_agency("DOD")
+        dod_solicitations = storage.read(filters={"agency_code": "DOD"})
         assert len(dod_solicitations) == 1
         assert dod_solicitations[0].agency_code == "DOD"
 
-    def test_data_type_preservation(self, storage, sample_solicitations, temp_storage_path):
+    def test_data_type_preservation(self, storage, sample_solicitations):
         """Test that data types are preserved during save/load."""
-        storage.save_solicitations(sample_solicitations)
-        loaded = storage.load_solicitations()
+        storage.write(sample_solicitations)
+        loaded = storage.read()
         
         sol = loaded[0]
         
@@ -209,7 +211,7 @@ class TestSolicitationStorage:
         assert isinstance(sol.cet_relevance_scores, dict)
         assert sol.cet_relevance_scores["advanced_materials"] == 0.95
 
-    def test_large_text_handling(self, storage, temp_storage_path):
+    def test_large_text_handling(self, storage):
         """Test handling of large text fields."""
         large_text = "A" * 10000  # 10KB text
         
@@ -226,6 +228,7 @@ class TestSolicitationStorage:
             funding_range_min=Decimal("100000.00"),
             funding_range_max=Decimal("300000.00"),
             proposal_deadline=date(2024, 6, 15),
+            award_start_date=date(2024, 9, 1),
             performance_period=12,
             keywords=[],
             cet_relevance_scores={},
@@ -233,13 +236,13 @@ class TestSolicitationStorage:
             updated_at=datetime.now()
         )
         
-        storage.save_solicitations([solicitation])
-        loaded = storage.load_solicitations()
+        storage.write([solicitation])
+        loaded = storage.read()
         
         assert len(loaded[0].full_text) == 10000
         assert loaded[0].full_text == large_text
 
-    def test_unicode_text_handling(self, storage, temp_storage_path):
+    def test_unicode_text_handling(self, storage):
         """Test handling of Unicode text."""
         unicode_text = "Research in naïve Bayesian algorithms and Schrödinger's quantum mechanics"
         
@@ -256,6 +259,7 @@ class TestSolicitationStorage:
             funding_range_min=Decimal("100000.00"),
             funding_range_max=Decimal("300000.00"),
             proposal_deadline=date(2024, 6, 15),
+            award_start_date=date(2024, 9, 1),
             performance_period=12,
             keywords=["naïve", "Schrödinger"],
             cet_relevance_scores={},
@@ -263,29 +267,30 @@ class TestSolicitationStorage:
             updated_at=datetime.now()
         )
         
-        storage.save_solicitations([solicitation])
-        loaded = storage.load_solicitations()
+        storage.write([solicitation])
+        loaded = storage.read()
         
         assert loaded[0].title == unicode_text
         assert "naïve" in loaded[0].keywords
         assert "Schrödinger" in loaded[0].keywords
 
-    def test_storage_error_handling(self, storage, sample_solicitations):
+    def test_storage_error_handling(self, sample_solicitations):
         """Test storage error handling."""
         # Test with invalid path
-        invalid_storage = SolicitationStorage(file_path="/invalid/path/solicitations.parquet")
+        from pathlib import Path
+        invalid_storage = StorageFactory.create_solicitation_storage(Path("/invalid/path"))
         
         with pytest.raises(Exception):
-            invalid_storage.save_solicitations(sample_solicitations)
+            invalid_storage.write(sample_solicitations)
 
-    def test_concurrent_access_safety(self, storage, sample_solicitations, temp_storage_path):
+    def test_concurrent_access_safety(self, storage, sample_solicitations):
         """Test thread-safe storage operations."""
         import threading
         import time
         
         def save_data(solicitations, delay=0):
             time.sleep(delay)
-            storage.save_solicitations(solicitations)
+            storage.write(solicitations)
         
         # Start concurrent save operations
         thread1 = threading.Thread(target=save_data, args=([sample_solicitations[0]], 0.1))
@@ -298,6 +303,6 @@ class TestSolicitationStorage:
         thread2.join()
         
         # Verify file exists and is readable
-        assert temp_storage_path.exists()
-        loaded = storage.load_solicitations()
+        assert storage.exists()
+        loaded = storage.read()
         assert len(loaded) >= 1  # At least one should have been saved

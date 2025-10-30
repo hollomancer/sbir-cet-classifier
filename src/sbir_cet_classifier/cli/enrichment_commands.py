@@ -25,7 +25,7 @@ from sbir_cet_classifier.data.enrichment.sam_client import SAMClient
 from sbir_cet_classifier.data.enrichment.solicitation_service import (
     SolicitationService,
 )
-from sbir_cet_classifier.data.storage import SolicitationStorage
+from sbir_cet_classifier.data.storage_v2 import StorageFactory
 
 __all__ = [
     # CLI entry points
@@ -38,5 +38,5 @@ __all__ = [
     "SolicitationService",
     "SolicitationBatchProcessor",
     "SAMClient",
-    "SolicitationStorage",
+    "StorageFactory",
 ]

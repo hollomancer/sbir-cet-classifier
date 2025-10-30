@@ -9,7 +9,7 @@ from pathlib import Path
 from sbir_cet_classifier.data.enrichment.models import AwardeeProfile
 from sbir_cet_classifier.data.enrichment.awardee_service import AwardeeHistoricalDataService
 from sbir_cet_classifier.data.enrichment.awardee_matching import AwardeeDataMatcher, MatchStrategy
-from sbir_cet_classifier.data.storage import AwardeeProfileWriter
+from sbir_cet_classifier.data.storage_v2 import StorageFactory
 
 
 class TestAwardeeEnrichmentIntegration:
@@ -130,12 +130,16 @@ class TestAwardeeEnrichmentIntegration:
         )
 
         # Store profile
-        storage_file = tmp_path / "awardee_profiles.parquet"
-        writer = AwardeeProfileWriter(storage_file)
-        writer.write([profile])
+        storage = StorageFactory.create_awardee_storage(tmp_path)
+        storage.write([profile])
 
         # Verify storage
-        assert storage_file.exists()
+        assert storage.exists()
+        
+        # Read back and verify
+        profiles = storage.read()
+        assert len(profiles) == 1
+        assert profiles[0].uei == metrics.uei
 
         # Read back and verify
         import pandas as pd

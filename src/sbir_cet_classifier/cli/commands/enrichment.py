@@ -10,7 +10,7 @@ from rich.table import Table
 
 from sbir_cet_classifier.data.enrichment.solicitation_service import SolicitationService
 from sbir_cet_classifier.data.enrichment.batch_processor import SolicitationBatchProcessor
-from sbir_cet_classifier.data.storage import SolicitationStorage
+from sbir_cet_classifier.data.storage_v2 import StorageFactory
 from sbir_cet_classifier.data.enrichment.sam_client import SAMClient
 from sbir_cet_classifier.common.config import EnrichmentConfig
 
@@ -37,9 +37,10 @@ def enrich_solicitation(
 
     # Set up storage
     if output_file:
-        storage = SolicitationStorage(output_file)
+        storage = StorageFactory.create_solicitation_storage(output_file.parent)
+        storage.file_path = output_file  # Override the default filename
     else:
-        storage = SolicitationStorage(Path("data/processed/solicitations.parquet"))
+        storage = StorageFactory.create_solicitation_storage(Path("data/processed"))
 
     async def enrich_single():
         try:
@@ -59,7 +60,7 @@ def enrich_solicitation(
                     return
 
                 progress.update(task, description="Saving to storage...")
-                storage.save_solicitations([solicitation])
+                storage.write([solicitation])
 
                 progress.update(task, description="Complete!")
 
@@ -158,7 +159,7 @@ def enrich_batch_solicitations(
     config = EnrichmentConfig(api_key=api_key or "demo_key")
     sam_client = SAMClient(config)
     output_dir.mkdir(parents=True, exist_ok=True)
-    storage = SolicitationStorage(output_dir / "solicitations.parquet")
+    storage = StorageFactory.create_solicitation_storage(output_dir)
 
     batch_processor = SolicitationBatchProcessor(
         sam_client=sam_client, storage=storage, batch_size=batch_size, max_concurrent=max_concurrent
@@ -221,8 +222,8 @@ def enrichment_status(
 
     if solicitations_file.exists():
         try:
-            storage = SolicitationStorage(solicitations_file)
-            solicitations = storage.load_solicitations()
+            storage = StorageFactory.create_solicitation_storage(solicitations_file.parent)
+            solicitations = storage.read()
             file_size = solicitations_file.stat().st_size
 
             table.add_row(

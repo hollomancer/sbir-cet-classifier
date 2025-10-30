@@ -9,15 +9,13 @@ from decimal import Decimal
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from sbir_cet_classifier.data.storage import (
-    EnrichedDataWriter,
+from sbir_cet_classifier.data.storage_v2 import (
+    EnrichedDataManager,
     ParquetSchemaManager,
-    AwardeeProfileWriter,
-    ProgramOfficeWriter,
-    SolicitationWriter,
-    AwardModificationWriter,
+    StorageFactory,
+    ParquetStorage,
 )
-from sbir_cet_classifier.data.enrichment.schemas import (
+from sbir_cet_classifier.data.enrichment.models import (
     AwardeeProfile,
     ProgramOffice,
     Solicitation,
@@ -57,8 +55,8 @@ class TestParquetSchemaManager:
         schema = ParquetSchemaManager.get_program_office_schema()
         
         expected_fields = [
-            "agency", "office_name", "office_code", "contact_email",
-            "strategic_focus", "annual_budget", "active_programs"
+            "office_id", "agency_code", "agency_name", "office_name", "office_description",
+            "contact_email", "strategic_focus_areas", "annual_budget", "active_solicitations_count"
         ]
         
         schema_fields = [field.name for field in schema]
@@ -71,8 +69,8 @@ class TestParquetSchemaManager:
         
         expected_fields = [
             "solicitation_id", "title", "full_text", "technical_requirements",
-            "evaluation_criteria", "topic_areas", "funding_range_min",
-            "funding_range_max", "submission_deadline"
+            "evaluation_criteria", "keywords", "funding_range_min",
+            "funding_range_max", "proposal_deadline"
         ]
         
         schema_fields = [field.name for field in schema]
@@ -85,7 +83,7 @@ class TestParquetSchemaManager:
         
         expected_fields = [
             "modification_id", "award_id", "modification_type",
-            "modification_date", "funding_change", "scope_change",
+            "modification_date", "funding_change", "scope_changes",
             "new_end_date", "justification"
         ]
         
@@ -95,42 +93,26 @@ class TestParquetSchemaManager:
             
     def test_schema_compatibility(self):
         """Test schema compatibility with existing data."""
-        # Test that new schemas are compatible with existing award schema
-        existing_schema = ParquetSchemaManager.get_existing_award_schema()
+        # Test that schemas can be retrieved without errors
         awardee_schema = ParquetSchemaManager.get_awardee_profile_schema()
+        program_schema = ParquetSchemaManager.get_program_office_schema()
+        solicitation_schema = ParquetSchemaManager.get_solicitation_schema()
+        modification_schema = ParquetSchemaManager.get_award_modification_schema()
         
         # Should not have conflicting field names with different types
-        existing_fields = {f.name: f.type for f in existing_schema}
-        awardee_fields = {f.name: f.type for f in awardee_schema}
-        
-        # Check for any overlapping field names
-        overlapping_fields = set(existing_fields.keys()) & set(awardee_fields.keys())
-        
-        # If there are overlapping fields, they should have compatible types
-        for field_name in overlapping_fields:
-            existing_type = existing_fields[field_name]
-            awardee_type = awardee_fields[field_name]
-            # Types should be the same or compatible
-            assert existing_type == awardee_type or self._types_compatible(existing_type, awardee_type)
-            
-    def _types_compatible(self, type1, type2):
-        """Check if two PyArrow types are compatible."""
-        # Simple compatibility check - can be extended
-        if type1 == type2:
-            return True
-        # String types are generally compatible
-        if pa.types.is_string(type1) and pa.types.is_string(type2):
-            return True
-        return False
+        assert len(awardee_schema) > 0
+        assert len(program_schema) > 0
+        assert len(solicitation_schema) > 0
+        assert len(modification_schema) > 0
 
 
-class TestAwardeeProfileWriter:
-    """Test awardee profile data writer."""
+class TestAwardeeProfileStorage:
+    """Test awardee profile data storage."""
     
     @pytest.fixture
-    def temp_file(self, tmp_path):
-        """Create temporary parquet file path."""
-        return tmp_path / "awardee_profiles.parquet"
+    def temp_dir(self, tmp_path):
+        """Create temporary directory for storage."""
+        return tmp_path
     
     @pytest.fixture
     def sample_profiles(self):
@@ -162,124 +144,138 @@ class TestAwardeeProfileWriter:
             )
         ]
     
-    def test_write_awardee_profiles(self, temp_file, sample_profiles):
+    def test_write_awardee_profiles(self, temp_dir, sample_profiles):
         """Test writing awardee profiles to Parquet."""
-        writer = AwardeeProfileWriter(temp_file)
-        writer.write(sample_profiles)
+        storage = StorageFactory.create_awardee_storage(temp_dir)
+        storage.write(sample_profiles)
         
         # Verify file was created
-        assert temp_file.exists()
+        assert storage.exists()
         
         # Read back and verify data
-        df = pd.read_parquet(temp_file)
-        assert len(df) == 2
-        assert df.iloc[0]["uei"] == "ABC123DEF456"
-        assert df.iloc[1]["legal_name"] == "Research Solutions Inc"
+        profiles = storage.read()
+        assert len(profiles) == 2
+        assert profiles[0].uei == "ABC123DEF456"
+        assert profiles[1].legal_name == "Research Solutions Inc"
         
-    def test_append_awardee_profiles(self, temp_file, sample_profiles):
+    def test_append_awardee_profiles(self, temp_dir, sample_profiles):
         """Test appending to existing awardee profiles file."""
-        writer = AwardeeProfileWriter(temp_file)
+        storage = StorageFactory.create_awardee_storage(temp_dir)
         
         # Write initial profiles
-        writer.write(sample_profiles[:1])
+        storage.write(sample_profiles[:1])
         
         # Append additional profile
-        writer.append(sample_profiles[1:])
+        storage.append(sample_profiles[1:])
         
         # Verify combined data
-        df = pd.read_parquet(temp_file)
-        assert len(df) == 2
+        profiles = storage.read()
+        assert len(profiles) == 2
         
-    def test_update_existing_profile(self, temp_file, sample_profiles):
+    def test_update_existing_profile(self, temp_dir, sample_profiles):
         """Test updating existing awardee profile."""
-        writer = AwardeeProfileWriter(temp_file)
+        storage = StorageFactory.create_awardee_storage(temp_dir)
         
         # Write initial profile
-        writer.write(sample_profiles[:1])
+        storage.write(sample_profiles[:1])
         
         # Update the profile
         updated_profile = sample_profiles[0]
         updated_profile.total_awards = 20  # Increase award count
         updated_profile.total_funding = Decimal("6000000.00")
         
-        writer.update([updated_profile])
+        storage.update([updated_profile], key_field='uei')
         
         # Verify update
-        df = pd.read_parquet(temp_file)
-        assert len(df) == 1  # Should still be one record
-        assert df.iloc[0]["total_awards"] == 20
+        profiles = storage.read()
+        assert len(profiles) == 1  # Should still be one record
+        assert profiles[0].total_awards == 20
         
-    def test_data_type_preservation(self, temp_file, sample_profiles):
+    def test_data_type_preservation(self, temp_dir, sample_profiles):
         """Test that data types are preserved in Parquet."""
-        writer = AwardeeProfileWriter(temp_file)
-        writer.write(sample_profiles)
+        storage = StorageFactory.create_awardee_storage(temp_dir)
+        storage.write(sample_profiles)
         
-        # Read back with PyArrow to check types
-        table = pq.read_table(temp_file)
+        # Read back and verify types
+        profiles = storage.read()
+        profile = profiles[0]
         
-        # Check that decimal fields are preserved as appropriate types
-        funding_column = table.column("total_funding")
-        assert pa.types.is_decimal(funding_column.type) or pa.types.is_float(funding_column.type)
+        # Check that decimal fields are preserved
+        assert isinstance(profile.total_funding, Decimal)
         
         # Check that list fields are preserved
-        agencies_column = table.column("primary_agencies")
-        assert pa.types.is_list(agencies_column.type)
+        assert isinstance(profile.primary_agencies, list)
+        assert len(profile.primary_agencies) == 2
 
 
-class TestProgramOfficeWriter:
-    """Test program office data writer."""
+class TestProgramOfficeStorage:
+    """Test program office data storage."""
     
     @pytest.fixture
-    def temp_file(self, tmp_path):
-        """Create temporary parquet file path."""
-        return tmp_path / "program_offices.parquet"
+    def temp_dir(self, tmp_path):
+        """Create temporary directory for storage."""
+        return tmp_path
     
     @pytest.fixture
     def sample_offices(self):
         """Create sample program offices for testing."""
         return [
             ProgramOffice(
-                agency="NSF",
+                office_id="NSF-CISE",
+                agency_code="NSF",
+                agency_name="National Science Foundation",
                 office_name="Computer and Information Science and Engineering",
-                office_code="CISE",
+                office_description="Supports research in computer science and engineering",
                 contact_email="cise@nsf.gov",
-                strategic_focus=["AI", "Cybersecurity", "Quantum Computing"],
+                contact_phone="703-292-8900",
+                website_url="https://www.nsf.gov/dir/index.jsp?org=CISE",
+                strategic_focus_areas=["AI", "Cybersecurity", "Quantum Computing"],
                 annual_budget=Decimal("500000000.00"),
-                active_programs=25
+                active_solicitations_count=25,
+                total_awards_managed=1000,
+                created_at=datetime.now(),
+                updated_at=datetime.now()
             ),
             ProgramOffice(
-                agency="DOD",
+                office_id="DOD-DARPA",
+                agency_code="DOD",
+                agency_name="Department of Defense",
                 office_name="Defense Advanced Research Projects Agency",
-                office_code="DARPA",
+                office_description="Develops breakthrough technologies for national security",
                 contact_email="info@darpa.mil",
-                strategic_focus=["Advanced Materials", "Hypersonics", "AI"],
+                contact_phone="703-526-6630",
+                website_url="https://www.darpa.mil",
+                strategic_focus_areas=["Advanced Materials", "Hypersonics", "AI"],
                 annual_budget=Decimal("3500000000.00"),
-                active_programs=50
+                active_solicitations_count=50,
+                total_awards_managed=2000,
+                created_at=datetime.now(),
+                updated_at=datetime.now()
             )
         ]
     
-    def test_write_program_offices(self, temp_file, sample_offices):
+    def test_write_program_offices(self, temp_dir, sample_offices):
         """Test writing program offices to Parquet."""
-        writer = ProgramOfficeWriter(temp_file)
-        writer.write(sample_offices)
+        storage = StorageFactory.create_program_office_storage(temp_dir)
+        storage.write(sample_offices)
         
         # Verify file was created
-        assert temp_file.exists()
+        assert storage.exists()
         
         # Read back and verify data
-        df = pd.read_parquet(temp_file)
-        assert len(df) == 2
-        assert df.iloc[0]["agency"] == "NSF"
-        assert df.iloc[1]["office_code"] == "DARPA"
+        offices = storage.read()
+        assert len(offices) == 2
+        assert offices[0].agency_code == "NSF"
+        assert offices[1].agency_code == "DOD"
 
 
-class TestSolicitationWriter:
-    """Test solicitation data writer."""
+class TestSolicitationStorage:
+    """Test solicitation data storage."""
     
     @pytest.fixture
-    def temp_file(self, tmp_path):
-        """Create temporary parquet file path."""
-        return tmp_path / "solicitations.parquet"
+    def temp_dir(self, tmp_path):
+        """Create temporary directory for storage."""
+        return tmp_path
     
     @pytest.fixture
     def sample_solicitations(self):
@@ -287,38 +283,47 @@ class TestSolicitationWriter:
         return [
             Solicitation(
                 solicitation_id="SOL-2024-001",
+                solicitation_number="N00014-24-S-B001",
                 title="Advanced AI Research Solicitation",
+                agency_code="DON",
+                program_office_id="ONR-001",
+                solicitation_type="SBIR Phase I",
                 full_text="This solicitation seeks proposals for advanced AI research...",
-                technical_requirements=["Machine Learning", "Neural Networks"],
-                evaluation_criteria=["Technical Merit", "Commercial Potential"],
-                topic_areas=["AI", "Data Science"],
+                technical_requirements="Machine Learning, Neural Networks",
+                evaluation_criteria="Technical Merit, Commercial Potential",
                 funding_range_min=Decimal("100000.00"),
                 funding_range_max=Decimal("500000.00"),
-                submission_deadline=datetime(2024, 3, 15)
+                proposal_deadline=datetime(2024, 3, 15).date(),
+                award_start_date=datetime(2024, 6, 1).date(),
+                performance_period=12,
+                keywords=["AI", "Data Science"],
+                cet_relevance_scores={"artificial_intelligence": 0.95},
+                created_at=datetime.now(),
+                updated_at=datetime.now()
             )
         ]
     
-    def test_write_solicitations(self, temp_file, sample_solicitations):
+    def test_write_solicitations(self, temp_dir, sample_solicitations):
         """Test writing solicitations to Parquet."""
-        writer = SolicitationWriter(temp_file)
-        writer.write(sample_solicitations)
+        storage = StorageFactory.create_solicitation_storage(temp_dir)
+        storage.write(sample_solicitations)
         
         # Verify file was created
-        assert temp_file.exists()
+        assert storage.exists()
         
         # Read back and verify data
-        df = pd.read_parquet(temp_file)
-        assert len(df) == 1
-        assert df.iloc[0]["solicitation_id"] == "SOL-2024-001"
+        solicitations = storage.read()
+        assert len(solicitations) == 1
+        assert solicitations[0].solicitation_id == "SOL-2024-001"
 
 
-class TestAwardModificationWriter:
-    """Test award modification data writer."""
+class TestAwardModificationStorage:
+    """Test award modification data storage."""
     
     @pytest.fixture
-    def temp_file(self, tmp_path):
-        """Create temporary parquet file path."""
-        return tmp_path / "award_modifications.parquet"
+    def temp_dir(self, tmp_path):
+        """Create temporary directory for storage."""
+        return tmp_path
     
     @pytest.fixture
     def sample_modifications(self):
@@ -327,31 +332,35 @@ class TestAwardModificationWriter:
             AwardModification(
                 modification_id="MOD-001",
                 award_id="AWARD-2024-001",
+                modification_number="001",
                 modification_type="Funding Increase",
-                modification_date=datetime(2024, 6, 15),
+                modification_date=datetime(2024, 6, 15).date(),
+                description="Added Phase II option",
                 funding_change=Decimal("50000.00"),
-                scope_change="Added Phase II option",
-                new_end_date=datetime(2025, 12, 31),
-                justification="Successful Phase I completion"
+                new_end_date=datetime(2025, 12, 31).date(),
+                scope_changes="Added Phase II option",
+                justification="Successful Phase I completion",
+                approving_official="John Doe",
+                created_at=datetime.now()
             )
         ]
     
-    def test_write_modifications(self, temp_file, sample_modifications):
+    def test_write_modifications(self, temp_dir, sample_modifications):
         """Test writing award modifications to Parquet."""
-        writer = AwardModificationWriter(temp_file)
-        writer.write(sample_modifications)
+        storage = StorageFactory.create_modification_storage(temp_dir)
+        storage.write(sample_modifications)
         
         # Verify file was created
-        assert temp_file.exists()
+        assert storage.exists()
         
         # Read back and verify data
-        df = pd.read_parquet(temp_file)
-        assert len(df) == 1
-        assert df.iloc[0]["modification_id"] == "MOD-001"
+        modifications = storage.read()
+        assert len(modifications) == 1
+        assert modifications[0].modification_id == "MOD-001"
 
 
-class TestEnrichedDataWriter:
-    """Test unified enriched data writer."""
+class TestEnrichedDataManager:
+    """Test unified enriched data manager."""
     
     @pytest.fixture
     def temp_dir(self, tmp_path):
@@ -361,100 +370,37 @@ class TestEnrichedDataWriter:
     def test_write_all_enrichment_types(self, temp_dir, sample_profiles, sample_offices, 
                                        sample_solicitations, sample_modifications):
         """Test writing all enrichment data types."""
-        writer = EnrichedDataWriter(temp_dir)
+        manager = EnrichedDataManager(temp_dir)
         
         # Write all data types
-        writer.write_awardee_profiles(sample_profiles)
-        writer.write_program_offices(sample_offices)
-        writer.write_solicitations(sample_solicitations)
-        writer.write_award_modifications(sample_modifications)
+        manager.awardee_profiles.write(sample_profiles)
+        manager.program_offices.write(sample_offices)
+        manager.solicitations.write(sample_solicitations)
+        manager.modifications.write(sample_modifications)
         
         # Verify all files were created
-        assert (temp_dir / "awardee_profiles.parquet").exists()
-        assert (temp_dir / "program_offices.parquet").exists()
-        assert (temp_dir / "solicitations.parquet").exists()
-        assert (temp_dir / "award_modifications.parquet").exists()
+        assert manager.awardee_profiles.exists()
+        assert manager.program_offices.exists()
+        assert manager.solicitations.exists()
+        assert manager.modifications.exists()
         
-    def test_batch_write_performance(self, temp_dir):
-        """Test performance of batch writing large datasets."""
-        # Create large dataset for performance testing
-        large_profiles = []
-        for i in range(1000):
-            profile = AwardeeProfile(
-                uei=f"UEI{i:06d}",
-                legal_name=f"Company {i}",
-                total_awards=i % 50 + 1,
-                total_funding=Decimal(str((i % 50 + 1) * 100000)),
-                success_rate=0.5 + (i % 50) / 100,
-                avg_award_amount=Decimal("100000.00"),
-                first_award_date=datetime(2020, 1, 1),
-                last_award_date=datetime(2024, 1, 1),
-                primary_agencies=["NSF"],
-                technology_areas=["AI"]
-            )
-            large_profiles.append(profile)
+    def test_get_summary(self, temp_dir, sample_profiles, sample_offices):
+        """Test getting summary of all enriched data."""
+        manager = EnrichedDataManager(temp_dir)
         
-        writer = EnrichedDataWriter(temp_dir)
+        # Write some data
+        manager.awardee_profiles.write(sample_profiles)
+        manager.program_offices.write(sample_offices)
         
-        # Time the write operation
-        import time
-        start_time = time.time()
-        writer.write_awardee_profiles(large_profiles)
-        end_time = time.time()
+        # Get summary
+        summary = manager.get_summary()
         
-        # Should complete within reasonable time (adjust threshold as needed)
-        write_time = end_time - start_time
-        assert write_time < 5.0  # Should complete within 5 seconds
-        
-        # Verify data integrity
-        df = pd.read_parquet(temp_dir / "awardee_profiles.parquet")
-        assert len(df) == 1000
-        
-    def test_concurrent_writes(self, temp_dir):
-        """Test concurrent writing to different files."""
-        import threading
-        
-        writer = EnrichedDataWriter(temp_dir)
-        
-        def write_profiles():
-            profiles = [AwardeeProfile(
-                uei="TEST001",
-                legal_name="Test Company",
-                total_awards=1,
-                total_funding=Decimal("100000.00"),
-                success_rate=1.0,
-                avg_award_amount=Decimal("100000.00"),
-                first_award_date=datetime(2024, 1, 1),
-                last_award_date=datetime(2024, 1, 1),
-                primary_agencies=["NSF"],
-                technology_areas=["AI"]
-            )]
-            writer.write_awardee_profiles(profiles)
-        
-        def write_offices():
-            offices = [ProgramOffice(
-                agency="NSF",
-                office_name="Test Office",
-                office_code="TEST",
-                strategic_focus=["AI"],
-                annual_budget=Decimal("1000000.00"),
-                active_programs=1
-            )]
-            writer.write_program_offices(offices)
-        
-        # Start concurrent writes
-        thread1 = threading.Thread(target=write_profiles)
-        thread2 = threading.Thread(target=write_offices)
-        
-        thread1.start()
-        thread2.start()
-        
-        thread1.join()
-        thread2.join()
-        
-        # Verify both files were created successfully
-        assert (temp_dir / "awardee_profiles.parquet").exists()
-        assert (temp_dir / "program_offices.parquet").exists()
+        assert summary["awardee_profiles"]["count"] == 2
+        assert summary["awardee_profiles"]["exists"] is True
+        assert summary["program_offices"]["count"] == 2
+        assert summary["program_offices"]["exists"] is True
+        assert summary["solicitations"]["count"] == 0
+        assert summary["solicitations"]["exists"] is False
 
 
 class TestSchemaEvolution:

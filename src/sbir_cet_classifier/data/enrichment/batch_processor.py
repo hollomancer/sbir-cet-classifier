@@ -82,7 +82,7 @@ class SolicitationBatchProcessor:
         # Save to storage if requested
         if save_to_storage and self.storage and all_solicitations:
             try:
-                self.storage.save_solicitations(all_solicitations)
+                self.storage.write(all_solicitations)
             except Exception as e:
                 # Log error but don't fail the entire batch
                 pass
@@ -120,7 +120,7 @@ class SolicitationBatchProcessor:
 
                 # Check if already exists
                 if skip_existing and self.storage:
-                    existing = self.storage.find_solicitation_by_id(solicitation_number)
+                    existing = self.storage.read_one(solicitation_number, key_field="solicitation_number")
                     if existing:
                         return "skipped", None, None
 

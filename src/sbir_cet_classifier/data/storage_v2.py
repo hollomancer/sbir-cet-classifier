@@ -45,13 +45,23 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class ParquetSchemaManager:
-    """Manages PyArrow schemas for different data types."""
+    """Central registry for all Parquet schemas.
+    
+    This class manages PyArrow schemas for different data types and provides
+    a unified interface for schema access and validation.
+    """
 
-    @staticmethod
-    def get_awardee_profile_schema() -> pa.Schema:
-        """Get awardee profile Parquet schema."""
-        return pa.schema(
-            [
+    # Central schema registry
+    _schemas: Dict[str, pa.Schema] = {}
+
+    @classmethod
+    def _initialize_schemas(cls) -> None:
+        """Initialize all schemas in the registry."""
+        if cls._schemas:
+            return  # Already initialized
+
+        cls._schemas = {
+            'awardee_profiles': pa.schema([
                 pa.field("uei", pa.string()),
                 pa.field("legal_name", pa.string()),
                 pa.field("total_awards", pa.int64()),
@@ -62,19 +72,13 @@ class ParquetSchemaManager:
                 pa.field("last_award_date", pa.timestamp("ns")),
                 pa.field("primary_agencies", pa.list_(pa.string())),
                 pa.field("technology_areas", pa.list_(pa.string())),
-            ]
-        )
-
-    @staticmethod
-    def get_program_office_schema() -> pa.Schema:
-        """Get program office Parquet schema."""
-        return pa.schema(
-            [
+            ]),
+            'program_offices': pa.schema([
                 pa.field("office_id", pa.string()),
                 pa.field("agency_code", pa.string()),
                 pa.field("agency_name", pa.string()),
                 pa.field("office_name", pa.string()),
-                pa.field("office_code", pa.string()),
+                pa.field("office_description", pa.string()),
                 pa.field("contact_email", pa.string()),
                 pa.field("contact_phone", pa.string()),
                 pa.field("website_url", pa.string()),
@@ -84,20 +88,15 @@ class ParquetSchemaManager:
                 pa.field("total_awards_managed", pa.int64()),
                 pa.field("created_at", pa.timestamp("ns")),
                 pa.field("updated_at", pa.timestamp("ns")),
-            ]
-        )
-
-    @staticmethod
-    def get_solicitation_schema() -> pa.Schema:
-        """Get solicitation Parquet schema."""
-        return pa.schema(
-            [
+            ]),
+            'solicitations': pa.schema([
                 pa.field("solicitation_id", pa.string()),
                 pa.field("solicitation_number", pa.string()),
                 pa.field("title", pa.string()),
                 pa.field("agency_code", pa.string()),
                 pa.field("program_office_id", pa.string()),
                 pa.field("solicitation_type", pa.string()),
+                pa.field("topic_number", pa.string()),
                 pa.field("full_text", pa.string()),
                 pa.field("technical_requirements", pa.string()),
                 pa.field("evaluation_criteria", pa.string()),
@@ -110,14 +109,8 @@ class ParquetSchemaManager:
                 pa.field("cet_relevance_scores", pa.string()),  # JSON string
                 pa.field("created_at", pa.timestamp("ns")),
                 pa.field("updated_at", pa.timestamp("ns")),
-            ]
-        )
-
-    @staticmethod
-    def get_award_modification_schema() -> pa.Schema:
-        """Get award modification Parquet schema."""
-        return pa.schema(
-            [
+            ]),
+            'award_modifications': pa.schema([
                 pa.field("modification_id", pa.string()),
                 pa.field("award_id", pa.string()),
                 pa.field("modification_number", pa.string()),
@@ -130,8 +123,75 @@ class ParquetSchemaManager:
                 pa.field("justification", pa.string()),
                 pa.field("approving_official", pa.string()),
                 pa.field("created_at", pa.timestamp("ns")),
-            ]
-        )
+            ])
+        }
+
+    @classmethod
+    def get_schema(cls, data_type: str) -> pa.Schema:
+        """Get schema by data type name.
+        
+        Args:
+            data_type: Data type name (e.g., 'awardee_profiles', 'solicitations')
+            
+        Returns:
+            PyArrow schema for the data type
+            
+        Raises:
+            KeyError: If data type is not found
+        """
+        cls._initialize_schemas()
+        if data_type not in cls._schemas:
+            available = list(cls._schemas.keys())
+            raise KeyError(f"Unknown data type '{data_type}'. Available: {available}")
+        return cls._schemas[data_type]
+
+    @classmethod
+    def validate_data(cls, data_type: str, df: pd.DataFrame) -> None:
+        """Validate DataFrame against schema.
+        
+        Args:
+            data_type: Data type name
+            df: DataFrame to validate
+            
+        Raises:
+            ValueError: If validation fails
+        """
+        schema = cls.get_schema(data_type)
+        try:
+            pa.Table.from_pandas(df, schema=schema)
+        except Exception as e:
+            raise ValueError(f"Schema validation failed for {data_type}: {e}")
+
+    @classmethod
+    def list_data_types(cls) -> List[str]:
+        """List all available data types.
+        
+        Returns:
+            List of data type names
+        """
+        cls._initialize_schemas()
+        return list(cls._schemas.keys())
+
+    # Backward compatibility methods
+    @staticmethod
+    def get_awardee_profile_schema() -> pa.Schema:
+        """Get awardee profile Parquet schema."""
+        return ParquetSchemaManager.get_schema('awardee_profiles')
+
+    @staticmethod
+    def get_program_office_schema() -> pa.Schema:
+        """Get program office Parquet schema."""
+        return ParquetSchemaManager.get_schema('program_offices')
+
+    @staticmethod
+    def get_solicitation_schema() -> pa.Schema:
+        """Get solicitation Parquet schema."""
+        return ParquetSchemaManager.get_schema('solicitations')
+
+    @staticmethod
+    def get_award_modification_schema() -> pa.Schema:
+        """Get award modification Parquet schema."""
+        return ParquetSchemaManager.get_schema('award_modifications')
 
 
 class ParquetStorage(Generic[T]):
