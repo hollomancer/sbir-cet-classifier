@@ -156,44 +156,41 @@ def load_classification_rules(path: Path | None = None) -> ClassificationRules:
     Returns:
         ClassificationRules object with normalized priors, keywords and rules.
     """
-    # Resolve default path (environment override first)
-    if path is None:
-        env_dir = os.getenv("SBIR_CONFIG_DIR")
-        if env_dir:
-            path = Path(env_dir) / "classification.yaml"
-        else:
-            # Default follows the same layout used elsewhere in the project:
-            # src/sbir_cet_classifier/common/... -> go up to repo root then config/
-            path = Path(__file__).parent.parent.parent.parent / "config" / "classification.yaml"
+    # For backward compatibility, if a specific path is provided, use direct loading
+    if path is not None:
+        resolved_path = Path(path).resolve()
 
-    resolved_path = Path(path).resolve()
+        # Cache results per resolved path to allow multiple configs in one process
+        cache = getattr(load_classification_rules, "_cache", {})
+        key = str(resolved_path)
+        if key in cache:
+            return cache[key]
 
-    # Cache results per resolved path to allow multiple configs in one process
-    cache = getattr(load_classification_rules, "_cache", {})
-    key = str(resolved_path)
-    if key in cache:
-        return cache[key]
+        if not resolved_path.exists():
+            raise FileNotFoundError(f"Classification config not found at: {resolved_path}")
 
-    if not resolved_path.exists():
-        raise FileNotFoundError(f"Classification config not found at: {resolved_path}")
+        with resolved_path.open("r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
 
-    with resolved_path.open("r", encoding="utf-8") as fh:
-        data = yaml.safe_load(fh) or {}
+        # Build a payload containing only the keys we care about. This avoids errors
+        # when the YAML file contains many unrelated sections.
+        payload: dict[str, Any] = {
+            "version": data.get("version"),
+            "agency_priors": data.get("agency_priors", {}),
+            "branch_priors": data.get("branch_priors", {}),
+            "cet_keywords": data.get("cet_keywords", {}),
+            "context_rules": data.get("context_rules", {}),
+        }
 
-    # Build a payload containing only the keys we care about. This avoids errors
-    # when the YAML file contains many unrelated sections.
-    payload: dict[str, Any] = {
-        "version": data.get("version"),
-        "agency_priors": data.get("agency_priors", {}),
-        "branch_priors": data.get("branch_priors", {}),
-        "cet_keywords": data.get("cet_keywords", {}),
-        "context_rules": data.get("context_rules", {}),
-    }
-
-    rules = ClassificationRules(**payload)
-    cache[key] = rules
-    setattr(load_classification_rules, "_cache", cache)
-    return rules
+        rules = ClassificationRules(**payload)
+        cache[key] = rules
+        setattr(load_classification_rules, "_cache", cache)
+        return rules
+    
+    # Use centralized configuration manager for default loading
+    from .configuration_manager import get_config_manager
+    config_manager = get_config_manager()
+    return config_manager.get_classification_rules()
 
 
 # ----------------------------

@@ -138,29 +138,28 @@ def load_taxonomy_config(path: Path | None = None) -> TaxonomyConfig:
     Returns:
         Validated taxonomy configuration
     """
-    import os
+    # For backward compatibility, if a specific path is provided, use direct loading
+    if path is not None:
+        import os
+        resolved = Path(path).resolve()
+        key = str(resolved)
 
-    if path is None:
-        env_dir = os.getenv("SBIR_CONFIG_DIR")
-        if env_dir:
-            path = Path(env_dir) / "taxonomy.yaml"
-        else:
-            path = Path(__file__).parent.parent.parent.parent / "config" / "taxonomy.yaml"
+        cache = getattr(load_taxonomy_config, "_cache", {})
+        if key in cache:
+            return cache[key]
 
-    resolved = Path(path).resolve()
-    key = str(resolved)
+        with resolved.open() as f:
+            data = yaml.safe_load(f)
 
-    cache = getattr(load_taxonomy_config, "_cache", {})
-    if key in cache:
-        return cache[key]
-
-    with resolved.open() as f:
-        data = yaml.safe_load(f)
-
-    cfg = TaxonomyConfig(**data)
-    cache[key] = cfg
-    setattr(load_taxonomy_config, "_cache", cache)
-    return cfg
+        cfg = TaxonomyConfig(**data)
+        cache[key] = cfg
+        setattr(load_taxonomy_config, "_cache", cache)
+        return cfg
+    
+    # Use centralized configuration manager for default loading
+    from .configuration_manager import get_config_manager
+    config_manager = get_config_manager()
+    return config_manager.get_taxonomy_config()
 
 
 def load_classification_config(path: Path | None = None) -> ClassificationConfig:
@@ -173,29 +172,28 @@ def load_classification_config(path: Path | None = None) -> ClassificationConfig
     Returns:
         Validated classification configuration
     """
-    import os
+    # For backward compatibility, if a specific path is provided, use direct loading
+    if path is not None:
+        import os
+        resolved = Path(path).resolve()
+        key = str(resolved)
 
-    if path is None:
-        env_dir = os.getenv("SBIR_CONFIG_DIR")
-        if env_dir:
-            path = Path(env_dir) / "classification.yaml"
-        else:
-            path = Path(__file__).parent.parent.parent.parent / "config" / "classification.yaml"
+        cache = getattr(load_classification_config, "_cache", {})
+        if key in cache:
+            return cache[key]
 
-    resolved = Path(path).resolve()
-    key = str(resolved)
+        with resolved.open() as f:
+            data = yaml.safe_load(f)
 
-    cache = getattr(load_classification_config, "_cache", {})
-    if key in cache:
-        return cache[key]
-
-    with resolved.open() as f:
-        data = yaml.safe_load(f)
-
-    cfg = ClassificationConfig(**data)
-    cache[key] = cfg
-    setattr(load_classification_config, "_cache", cache)
-    return cfg
+        cfg = ClassificationConfig(**data)
+        cache[key] = cfg
+        setattr(load_classification_config, "_cache", cache)
+        return cfg
+    
+    # Use centralized configuration manager for default loading
+    from .configuration_manager import get_config_manager
+    config_manager = get_config_manager()
+    return config_manager.get_classification_config()
 
 
 def load_enrichment_config(path: Path | None = None) -> EnrichmentConfig:
@@ -208,26 +206,25 @@ def load_enrichment_config(path: Path | None = None) -> EnrichmentConfig:
     Returns:
         Validated enrichment configuration
     """
-    import os
+    # For backward compatibility, if a specific path is provided, use direct loading
+    if path is not None:
+        import os
+        resolved = Path(path).resolve()
+        key = str(resolved)
 
-    if path is None:
-        env_dir = os.getenv("SBIR_CONFIG_DIR")
-        if env_dir:
-            path = Path(env_dir) / "enrichment.yaml"
-        else:
-            path = Path(__file__).parent.parent.parent.parent / "config" / "enrichment.yaml"
+        cache = getattr(load_enrichment_config, "_cache", {})
+        if key in cache:
+            return cache[key]
 
-    resolved = Path(path).resolve()
-    key = str(resolved)
+        with resolved.open() as f:
+            data = yaml.safe_load(f)
 
-    cache = getattr(load_enrichment_config, "_cache", {})
-    if key in cache:
-        return cache[key]
-
-    with resolved.open() as f:
-        data = yaml.safe_load(f)
-
-    cfg = EnrichmentConfig(**data)
-    cache[key] = cfg
-    setattr(load_enrichment_config, "_cache", cache)
-    return cfg
+        cfg = EnrichmentConfig(**data)
+        cache[key] = cfg
+        setattr(load_enrichment_config, "_cache", cache)
+        return cfg
+    
+    # Use centralized configuration manager for default loading
+    from .configuration_manager import get_config_manager
+    config_manager = get_config_manager()
+    return config_manager.get_enrichment_config()
